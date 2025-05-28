@@ -77,11 +77,16 @@ defmodule ExEcc.Fields.FieldElements do
 
   def pow(fq_base = %__MODULE__{}, exponent) when is_integer(exponent) do
     cond do
-      exponent == 0 -> %__MODULE__{n: 1, field_modulus: fq_base.field_modulus}
-      exponent == 1 -> fq_base
+      exponent == 0 ->
+        %__MODULE__{n: 1, field_modulus: fq_base.field_modulus}
+
+      exponent == 1 ->
+        fq_base
+
       rem(exponent, 2) == 0 ->
         half_pow = pow(fq_base, Kernel.div(exponent, 2))
         mul(half_pow, half_pow)
+
       true ->
         half_pow = pow(fq_base, Kernel.div(exponent, 2))
         mul(mul(half_pow, half_pow), fq_base)
@@ -96,10 +101,15 @@ defmodule ExEcc.Fields.FieldElements do
     # Handles comparison with integer or another FQ element
     # This is a simplified version; proper type checking might be needed.
     cond do
-      is_integer(fq2_val) -> fq1.n == fq2_val
-      is_map(fq2_val) and Map.has_key?(fq2_val, :n) -> # Basic check for FQ-like struct
+      is_integer(fq2_val) ->
+        fq1.n == fq2_val
+
+      # Basic check for FQ-like struct
+      is_map(fq2_val) and Map.has_key?(fq2_val, :n) ->
         fq1.n == fq2_val.n and fq1.field_modulus == fq2_val.field_modulus
-      true -> false
+
+      true ->
+        false
     end
   end
 
@@ -120,8 +130,10 @@ defmodule ExEcc.Fields.FieldElements do
       # Raise an error or handle as per library's design.
       raise "Cannot operate on FQ elements from different fields without explicit conversion."
     end
+
     fq
   end
+
   defp ensure_fq(other, _field_modulus) do
     raise "Type error: Expected an integer or FQ element, got: #{inspect(other)}"
   end
@@ -145,7 +157,8 @@ defmodule ExEcc.Fields.FieldElements do
     # FQP will require its own specific FQ type, or operate on generic FQ structs
     # passed with their field_modulus.
     # For now, assume it operates on the FQ defined above.
-    alias ExEcc.Fields.FieldElements, as: FQMain # Alias to avoid naming conflict
+    # Alias to avoid naming conflict
+    alias ExEcc.Fields.FieldElements, as: FQMain
 
     defstruct coeffs: [], modulus_coeffs: [], degree: 0, field_modulus: nil
 
@@ -160,8 +173,7 @@ defmodule ExEcc.Fields.FieldElements do
     # In Elixir, we would typically define the FQ structure once.
     # The FQP functions will need the field_modulus to create FQ elements.
     def new_fqp(coeffs, modulus_coeffs, field_modulus)
-      when is_list(coeffs) and is_list(modulus_coeffs) and is_integer(field_modulus) do
-
+        when is_list(coeffs) and is_list(modulus_coeffs) and is_integer(field_modulus) do
       unless length(coeffs) == length(modulus_coeffs) do
         # The original code raises an exception if lengths don't match for FQ2/FQ12 modulus_coeffs vs init coeffs.
         # However, FQP itself is initialized with modulus_coeffs that define the polynomial, and coeffs that define the element.
@@ -182,7 +194,8 @@ defmodule ExEcc.Fields.FieldElements do
 
       %__MODULE__{
         coeffs: fq_coeffs,
-        modulus_coeffs: fq_modulus_coeffs, # Storing as FQ for consistency in operations
+        # Storing as FQ for consistency in operations
+        modulus_coeffs: fq_modulus_coeffs,
         degree: length(modulus_coeffs),
         field_modulus: field_modulus
       }
@@ -212,19 +225,23 @@ defmodule ExEcc.Fields.FieldElements do
       if fqp1.field_modulus != fqp2.field_modulus or fqp1.degree != fqp2.degree do
         raise "Cannot subtract FQP elements from different fields or degrees"
       end
+
       new_coeffs_raw = Enum.zip_with(fqp1.coeffs, fqp2.coeffs, &FQMain.sub(&1, &2))
       %__MODULE__{fqp1 | coeffs: new_coeffs_raw}
     end
 
     def mul(fqp1 = %__MODULE__{}, other) do
       cond do
-        is_integer(other) or is_map(other) and Map.has_key?(other, :field_modulus) -> # Scalar multiplication (int or FQ)
+        # Scalar multiplication (int or FQ)
+        is_integer(other) or (is_map(other) and Map.has_key?(other, :field_modulus)) ->
           scalar = FQMain.ensure_fq(other, fqp1.field_modulus)
           new_coeffs_raw = Enum.map(fqp1.coeffs, &FQMain.mul(&1, scalar))
           %__MODULE__{fqp1 | coeffs: new_coeffs_raw}
 
-        is_map(other) and Map.has_key?(other, :coeffs) -> # FQP multiplication (polynomial multiplication)
+        # FQP multiplication (polynomial multiplication)
+        is_map(other) and Map.has_key?(other, :coeffs) ->
           fqp2 = other
+
           if fqp1.field_modulus != fqp2.field_modulus or fqp1.degree != fqp2.degree do
             raise "Cannot multiply FQP elements from different fields or degrees"
           end
@@ -249,15 +266,18 @@ defmodule ExEcc.Fields.FieldElements do
                 # This needs a way to update list elements by index or build up the list.
                 # Let's rebuild `prod_coeffs_raw` iteratively or use a map for intermediate sums.
                 # For simplicity here, this is a conceptual placeholder for correct poly mult.
-                {i+j, term_prod} # Placeholder for actual accumulation
+                # Placeholder for actual accumulation
+                {i + j, term_prod}
               end
             end
             |> List.flatten()
             |> Enum.group_by(fn {idx, _val} -> idx end, fn {_idx, val} -> val end)
             |> Enum.map(fn {idx, vals_at_idx} ->
-                 sum_at_idx = Enum.reduce(vals_at_idx, FQMain.zero(fqp1.field_modulus), &FQMain.add/2)
-                 {idx, sum_at_idx}
-               end)
+              sum_at_idx =
+                Enum.reduce(vals_at_idx, FQMain.zero(fqp1.field_modulus), &FQMain.add/2)
+
+              {idx, sum_at_idx}
+            end)
             |> Enum.sort_by(fn {idx, _} -> idx end)
             |> Enum.map(fn {_, val} -> val end)
 
@@ -288,8 +308,10 @@ defmodule ExEcc.Fields.FieldElements do
           # This is complex to do immutably and efficiently in Elixir like Python's list mutation.
           # One way is to build a list of {index_to_update, value_to_add} and then process.
           updates =
-            for {c1, i} <- indexed_coeffs1, FQMain.equal?(c1, FQMain.zero(fqp1.field_modulus)) == false do
-              for {c2, j} <- indexed_coeffs2, FQMain.equal?(c2, FQMain.zero(fqp1.field_modulus)) == false do
+            for {c1, i} <- indexed_coeffs1,
+                FQMain.equal?(c1, FQMain.zero(fqp1.field_modulus)) == false do
+              for {c2, j} <- indexed_coeffs2,
+                  FQMain.equal?(c2, FQMain.zero(fqp1.field_modulus)) == false do
                 product = FQMain.mul(c1, c2)
                 target_idx = rem(i + j, fqp1.degree)
                 {target_idx, product}
@@ -305,6 +327,7 @@ defmodule ExEcc.Fields.FieldElements do
             end)
 
           %__MODULE__{fqp1 | coeffs: final_coeffs}
+
         true ->
           raise "Type error: Expected an integer, FQ, or FQP element for multiplication"
       end
@@ -313,14 +336,20 @@ defmodule ExEcc.Fields.FieldElements do
     # __div__ for FQP involves multiplying by the inverse.
     def divide(fqp1 = %__MODULE__{}, other) do
       cond do
-        is_integer(other) or (is_map(other) and Map.has_key?(other, :field_modulus)) -> # Scalar division
+        # Scalar division
+        is_integer(other) or (is_map(other) and Map.has_key?(other, :field_modulus)) ->
           scalar = FQMain.ensure_fq(other, fqp1.field_modulus)
-          inv_scalar = FQMain.divide(FQMain.one(fqp1.field_modulus), scalar) # 1 / scalar
+          # 1 / scalar
+          inv_scalar = FQMain.divide(FQMain.one(fqp1.field_modulus), scalar)
           new_coeffs_raw = Enum.map(fqp1.coeffs, &FQMain.mul(&1, inv_scalar))
           %__MODULE__{fqp1 | coeffs: new_coeffs_raw}
-        is_map(other) and Map.has_key?(other, :coeffs) -> # FQP division
+
+        # FQP division
+        is_map(other) and Map.has_key?(other, :coeffs) ->
           fqp2 = other
-          mul(fqp1, inv(fqp2)) # a / b = a * inv(b)
+          # a / b = a * inv(b)
+          mul(fqp1, inv(fqp2))
+
         true ->
           raise "Type error: Expected an integer, FQ, or FQP element for division"
       end
@@ -329,12 +358,20 @@ defmodule ExEcc.Fields.FieldElements do
     # pow for FQP - uses binary exponentiation (exponent is an integer)
     def pow(fqp_base = %__MODULE__{}, exponent) when is_integer(exponent) do
       cond do
-        exponent == 0 -> %__MODULE__{fqp_base | coeffs: set_coeffs_to_one(fqp_base)}
-        exponent == 1 -> fqp_base
-        exponent < 0  -> pow(inv(fqp_base), -exponent) # a^-n = (a^-1)^n
+        exponent == 0 ->
+          %__MODULE__{fqp_base | coeffs: set_coeffs_to_one(fqp_base)}
+
+        exponent == 1 ->
+          fqp_base
+
+        # a^-n = (a^-1)^n
+        exponent < 0 ->
+          pow(inv(fqp_base), -exponent)
+
         rem(exponent, 2) == 0 ->
           half_pow = pow(fqp_base, Kernel.div(exponent, 2))
           mul(half_pow, half_pow)
+
         true ->
           half_pow = pow(fqp_base, Kernel.div(exponent, 2))
           mul(mul(half_pow, half_pow), fqp_base)
@@ -344,7 +381,10 @@ defmodule ExEcc.Fields.FieldElements do
     defp set_coeffs_to_one(fqp = %__MODULE__{}) do
       # For FQP^0, the result is 1 (the identity element).
       # This means the 0-th coefficient is 1, others are 0.
-      [FQMain.one(fqp.field_modulus) | List.duplicate(FQMain.zero(fqp.field_modulus), fqp.degree - 1)]
+      [
+        FQMain.one(fqp.field_modulus)
+        | List.duplicate(FQMain.zero(fqp.field_modulus), fqp.degree - 1)
+      ]
     end
 
     # inv(self: T_FQP) -> T_FQP
@@ -386,7 +426,8 @@ defmodule ExEcc.Fields.FieldElements do
         # The py_ecc library has a generic polynomial EEA.
         # For now, using Fermat's Little Theorem for extension fields: a^(q^d - 2)
         # where q = field_modulus, d = degree.
-        q_power_d = :math.pow(fqp.field_modulus, fqp.degree) |> round() # Order of the extension field
+        # Order of the extension field
+        q_power_d = :math.pow(fqp.field_modulus, fqp.degree) |> round()
         exponent = q_power_d - 2
         pow(fqp, exponent)
       end
@@ -396,10 +437,14 @@ defmodule ExEcc.Fields.FieldElements do
     def equal?(fqp1 = %__MODULE__{}, fqp2) do
       cond do
         is_map(fqp2) and Map.has_key?(fqp2, :coeffs) and Map.has_key?(fqp2, :degree) ->
+          # Ensure coeffs lists are comparable
           fqp1.field_modulus == fqp2.field_modulus and
-          fqp1.degree == fqp2.degree and
-          length(fqp1.coeffs) == length(fqp2.coeffs) and # Ensure coeffs lists are comparable
-          Enum.zip_reduce(fqp1.coeffs, fqp2.coeffs, true, fn c1, c2, acc -> acc and FQMain.equal?(c1, c2) end)
+            fqp1.degree == fqp2.degree and
+            length(fqp1.coeffs) == length(fqp2.coeffs) and
+            Enum.zip_reduce(fqp1.coeffs, fqp2.coeffs, true, fn c1, c2, acc ->
+              acc and FQMain.equal?(c1, c2)
+            end)
+
         true ->
           # If comparing FQP with a scalar (0), it means comparing to FQP.zero
           if fqp2 == 0 do
@@ -434,14 +479,16 @@ defmodule ExEcc.Fields.FieldElements do
       coeffs = List.duplicate(zero_coeff, degree)
       new_fqp(coeffs, modulus_coeffs_repr, field_modulus)
     end
-  end # defmodule FQP
+  end
+
+  # defmodule FQP
 
   # FQ2 - Quadratic extension field
   # FQ2 is FQP where degree = 2 and modulus_coeffs are fixed (e.g., u^2 - beta = 0)
   defmodule FQ2 do
     alias ExEcc.Fields.FieldElements.FQP
 
-    @type t_fq2 :: FQP.t_fqp
+    @type t_fq2 :: FQP.t_fqp()
     defstruct [:coeffs, :modulus_coeffs, :degree, :field_modulus]
 
     # Default modulus coefficients for FQ2, e.g., u^2 + 1 = 0 => beta = -1 or (u^2 - (-1)) = 0
@@ -473,10 +520,10 @@ defmodule ExEcc.Fields.FieldElements do
     `field_modulus` is the underlying prime field modulus.
     """
     def new_fq2(coeffs_list, modulus_coeffs_for_field, field_modulus)
-      when is_list(coeffs_list) and length(coeffs_list) == 2
-      and is_list(modulus_coeffs_for_field) # and length(modulus_coeffs_for_field) == 1 for u^2-beta
-      and is_integer(field_modulus) do
-
+        # and length(modulus_coeffs_for_field) == 1 for u^2-beta
+        when is_list(coeffs_list) and length(coeffs_list) == 2 and
+               is_list(modulus_coeffs_for_field) and
+               is_integer(field_modulus) do
       # The `modulus_coeffs` for FQP is the polynomial itself. For x^2 - beta, it's `[beta, 0]` (const, x_coeff for poly `P(y)=y^2 - (m1*y + m0)`)
       # If `modulus_coeffs_for_field` is `[beta]`, it represents `u^2 - beta = 0`.
       # The FQP.modulus_coeffs should be `[beta, 0]` if `modulus_polynomial = x^2 - (modulus_coeffs[1]*x + modulus_coeffs[0])`
@@ -490,7 +537,8 @@ defmodule ExEcc.Fields.FieldElements do
       # `coeffs` are `[a, b]` for `a + bu`.
       %FQP{}
       |> FQP.new_fqp(coeffs_list, modulus_coeffs_for_field, field_modulus)
-      |> Map.put(:__struct__, __MODULE__) # Cast to FQ2 struct type
+      # Cast to FQ2 struct type
+      |> Map.put(:__struct__, __MODULE__)
     end
 
     # FQ2 specific operations can be defined here, or rely on FQP if general enough.
@@ -505,7 +553,9 @@ defmodule ExEcc.Fields.FieldElements do
     #   new_c1 = a_fq
     #   new_fq2([new_c0, new_c1], [beta,0], fm)
     # end
-  end # defmodule FQ2
+  end
+
+  # defmodule FQ2
 
   # FQ12 - 12th-degree extension field
   # FQ12 is FQP where degree = 12. Typically FQ12 is ((FQ2)^3)^2 or (FQ^6)^2.
@@ -515,14 +565,14 @@ defmodule ExEcc.Fields.FieldElements do
   defmodule FQ12 do
     alias ExEcc.Fields.FieldElements.FQP
 
-    @type t_fq12 :: FQP.t_fqp
+    @type t_fq12 :: FQP.t_fqp()
     defstruct [:coeffs, :modulus_coeffs, :degree, :field_modulus]
 
     def new_fq12(coeffs_list, modulus_coeffs_for_field, field_modulus)
-      when is_list(coeffs_list) and length(coeffs_list) == 12
-      and is_list(modulus_coeffs_for_field) # and length should be 12 for FQP general form
-      and is_integer(field_modulus) do
-
+        # and length should be 12 for FQP general form
+        when is_list(coeffs_list) and length(coeffs_list) == 12 and
+               is_list(modulus_coeffs_for_field) and
+               is_integer(field_modulus) do
       # `modulus_coeffs_for_field` for FQ12 are specific to the curve construction.
       # e.g. for BLS12-381, it's v^6 - xi = 0, where xi = (u+1).
       # The `py_ecc.fields.bls12_381.bls12_381_FQ12.FQ12_MODULUS_COEFFS` is
@@ -539,6 +589,7 @@ defmodule ExEcc.Fields.FieldElements do
       |> FQP.new_fqp(coeffs_list, modulus_coeffs_for_field, field_modulus)
       |> Map.put(:__struct__, __MODULE__)
     end
-  end # defmodule FQ12
+  end
 
+  # defmodule FQ12
 end

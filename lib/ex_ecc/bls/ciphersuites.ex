@@ -21,7 +21,11 @@ defmodule ExEcc.Bls.Ciphersuites.Base do
   @callback sign(sk :: integer, message :: binary) :: {:ok, bls_signature} | {:error, any}
   @callback verify(pk :: bls_pubkey, message :: binary, signature :: bls_signature) :: boolean
   @callback aggregate(signatures :: list(bls_signature)) :: {:ok, bls_signature} | {:error, any}
-  @callback aggregate_verify(pks :: list(bls_pubkey), messages :: list(binary), signature :: bls_signature) :: boolean
+  @callback aggregate_verify(
+              pks :: list(bls_pubkey),
+              messages :: list(binary),
+              signature :: bls_signature
+            ) :: boolean
   # POP specific callbacks if needed later
   # @callback pop_prove(sk :: integer) :: {:ok, bls_signature} | {:error, any}
   # @callback pop_verify(pk :: bls_pubkey, proof :: bls_signature) :: boolean
@@ -30,8 +34,9 @@ defmodule ExEcc.Bls.Ciphersuites.Base do
   defmacro __using__(_opts) do
     quote do
       # Common DST and hash function for many suites based on BLS12-381 G2 with SHA-256
-      @dst_default b""
-      @xmd_hash_function_default :sha256 # Elixir's :crypto atom for sha256
+      @dst_default <<"">>
+      # Elixir's :crypto atom for sha256
+      @xmd_hash_function_default :sha256
 
       # Import common validation helpers or define them here
       defp _is_valid_privkey(privkey) do
@@ -60,7 +65,7 @@ defmodule ExEcc.Bls.Ciphersuites.Base do
         :not_implemented_yet_sk_to_pk
       end
 
-      def key_gen(ikm, key_info \\ b"") do
+      def key_gen(ikm, key_info \\ <<"">>) do
         # salt_prefix = "BLS-SIG-KEYGEN-SALT-"
         # L = :math.ceil((1.5 * :math.ceil(:math.log2(ExEcc.OptimizedBls12381.curve_order()))) / 8) |> round()
         # Loop for SK != 0:
@@ -121,7 +126,7 @@ defmodule ExEcc.Bls.Ciphersuites.Base do
         # rescue
         #   _e in [ExEcc.Bls.Ciphersuites.ValidationError, ArgumentError, MatchError] -> false
         # end
-         :not_implemented_yet_core_verify
+        :not_implemented_yet_core_verify
       end
 
       def aggregate(signatures) do
@@ -194,9 +199,10 @@ end
 defmodule ExEcc.Bls.Ciphersuites.G2Basic do
   use ExEcc.Bls.Ciphersuites.Base
 
-  @behaviour ExEcc.Bls.Ciphersuites.Base # Implements the behaviour
+  # Implements the behaviour
+  @behaviour ExEcc.Bls.Ciphersuites.Base
 
-  @dst b"BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_"
+  @dst <<"BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_">>
   # @xmd_hash_function :sha256 (inherited)
 
   @impl true
@@ -220,7 +226,7 @@ defmodule ExEcc.Bls.Ciphersuites.G2MessageAugmentation do
   use ExEcc.Bls.Ciphersuites.Base
   @behaviour ExEcc.Bls.Ciphersuites.Base
 
-  @dst b"BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_AUG_"
+  @dst <<"BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_AUG_">>
 
   @impl true
   def sign(sk, message) do
@@ -251,8 +257,8 @@ defmodule ExEcc.Bls.Ciphersuites.G2ProofOfPossession do
   use ExEcc.Bls.Ciphersuites.Base
   @behaviour ExEcc.Bls.Ciphersuites.Base
 
-  @dst b"BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_"
-  @pop_tag b"BLS_POP_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_"
+  @dst <<"BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_">>
+  @pop_tag <<"BLS_POP_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_">>
 
   # PopVerify uses POP_TAG as DST for _CoreVerify
   # Sign and Verify use @dst
@@ -271,7 +277,7 @@ defmodule ExEcc.Bls.Ciphersuites.G2ProofOfPossession do
 
   @impl true
   def aggregate_verify(pks, messages, signature) do
-     _core_aggregate_verify(pks, messages, signature, @dst)
+    _core_aggregate_verify(pks, messages, signature, @dst)
   end
 
   # POP specific functions

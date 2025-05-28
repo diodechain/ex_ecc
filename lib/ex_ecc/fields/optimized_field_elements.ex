@@ -8,9 +8,12 @@ defmodule ExEcc.Fields.OptimizedFieldElements do
   def mod_int(x, n) when is_integer(x) and is_integer(n) do
     rem(x, n)
   end
-  def mod_int(fq = %{n: val}, n) when is_integer(val) and is_integer(n) do # Assuming FQ has :n field
+
+  # Assuming FQ has :n field
+  def mod_int(fq = %{n: val}, n) when is_integer(val) and is_integer(n) do
     rem(fq.n, n)
   end
+
   # Add other cases or a general fallback if needed.
 
   # --- Optimized FQ ---
@@ -62,11 +65,16 @@ defmodule ExEcc.Fields.OptimizedFieldElements do
 
   def pow(fq_base = %__MODULE__{}, exponent) when is_integer(exponent) do
     cond do
-      exponent == 0 -> %__MODULE__{n: 1, field_modulus: fq_base.field_modulus}
-      exponent == 1 -> fq_base
+      exponent == 0 ->
+        %__MODULE__{n: 1, field_modulus: fq_base.field_modulus}
+
+      exponent == 1 ->
+        fq_base
+
       rem(exponent, 2) == 0 ->
         half_pow = pow(fq_base, Kernel.div(exponent, 2))
         mul(half_pow, half_pow)
+
       true ->
         half_pow = pow(fq_base, Kernel.div(exponent, 2))
         mul(mul(half_pow, half_pow), fq_base)
@@ -79,10 +87,14 @@ defmodule ExEcc.Fields.OptimizedFieldElements do
 
   def equal?(fq1 = %__MODULE__{}, fq2_val) do
     cond do
-      is_integer(fq2_val) -> fq1.n == fq2_val
+      is_integer(fq2_val) ->
+        fq1.n == fq2_val
+
       is_map(fq2_val) and Map.has_key?(fq2_val, :n) ->
         fq1.n == fq2_val.n and fq1.field_modulus == fq2_val.field_modulus
-      true -> false
+
+      true ->
+        false
     end
   end
 
@@ -99,12 +111,15 @@ defmodule ExEcc.Fields.OptimizedFieldElements do
   defp ensure_fq(val, field_modulus) when is_integer(val) do
     new_fq(val, field_modulus)
   end
+
   defp ensure_fq(fq = %__MODULE__{}, field_modulus) do
     if fq.field_modulus != field_modulus do
       raise "Cannot operate on FQ elements from different fields without explicit conversion."
     end
+
     fq
   end
+
   defp ensure_fq(other, _field_modulus) do
     raise "Type error: Expected an integer or FQ element, got: #{inspect(other)}"
   end
@@ -121,7 +136,8 @@ defmodule ExEcc.Fields.OptimizedFieldElements do
 
   # --- Optimized FQP ---
   defmodule FQP do
-    alias ExEcc.Fields.OptimizedFieldElements, as: FQMain # Alias to current module for FQ ops
+    # Alias to current module for FQ ops
+    alias ExEcc.Fields.OptimizedFieldElements, as: FQMain
     alias ExEcc.Utils
 
     # In optimized version, coeffs are stored as integers, not FQ objects, for performance.
@@ -130,16 +146,18 @@ defmodule ExEcc.Fields.OptimizedFieldElements do
     defstruct coeffs: [], modulus_coeffs: [], degree: 0, field_modulus: nil, mc_tuples: []
 
     @type t_fqp :: %__MODULE__{
-            coeffs: list(integer), # Optimized: store as integers
-            modulus_coeffs: list(integer), # Optimized: store as integers
+            # Optimized: store as integers
+            coeffs: list(integer),
+            # Optimized: store as integers
+            modulus_coeffs: list(integer),
             degree: integer,
             field_modulus: integer,
-            mc_tuples: list({integer, integer}) # Assuming this structure
+            # Assuming this structure
+            mc_tuples: list({integer, integer})
           }
 
     def new_fqp(coeffs, modulus_coeffs, field_modulus)
-      when is_list(coeffs) and is_list(modulus_coeffs) and is_integer(field_modulus) do
-
+        when is_list(coeffs) and is_list(modulus_coeffs) and is_integer(field_modulus) do
       # Optimized FQP doesn't convert coeffs to FQ objects immediately.
       # It stores them as integers modulo field_modulus.
       # Python: `self.coeffs = tuple(coeff % self.field_modulus for coeff in coeffs)` if coeffs[0] is int.
@@ -156,9 +174,11 @@ defmodule ExEcc.Fields.OptimizedFieldElements do
       %__MODULE__{
         coeffs: processed_coeffs,
         modulus_coeffs: processed_modulus_coeffs,
-        degree: length(modulus_coeffs), # Or fixed based on type (FQ2, FQ12)
+        # Or fixed based on type (FQ2, FQ12)
+        degree: length(modulus_coeffs),
         field_modulus: field_modulus,
-        mc_tuples: [] # Placeholder, to be confirmed by FQ2/FQ12 optimized versions
+        # Placeholder, to be confirmed by FQ2/FQ12 optimized versions
+        mc_tuples: []
       }
     end
 
@@ -169,6 +189,7 @@ defmodule ExEcc.Fields.OptimizedFieldElements do
       if fqp1.field_modulus != fqp2.field_modulus or fqp1.degree != fqp2.degree do
         raise "Cannot add FQP elements from different fields or degrees"
       end
+
       # Ensure coeffs lists are aligned (e.g. by padding, or assuming they are already correct length)
       # Python code `coeffs = [(x + y) % self.field_modulus for x, y in zip(self.coeffs, other.coeffs)]`
       # This assumes `coeffs` are same length.
@@ -176,6 +197,7 @@ defmodule ExEcc.Fields.OptimizedFieldElements do
         Enum.zip_with(fqp1.coeffs, fqp2.coeffs, fn x, y ->
           rem(x + y, fqp1.field_modulus)
         end)
+
       %__MODULE__{fqp1 | coeffs: new_coeffs}
     end
 
@@ -183,10 +205,12 @@ defmodule ExEcc.Fields.OptimizedFieldElements do
       if fqp1.field_modulus != fqp2.field_modulus or fqp1.degree != fqp2.degree do
         raise "Cannot subtract FQP elements from different fields or degrees"
       end
+
       new_coeffs =
         Enum.zip_with(fqp1.coeffs, fqp2.coeffs, fn x, y ->
           rem(x - y, fqp1.field_modulus)
         end)
+
       %__MODULE__{fqp1 | coeffs: new_coeffs}
     end
 
@@ -198,21 +222,25 @@ defmodule ExEcc.Fields.OptimizedFieldElements do
     # Optimized mul: FQP by scalar (int or FQ) or FQP by FQP
     def mul(fqp1 = %__MODULE__{}, other) do
       fm = fqp1.field_modulus
+
       cond do
         is_integer(other) ->
           scalar = rem(other, fm)
           new_coeffs = Enum.map(fqp1.coeffs, &rem(&1 * scalar, fm))
           %__MODULE__{fqp1 | coeffs: new_coeffs}
 
-        is_map(other) and Map.has_key?(other, :n) and Map.has_key?(other, :field_modulus) -> # FQ object
+        # FQ object
+        is_map(other) and Map.has_key?(other, :n) and Map.has_key?(other, :field_modulus) ->
           # This case assumes `other` is an FQ struct from FQMain (OptimizedFieldElements.FQ)
           # Its .n is already an integer mod fm.
           scalar = other.n
           new_coeffs = Enum.map(fqp1.coeffs, &rem(&1 * scalar, fm))
           %__MODULE__{fqp1 | coeffs: new_coeffs}
 
-        is_map(other) and Map.has_key?(other, :coeffs) -> # FQP multiplication
+        # FQP multiplication
+        is_map(other) and Map.has_key?(other, :coeffs) ->
           fqp2 = other
+
           if fqp1.field_modulus != fqp2.field_modulus or fqp1.degree != fqp2.degree do
             raise "Cannot multiply FQP elements from different fields or degrees"
           end
@@ -232,7 +260,8 @@ defmodule ExEcc.Fields.OptimizedFieldElements do
           updates =
             for {c1, i} <- Enum.with_index(fqp1.coeffs), c1 != 0 do
               for {c2, j} <- Enum.with_index(fqp2.coeffs), c2 != 0 do
-                product = c1 * c2 # Raw integer product
+                # Raw integer product
+                product = c1 * c2
                 target_idx = rem(i + j, fqp1.degree)
                 {target_idx, product}
               end
@@ -245,7 +274,9 @@ defmodule ExEcc.Fields.OptimizedFieldElements do
               new_val_at_idx = rem(current_val_at_idx + val_to_add, fm)
               List.replace_at(acc_coeffs, idx, new_val_at_idx)
             end)
+
           %__MODULE__{fqp1 | coeffs: final_coeffs_int}
+
         true ->
           raise "Type error: Expected an integer, FQ, or FQP element for multiplication"
       end
@@ -254,20 +285,26 @@ defmodule ExEcc.Fields.OptimizedFieldElements do
     # Optimized div: FQP by scalar (int or FQ) or FQP by FQP
     def divide(fqp1 = %__MODULE__{}, other) do
       fm = fqp1.field_modulus
+
       cond do
         is_integer(other) ->
-          inv_scalar = Utils.prime_field_inv(rem(other,fm), fm)
+          inv_scalar = Utils.prime_field_inv(rem(other, fm), fm)
           new_coeffs = Enum.map(fqp1.coeffs, &rem(&1 * inv_scalar, fm))
           %__MODULE__{fqp1 | coeffs: new_coeffs}
 
-        is_map(other) and Map.has_key?(other, :n) and Map.has_key?(other, :field_modulus) -> # FQ object
-          inv_scalar = Utils.prime_field_inv(other.n, fm) # other.n is already mod fm
+        # FQ object
+        is_map(other) and Map.has_key?(other, :n) and Map.has_key?(other, :field_modulus) ->
+          # other.n is already mod fm
+          inv_scalar = Utils.prime_field_inv(other.n, fm)
           new_coeffs = Enum.map(fqp1.coeffs, &rem(&1 * inv_scalar, fm))
           %__MODULE__{fqp1 | coeffs: new_coeffs}
 
-        is_map(other) and Map.has_key?(other, :coeffs) -> # FQP division by FQP
+        # FQP division by FQP
+        is_map(other) and Map.has_key?(other, :coeffs) ->
           fqp2 = other
-          mul(fqp1, inv(fqp2)) # a / b = a * inv(b)
+          # a / b = a * inv(b)
+          mul(fqp1, inv(fqp2))
+
         true ->
           raise "Type error: Expected an integer, FQ, or FQP element for division"
       end
@@ -276,12 +313,19 @@ defmodule ExEcc.Fields.OptimizedFieldElements do
     # Optimized pow for FQP (exponent is an integer)
     def pow(fqp_base = %__MODULE__{}, exponent) when is_integer(exponent) do
       cond do
-        exponent == 0 -> %__MODULE__{fqp_base | coeffs: set_coeffs_to_one_opt(fqp_base)}
-        exponent == 1 -> fqp_base
-        exponent < 0  -> pow(inv(fqp_base), -exponent)
+        exponent == 0 ->
+          %__MODULE__{fqp_base | coeffs: set_coeffs_to_one_opt(fqp_base)}
+
+        exponent == 1 ->
+          fqp_base
+
+        exponent < 0 ->
+          pow(inv(fqp_base), -exponent)
+
         rem(exponent, 2) == 0 ->
           half_pow = pow(fqp_base, Kernel.div(exponent, 2))
           mul(half_pow, half_pow)
+
         true ->
           half_pow = pow(fqp_base, Kernel.div(exponent, 2))
           mul(mul(half_pow, half_pow), fqp_base)
@@ -318,12 +362,18 @@ defmodule ExEcc.Fields.OptimizedFieldElements do
       cond do
         is_map(fqp2) and Map.has_key?(fqp2, :coeffs) and Map.has_key?(fqp2, :degree) ->
           # Comparing two FQP-like structs (coeffs are lists of integers)
+          # Direct list comparison for integers
           fqp1.field_modulus == fqp2.field_modulus and
-          fqp1.degree == fqp2.degree and
-          fqp1.coeffs == fqp2.coeffs # Direct list comparison for integers
+            fqp1.degree == fqp2.degree and
+            fqp1.coeffs == fqp2.coeffs
+
         true ->
-          if fqp2 == 0 do # Compare to FQP.zero
-             equal?(fqp1, zero(fqp1.field_modulus, fqp1.degree, fqp1.modulus_coeffs, fqp1.mc_tuples))
+          # Compare to FQP.zero
+          if fqp2 == 0 do
+            equal?(
+              fqp1,
+              zero(fqp1.field_modulus, fqp1.degree, fqp1.modulus_coeffs, fqp1.mc_tuples)
+            )
           else
             false
           end
@@ -342,26 +392,30 @@ defmodule ExEcc.Fields.OptimizedFieldElements do
     def sgn0(fqp = %__MODULE__{}) do
       Enum.with_index(fqp.coeffs)
       |> Enum.reduce(0, fn {c, i}, acc ->
-        acc + rem(c, 2) * round(:math.pow(2,i))
+        acc + rem(c, 2) * round(:math.pow(2, i))
       end)
-      |> rem(2) # The final result seems to be mod 2 based on hash_to_curve draft
+      # The final result seems to be mod 2 based on hash_to_curve draft
+      |> rem(2)
     end
 
-    @spec one(integer, integer, list(integer), list({integer,integer})) :: t_fqp
+    @spec one(integer, integer, list(integer), list({integer, integer})) :: t_fqp
     def one(field_modulus, degree, modulus_coeffs_repr, mc_tuples_repr) do
       coeffs = [1 | List.duplicate(0, degree - 1)]
+
       %__MODULE__{
         coeffs: coeffs,
-        modulus_coeffs: modulus_coeffs_repr, # Assumed to be list of ints
+        # Assumed to be list of ints
+        modulus_coeffs: modulus_coeffs_repr,
         degree: degree,
         field_modulus: field_modulus,
         mc_tuples: mc_tuples_repr
       }
     end
 
-    @spec zero(integer, integer, list(integer), list({integer,integer})) :: t_fqp
+    @spec zero(integer, integer, list(integer), list({integer, integer})) :: t_fqp
     def zero(field_modulus, degree, modulus_coeffs_repr, mc_tuples_repr) do
       coeffs = List.duplicate(0, degree)
+
       %__MODULE__{
         coeffs: coeffs,
         modulus_coeffs: modulus_coeffs_repr,
@@ -370,28 +424,31 @@ defmodule ExEcc.Fields.OptimizedFieldElements do
         mc_tuples: mc_tuples_repr
       }
     end
-  end # defmodule FQP
+  end
+
+  # defmodule FQP
 
   # --- Optimized FQ2 ---
   defmodule FQ2 do
     alias ExEcc.Fields.OptimizedFieldElements.FQP
 
-    @type t_fq2 :: FQP.t_fqp
+    @type t_fq2 :: FQP.t_fqp()
     # FQ2 specific modulus_coeffs (e.g. for u^2 - beta = 0) and mc_tuples
     # These would typically come from curve parameters.
     defstruct [:coeffs, :modulus_coeffs, :degree, :field_modulus, :mc_tuples]
 
     def new_fq2(coeffs_list, fq2_modulus_coeffs, mc_tuples_for_fq2, field_modulus)
-      when is_list(coeffs_list) and length(coeffs_list) == 2
-      and is_list(fq2_modulus_coeffs) # e.g. [-1, 0] for u^2+1=0
-      and is_list(mc_tuples_for_fq2)
-      and is_integer(field_modulus) do
-
+        # e.g. [-1, 0] for u^2+1=0
+        when is_list(coeffs_list) and length(coeffs_list) == 2 and
+               is_list(fq2_modulus_coeffs) and
+               is_list(mc_tuples_for_fq2) and
+               is_integer(field_modulus) do
       %FQP{}
       |> FQP.new_fqp(coeffs_list, fq2_modulus_coeffs, field_modulus)
       |> Map.put(:__struct__, __MODULE__)
       |> Map.put(:mc_tuples, mc_tuples_for_fq2)
-      |> Map.put(:degree, 2) # Explicitly degree 2
+      # Explicitly degree 2
+      |> Map.put(:degree, 2)
     end
 
     # sgn0 for FQ2: Python code has specific override.
@@ -407,34 +464,41 @@ defmodule ExEcc.Fields.OptimizedFieldElements do
     # Let's pass it or retrieve from the struct.
     def sgn0(fq2 = %__MODULE__{coeffs: [c0, c1], modulus_coeffs: [mc0 | _]}) do
       # Assuming mc0 is the equivalent of FQ2_MODULUS_COEFFS[0] (beta for u^2-beta=0)
-      if mc0 == -1 do # BLS12-381 specific like optimization
-        rem(rem(c0,2) + rem(c1,2) * 2, 2)
+      # BLS12-381 specific like optimization
+      if mc0 == -1 do
+        rem(rem(c0, 2) + rem(c1, 2) * 2, 2)
       else
-        rem(c0,2)
+        rem(c0, 2)
       end
     end
-  end # defmodule FQ2
+  end
+
+  # defmodule FQ2
 
   # --- Optimized FQ12 ---
   defmodule FQ12 do
     alias ExEcc.Fields.OptimizedFieldElements.FQP
 
-    @type t_fq12 :: FQP.t_fqp
+    @type t_fq12 :: FQP.t_fqp()
     defstruct [:coeffs, :modulus_coeffs, :degree, :field_modulus, :mc_tuples]
 
     def new_fq12(coeffs_list, fq12_modulus_coeffs, mc_tuples_for_fq12, field_modulus)
-      when is_list(coeffs_list) and length(coeffs_list) == 12
-      and is_list(fq12_modulus_coeffs) # Should be length 12 for FQP representation
-      and is_list(mc_tuples_for_fq12)
-      and is_integer(field_modulus) do
-
+        # Should be length 12 for FQP representation
+        when is_list(coeffs_list) and length(coeffs_list) == 12 and
+               is_list(fq12_modulus_coeffs) and
+               is_list(mc_tuples_for_fq12) and
+               is_integer(field_modulus) do
       %FQP{}
       |> FQP.new_fqp(coeffs_list, fq12_modulus_coeffs, field_modulus)
       |> Map.put(:__struct__, __MODULE__)
       |> Map.put(:mc_tuples, mc_tuples_for_fq12)
-      |> Map.put(:degree, 12) # Explicitly degree 12
+      # Explicitly degree 12
+      |> Map.put(:degree, 12)
     end
+
     # sgn0 for FQ12 would also be inherited from FQP by default.
     # Python FQ12.sgn0 is `super().sgn0` which calls FQP.sgn0.
-  end # defmodule FQ12
+  end
+
+  # defmodule FQ12
 end

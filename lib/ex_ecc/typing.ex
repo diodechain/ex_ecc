@@ -16,8 +16,10 @@ defmodule ExEcc.Typing do
   # For now, let's represent Field as a general term.
   @type field :: any
 
-  @type point_2d :: {:ok, {field, field}} | :infinity | nil # :infinity or nil for point at infinity
-  @type point_3d :: {:ok, {field, field, field}} | :infinity | nil # :infinity or nil for point at infinity
+  # :infinity or nil for point at infinity
+  @type point_2d :: {:ok, {field, field}} | :infinity | nil
+  # :infinity or nil for point at infinity
+  @type point_3d :: {:ok, {field, field, field}} | :infinity | nil
   # GeneralPoint would be a union of point_2d and point_3d
   @type general_point :: point_2d | point_3d
 
@@ -35,5 +37,7 @@ defmodule ExEcc.Typing do
   # Miscellaneous types
   #
   @type fq2_modulus_coeffs_type :: {integer, integer}
-  @type fq12_modulus_coeffs_type :: {integer, integer, integer, integer, integer, integer, integer, integer, integer, integer, integer, integer}
+  @type fq12_modulus_coeffs_type ::
+          {integer, integer, integer, integer, integer, integer, integer, integer, integer,
+           integer, integer, integer}
 end

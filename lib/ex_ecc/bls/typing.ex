@@ -23,8 +23,10 @@ defmodule ExEcc.Bls.Typing do
   # This depends on how ExEcc.Fields.OptimizedFieldElements.FQ2 is structured.
   # Let's assume an FQ2 element is represented as {c0, c1}.
   # Then a point is {{c0,c1}, {c0,c1}, {c0,c1}} | nil
-  @type fq2_element_optimized :: {integer, integer} # Placeholder
-  @type g2_uncompressed :: {fq2_element_optimized, fq2_element_optimized, fq2_element_optimized} | nil
+  # Placeholder
+  @type fq2_element_optimized :: {integer, integer}
+  @type g2_uncompressed ::
+          {fq2_element_optimized, fq2_element_optimized, fq2_element_optimized} | nil
 
   # G2Compressed = NewType("G2Compressed", Tuple[int, int])
   @type g2_compressed :: {integer, integer}

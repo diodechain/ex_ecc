@@ -6,6 +6,10 @@ It's a file-to-file port so to make it easier to compare the code and understand
 
 Same goes for the tests.
 
+# Port notes
+
+Original python files are in py_ecc/ and tests/ the new ported files are in lib/ and test/ correspondingly.
+
 # Implementation notes
 
 - No usage of `defexception`

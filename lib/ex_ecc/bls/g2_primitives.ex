@@ -8,12 +8,15 @@ defmodule ExEcc.Bls.G2Primitives do
   # For eth_typing equivalents like BLSPubkey, BLSSignature, we might use simple binaries or strings,
   # or define specific structs/types.
 
-  @type bls_pubkey :: binary | String.t # Placeholder
-  @type bls_signature :: binary | String.t # Placeholder
+  # Placeholder
+  @type bls_pubkey :: binary | String.t()
+  # Placeholder
+  @type bls_signature :: binary | String.t()
 
   # Assuming Optimized_Point3D is a tuple like {x, y, z} where x,y,z are field elements (integers for optimized)
   # And Optimized_Field is effectively an integer in this context.
-  @type optimized_point_3d :: {integer, integer, integer} | nil # nil for point at infinity
+  # nil for point at infinity
+  @type optimized_point_3d :: {integer, integer, integer} | nil
   @type optimized_field :: integer
 
   @doc """

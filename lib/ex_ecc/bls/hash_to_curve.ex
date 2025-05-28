@@ -35,9 +35,11 @@ defmodule ExEcc.Bls.HashToCurve do
   """
   # @spec hash_to_field_fq2(binary, integer, binary) :: {ExEcc.Fields.OptimizedFieldElements.FQ2.t_fq2(), ...}
   def hash_to_field_fq2(message, count, dst) do
-    m = 2 # Extension degree of FQ2
+    # Extension degree of FQ2
+    m = 2
     len_in_bytes = count * m * Constants.hash_to_field_l()
-    pseudo_random_bytes = Hash.expand_message_xmd(message, dst, len_in_bytes) # Assumes SHA256 from expand_message_xmd
+    # Assumes SHA256 from expand_message_xmd
+    pseudo_random_bytes = Hash.expand_message_xmd(message, dst, len_in_bytes)
 
     # field_mod = ExEcc.OptimizedBls12381.field_modulus()
     # modulus_coeffs_fq2 = ExEcc.OptimizedBls12381.Parameters.fq2_modulus_coeffs() # Or however it's defined
@@ -100,7 +102,8 @@ defmodule ExEcc.Bls.HashToCurve do
   """
   # @spec hash_to_field_fq(binary, integer, binary) :: {ExEcc.Fields.OptimizedFieldElements.FQ.t_fq(), ...}
   def hash_to_field_fq(message, count, dst) do
-    m = 1 # Extension degree of FQ
+    # Extension degree of FQ
+    m = 1
     len_in_bytes = count * m * Constants.hash_to_field_l()
     pseudo_random_bytes = Hash.expand_message_xmd(message, dst, len_in_bytes)
 

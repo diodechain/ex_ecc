@@ -40,7 +40,7 @@ defmodule ExEcc.Bls.PointCompression do
     # The `decompress_G1/G2` uses `b_flag` for this, so this function might not be directly needed there.
     # Let's rely on b_flag for decompression logic as per the Python code.
     # This is a direct port of the helper if needed elsewhere.
-    (rem(z1, Constants.pow_2_381()) == 0) and (is_nil(z2) or z2 == 0)
+    rem(z1, Constants.pow_2_381()) == 0 and (is_nil(z2) or z2 == 0)
   end
 
   # --- G1 Compression/Decompression ---
@@ -228,14 +228,15 @@ defmodule ExEcc.Bls.PointCompression do
   defmodule ModMath do
     def pow(_base, 0, _mod), do: 1
     def pow(base, 1, _mod), do: base
-    def pow(base, exp, mod) when rem(exp,2) == 0 do
-      half = pow(base, div(exp,2), mod)
+
+    def pow(base, exp, mod) when rem(exp, 2) == 0 do
+      half = pow(base, div(exp, 2), mod)
       rem(half * half, mod)
     end
+
     def pow(base, exp, mod) do
-      half = pow(base, div(exp,2), mod)
+      half = pow(base, div(exp, 2), mod)
       rem(half * half * base, mod)
     end
   end
-
 end
