@@ -1,0 +1,161 @@
+defmodule ExEcc.Bn128.Curve do
+  alias ExEcc.Fields.FieldElements, as: FQ
+  alias ExEcc.Fields.Bn128FQ2, as: FQ2
+  alias ExEcc.Fields.Bn128FQ12, as: FQ12
+  alias ExEcc.Fields.FieldProperties
+  # alias ExEcc.Fields.Bn128FQP, as: FQP # Not directly used yet
+
+  @curve_order 218_882_428_718_392_752_222_464_057_452_572_750_885_483_644_004_160_343_436_982_041_865_758_084_956_17
+  @bn128_field_modulus FieldProperties.field_properties()["bn128"].field_modulus
+
+  @b FQ.new_fq(3, @bn128_field_modulus)
+  @b2 FQ2.div(FQ2.new({{3, 0}}), FQ2.new({{9, 1}}))
+  @b12 FQ12.new(Tuple.put_elem(Tuple.duplicate(FQ.zero(@bn128_field_modulus), 12), 0, FQ.new_fq(3, @bn128_field_modulus)))
+
+  @g1 {FQ.new_fq(1, @bn128_field_modulus), FQ.new_fq(2, @bn128_field_modulus)}
+  @g2 {FQ2.new(
+         {{108_570_469_990_230_571_359_445_707_622_328_294_813_707_563_595_785_180_869_905_199_932_856_558_527_81,
+           115_597_320_329_863_871_079_910_040_213_922_857_839_258_128_618_211_925_309_174_031_514_523_918_056_34}}
+       ),
+       FQ2.new(
+         {{849_565_392_312_343_141_760_497_324_748_927_243_841_819_058_726_360_014_877_028_064_930_695_810_193_0,
+           408_236_787_586_343_368_133_220_340_314_543_556_831_685_132_759_340_120_810_574_107_621_412_009_353_1}}
+       )}
+
+  @z1 nil
+  @z2 nil
+
+  defguard is_general_point(pt)
+           when is_nil(pt) or (is_tuple(pt) and tuple_size(pt) == 2 and is_struct(elem(pt, 0)))
+
+  def is_inf(pt) when is_general_point(pt) or is_nil(pt) do
+    is_nil(pt)
+  end
+
+  defp module_for_point(%FQ{}), do: FQ
+  defp module_for_point(%FQ2{}), do: FQ2
+  defp module_for_point(%FQ12{}), do: FQ12
+  defp module_for_point(%FQMain.FQP{}), do: FQMain.FQP
+
+  defp module_for_point(_other) do
+    FQ
+  end
+
+  def is_on_curve(pt, b_val) when is_general_point(pt) or is_nil(pt) do
+    if is_inf(pt) do
+      true
+    else
+      {x, y} = pt
+      elem_module = module_for_point(x)
+      elem_module.eq(elem_module.sub(elem_module.pow(y, 2), elem_module.pow(x, 3)), b_val)
+    end
+  end
+
+  # Validations - can be moved to tests
+  # if not is_on_curve(@g1, @b), do: raise "G1 is not on the curve"
+  # if not is_on_curve(@g2, @b2), do: raise "G2 is not on the curve"
+
+  def double(pt) when is_general_point(pt) or is_nil(pt) do
+    if is_inf(pt) do
+      pt
+    else
+      {x, y} = pt
+      elem_module = module_for_point(x)
+      three = FQ.new_fq(3, x.field_modulus)
+      two = FQ.new_fq(2, x.field_modulus)
+      numerator = elem_module.mul(three, elem_module.pow(x, 2))
+      denominator = elem_module.mul(two, y)
+      m = elem_module.div(numerator, denominator)
+      newx = elem_module.sub(elem_module.pow(m, 2), elem_module.mul(two, x))
+      newy = elem_module.sub(elem_module.mul(m, elem_module.sub(x, newx)), y)
+      {newx, newy}
+    end
+  end
+
+  def add(p1, p2)
+      when (is_general_point(p1) or is_nil(p1)) and (is_general_point(p2) or is_nil(p2)) do
+    cond do
+      is_inf(p1) ->
+        p2
+
+      is_inf(p2) ->
+        p1
+
+      true ->
+        {x1, y1} = p1
+        {x2, y2} = p2
+        elem_module = module_for_point(x1)
+
+        cond do
+          elem_module.eq(x1, x2) and elem_module.eq(y1, y2) ->
+            double(p1)
+
+          elem_module.eq(x1, x2) ->
+            nil
+
+          true ->
+            m_num = elem_module.sub(y2, y1)
+            m_den = elem_module.sub(x2, x1)
+            m = elem_module.div(m_num, m_den)
+            newx = elem_module.sub(elem_module.sub(elem_module.pow(m, 2), x1), x2)
+            newy = elem_module.sub(elem_module.mul(m, elem_module.sub(x1, newx)), y1)
+            {newx, newy}
+        end
+    end
+  end
+
+  def multiply(pt, n) when (is_general_point(pt) or is_nil(pt)) and is_integer(n) do
+    cond do
+      n == 0 -> nil
+      n == 1 -> pt
+      n < 0 -> multiply(neg(pt), -n)
+      rem(n, 2) == 0 -> multiply(double(pt), div(n, 2))
+      true -> add(multiply(double(pt), div(n, 2)), pt)
+    end
+  end
+
+  def eq(p1, p2)
+      when (is_general_point(p1) or is_nil(p1)) and (is_general_point(p2) or is_nil(p2)) do
+    cond do
+      is_inf(p1) and is_inf(p2) ->
+        true
+
+      is_inf(p1) or is_inf(p2) ->
+        false
+
+      true ->
+        {x1, y1_coord} = p1
+        {x2, y2_coord} = p2
+        elem_module = module_for_point(x1)
+        elem_module.eq(x1, x2) and elem_module.eq(y1_coord, y2_coord)
+    end
+  end
+
+  @w FQ12.new(Tuple.put_elem(Tuple.duplicate(FQ.zero(@bn128_field_modulus), 12), 1, FQ.one(@bn128_field_modulus)))
+
+  def neg(pt) when is_general_point(pt) or is_nil(pt) do
+    if is_inf(pt) do
+      nil
+    else
+      {x, y} = pt
+      elem_module = module_for_point(x)
+      {x, elem_module.neg(y)}
+    end
+  end
+
+  def twist(_pt) do
+    # Placeholder
+    nil
+  end
+
+  # Accessors
+  def g1(), do: @g1
+  def g2(), do: @g2
+  def z1(), do: @z1
+  def z2(), do: @z2
+  def b(), do: @b
+  def b2(), do: @b2
+  def b12(), do: @b12
+  def curve_order(), do: @curve_order
+  def g12(), do: twist(@g2)
+end
