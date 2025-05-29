@@ -1,6 +1,6 @@
 defmodule ExEcc.Bls12381.Pairing do
   alias ExEcc.Fields.Bls12381FQ, as: FQ
-  alias ExEcc.Fields.Bls12381FQ2, as: FQ2
+  # alias ExEcc.Fields.Bls12381FQ2, as: FQ2 # FQ2 is unused
   alias ExEcc.Fields.Bls12381FQ12, as: FQ12
   alias ExEcc.Bls12381.Curve, as: Curve
 
@@ -105,7 +105,7 @@ defmodule ExEcc.Bls12381.Pairing do
       # R starts as Q
       # f starts as FQ12.one()
       {_final_r, final_f} =
-        Enum.reduce(@log_ate_loop_count..0, {q_fq12, FQ12.one()}, fn i, {r_acc, f_acc} ->
+        Enum.reduce(@log_ate_loop_count..0//-1, {q_fq12, FQ12.one()}, fn i, {r_acc, f_acc} ->
           # f = f * f * linefunc(R, R, P)
           f_doubled = FQ12.mul(f_acc, f_acc)
           f_new = FQ12.mul(f_doubled, linefunc(r_acc, r_acc, p_fq12))
@@ -125,6 +125,7 @@ defmodule ExEcc.Bls12381.Pairing do
 
       # The Python code includes commented-out Frobenius map applications and final exponentiation within miller_loop.
       # Here, we follow the structure but note that the final exponentiation is often a separate step.
+      # For now, return f as calculated by the loop. final_exponentiate is a separate function.
       # For now, return f as calculated by the loop. final_exponentiate is a separate function.
       # return f ** ((field_modulus**12 - 1) // curve_order)
       exponent = div(FQ12.pow(FQ12.new(field_modulus()), 12) - 1, Curve.curve_order())
@@ -168,12 +169,11 @@ defmodule ExEcc.Bls12381.Pairing do
     # exponent = div( :math.pow(field_modulus_val, 12) -1 , Curve.curve_order())
     # The exponent calculation was moved into miller_loop to match the python structure more closely for now.
     # This function might be redundant if miller_loop already does it, or it can be used if miller_loop returns raw f.
-    # For clarity, if miller_loop does the final exponentiation, this function could just be an identity or removed.
     # Re-doing it here based on the python function signature:
     # Make sure this is correct
     field_modulus_val = field_modulus()
     # This is problematic, FQ12.new expects coefficients not a single number for pow
-    num = FQ12.pow(FQ12.new(field_modulus_val), 12)
+    _num = FQ12.pow(FQ12.new(field_modulus_val), 12) # Prefixed num with underscore
     # The base for FQ12.pow should be an FQ12 element.
     # The python `field_modulus**12` is integer exponentiation.
 

@@ -67,7 +67,7 @@ defmodule ExEcc.Bn128.Pairing do
       FQ12.one()
     else
       {r_final, f_final} =
-        Enum.reduce(@log_ate_loop_count..0, {q_fq12, FQ12.one()}, fn i, {r_acc, f_acc} ->
+        Enum.reduce(@log_ate_loop_count..0//-1, {q_fq12, FQ12.one()}, fn i, {r_acc, f_acc} ->
           f_doubled = FQ12.mul(f_acc, f_acc)
           # linefunc expects FQ12 points here
           f_new = FQ12.mul(f_doubled, linefunc(r_acc, r_acc, p_fq12))

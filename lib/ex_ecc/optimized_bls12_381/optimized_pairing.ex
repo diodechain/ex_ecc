@@ -1,12 +1,12 @@
 defmodule ExEcc.OptimizedBLS12381.OptimizedPairing do
   alias ExEcc.Fields.OptimizedBLS12381FQ, as: FQ
-  alias ExEcc.Fields.OptimizedBLS12381FQ2, as: FQ2
+  # alias ExEcc.Fields.OptimizedBLS12381FQ2, as: FQ2 # FQ2 is unused
   alias ExEcc.Fields.OptimizedBLS12381FQ12, as: FQ12
   alias ExEcc.OptimizedBLS12381.OptimizedCurve, as: Curve
 
   @field_modulus ExEcc.Fields.FieldProperties.field_properties()["bls12_381"].field_modulus
 
-  @ate_loop_count 1_513_237_622_294_164_2752
+  # @ate_loop_count 1_513_237_622_294_164_2752 # Unused
   @log_ate_loop_count 62
   @pseudo_binary_encoding [
     0,
@@ -155,7 +155,7 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedPairing do
 
       # Initializing r_fq12 as the twisted version of q_fq2 for calculations within the loop
       # twist_q_fq12 remains the twisted version of the original q_fq2 for the conditional add step.
-      r_fq12 = Curve.twist(q_fq2)
+      _r_fq12 = Curve.twist(q_fq2) # Prefixed r_fq12 with underscore
       twist_q_fq12 = Curve.twist(q_fq2)
 
       # The `double` and `add` operations in the loop are on `r_point_for_doubling_and_adding` which should be an FQ2 point.

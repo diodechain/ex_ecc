@@ -17,7 +17,7 @@ defmodule ExEcc.Bls.HashToCurve do
   https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-09#section-8.8.2
   """
   # @spec hash_to_g2(binary, binary) :: ExEcc.Bls.Typing.g2_uncompressed()
-  def hash_to_g2(message, dst) do
+  def hash_to_g2(_message, _dst) do
     # {u0, u1} = hash_to_field_fq2(message, 2, dst) # Assuming hash_function is SHA256 implicitly
     # q0 = map_to_curve_g2(u0)
     # q1 = map_to_curve_g2(u1)
@@ -39,7 +39,7 @@ defmodule ExEcc.Bls.HashToCurve do
     m = 2
     len_in_bytes = count * m * Constants.hash_to_field_l()
     # Assumes SHA256 from expand_message_xmd
-    pseudo_random_bytes = Hash.expand_message_xmd(message, dst, len_in_bytes)
+    _pseudo_random_bytes = Hash.expand_message_xmd(message, dst, len_in_bytes)
 
     # field_mod = ExEcc.OptimizedBls12381.field_modulus()
     # modulus_coeffs_fq2 = ExEcc.OptimizedBls12381.Parameters.fq2_modulus_coeffs() # Or however it's defined
@@ -62,7 +62,7 @@ defmodule ExEcc.Bls.HashToCurve do
   Map To Curve for G2 (using SWU map and 3-Isogeny).
   """
   # @spec map_to_curve_g2(ExEcc.Fields.OptimizedFieldElements.FQ2.t_fq2()) :: ExEcc.Bls.Typing.g2_uncompressed()
-  def map_to_curve_g2(u_fq2) do
+  def map_to_curve_g2(_u_fq2) do
     # {x, y, z} = ExEcc.OptimizedBls12381.optimized_swu_g2(u_fq2)
     # ExEcc.OptimizedBls12381.iso_map_g2(x, y, z)
     :not_implemented_yet_map_g2
@@ -72,7 +72,7 @@ defmodule ExEcc.Bls.HashToCurve do
   Clear Cofactor for G2 points.
   """
   # @spec clear_cofactor_g2(ExEcc.Bls.Typing.g2_uncompressed()) :: ExEcc.Bls.Typing.g2_uncompressed()
-  def clear_cofactor_g2(p) do
+  def clear_cofactor_g2(_p) do
     # ExEcc.OptimizedBls12381.multiply_clear_cofactor_g2(p)
     :not_implemented_yet_clear_g2
   end
@@ -85,7 +85,7 @@ defmodule ExEcc.Bls.HashToCurve do
   https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-09#section-8.8.1
   """
   # @spec hash_to_g1(binary, binary) :: ExEcc.Bls.Typing.g1_uncompressed()
-  def hash_to_g1(message, dst) do
+  def hash_to_g1(_message, _dst) do
     # {u0, u1} = hash_to_field_fq(message, 2, dst) # Assuming SHA256
     # q0 = map_to_curve_g1(u0)
     # q1 = map_to_curve_g1(u1)
@@ -105,7 +105,7 @@ defmodule ExEcc.Bls.HashToCurve do
     # Extension degree of FQ
     m = 1
     len_in_bytes = count * m * Constants.hash_to_field_l()
-    pseudo_random_bytes = Hash.expand_message_xmd(message, dst, len_in_bytes)
+    _pseudo_random_bytes = Hash.expand_message_xmd(message, dst, len_in_bytes)
 
     # field_mod = ExEcc.OptimizedBls12381.field_modulus()
 
@@ -124,7 +124,7 @@ defmodule ExEcc.Bls.HashToCurve do
   Map To Curve for G1 (using SWU map and 11-Isogeny).
   """
   # @spec map_to_curve_g1(ExEcc.Fields.OptimizedFieldElements.FQ.t_fq()) :: ExEcc.Bls.Typing.g1_uncompressed()
-  def map_to_curve_g1(u_fq) do
+  def map_to_curve_g1(_u_fq) do
     # {x, y, z} = ExEcc.OptimizedBls12381.optimized_swu_g1(u_fq)
     # ExEcc.OptimizedBls12381.iso_map_g1(x, y, z)
     :not_implemented_yet_map_g1
@@ -134,7 +134,7 @@ defmodule ExEcc.Bls.HashToCurve do
   Clear Cofactor for G1 points.
   """
   # @spec clear_cofactor_g1(ExEcc.Bls.Typing.g1_uncompressed()) :: ExEcc.Bls.Typing.g1_uncompressed()
-  def clear_cofactor_g1(p) do
+  def clear_cofactor_g1(_p) do
     # ExEcc.OptimizedBls12381.multiply_clear_cofactor_g1(p)
     :not_implemented_yet_clear_g1
   end

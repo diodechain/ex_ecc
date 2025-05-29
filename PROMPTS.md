@@ -1,0 +1,2 @@
+This directory contains an unfinished port of py_ecc from python to elixir now named ex_ecc. Compare the existing .py and existing .ex files to discover any modules missing from the port. Then create the missing files by converting the python code into elixir module code. Don't re-create modules that already exist. When that is done run `mix compile` and fix all errors and warnings from this until compilation is clean.
+

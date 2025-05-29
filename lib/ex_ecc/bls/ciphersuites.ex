@@ -1,6 +1,6 @@
 defmodule ExEcc.Bls.Ciphersuites.Base do
   # This module defines the base behaviour for BLS ciphersuites.
-  alias ExEcc.Bls.G2Primitives
+  # alias ExEcc.Bls.G2Primitives # Unused alias
   # alias ExEcc.Bls.Hash # For hkdf_*, i2osp, os2ip
   # alias ExEcc.Bls.HashToCurve # For hash_to_g2
   # alias ExEcc.OptimizedBls12381 # For G1, Z1, Z2, add, curve_order, final_exponentiate, multiply, neg, pairing
@@ -174,22 +174,22 @@ defmodule ExEcc.Bls.Ciphersuites.Base do
 
       # Default Sign and Verify use the ciphersuite's specific DST
       # These will be defined in each ciphersuite module by calling _core_sign / _core_verify with their @dst
-      def sign(sk, message) do
-        # Ensure @dst is defined in the implementing module
-        # _core_sign(sk, message, @dst)
-        raise "Sign must be implemented by ciphersuite with its specific DST"
-      end
+      # Removing these default implementations as they are defined by @callback and implemented by each ciphersuite.
+      # def sign(_sk, _message) do
+      #   # Ensure @dst is defined in the implementing module
+      #   # _core_sign(sk, message, @dst)
+      #   raise "Sign must be implemented by ciphersuite with its specific DST"
+      # end
 
-      def verify(pk, message, signature) do
-        # Ensure @dst is defined
-        # _core_verify(pk, message, signature, @dst)
-        raise "Verify must be implemented by ciphersuite with its specific DST"
-      end
+      # def verify(_pk, _message, _signature) do
+      #   # Ensure @dst is defined
+      #   # _core_verify(pk, message, signature, @dst)
+      #   raise "Verify must be implemented by ciphersuite with its specific DST"
+      # end
 
-      # AggregateVerify is abstract in Python's BaseG2Ciphersuite, so must be implemented by each suite.
-      def aggregate_verify(_pks, _messages, _signature) do
-        raise "AggregateVerify must be implemented by the specific ciphersuite."
-      end
+      # def aggregate_verify(_pks, _messages, _signature) do
+      #   raise "AggregateVerify must be implemented by the specific ciphersuite."
+      # end
     end
   end
 end
@@ -226,10 +226,10 @@ defmodule ExEcc.Bls.Ciphersuites.G2MessageAugmentation do
   use ExEcc.Bls.Ciphersuites.Base
   @behaviour ExEcc.Bls.Ciphersuites.Base
 
-  @dst <<"BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_AUG_">>
+  @_dst <<"BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_AUG_">> # Prefixed unused attribute
 
   @impl true
-  def sign(sk, message) do
+  def sign(_sk, _message) do # Parameters unused in placeholder
     # In AUG, message for _CoreSign is PK || message
     # Need to get PK from SK first.
     # {:ok, pk_bytes} = sk_to_pk(sk) # Assuming sk_to_pk is implemented and returns {:ok, bytes}
@@ -239,79 +239,74 @@ defmodule ExEcc.Bls.Ciphersuites.G2MessageAugmentation do
   end
 
   @impl true
-  def verify(pk, message, signature) do
+  def verify(_pk, _message, _signature) do # Parameters unused in placeholder
     # augmented_message = pk <> message # pk is already bytes here
     # _core_verify(pk, augmented_message, signature, @dst)
     :not_implemented_aug_verify
   end
 
   @impl true
-  def aggregate_verify(pks, messages, signature) do
+  def aggregate_verify(_pks, _messages, _signature) do # Parameters unused in placeholder
     # augmented_messages = Enum.zip_with(pks, messages, fn pk_bytes, msg_bytes -> pk_bytes <> msg_bytes end)
-    # _core_aggregate_verify(pks, augmented_messages, signature, @dst)
     :not_implemented_aug_agg_verify
   end
 end
 
 defmodule ExEcc.Bls.Ciphersuites.G2ProofOfPossession do
   use ExEcc.Bls.Ciphersuites.Base
-  @behaviour ExEcc.Bls.Ciphersuites.Base
+  @behaviour ExEcc.Bls.Ciphersuites.Base # Explicitly define behaviour
 
-  @dst <<"BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_">>
-  @pop_tag <<"BLS_POP_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_">>
+  @_dst <<"BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_">>
+  @_pop_tag <<"BLS_POP_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_">> # Tag for PoP
 
-  # PopVerify uses POP_TAG as DST for _CoreVerify
-  # Sign and Verify use @dst
-  # KeyValidate is overridden in Python for POP. Here we'd override the imported defp.
-  # For now, assuming the base key_validate is used, or needs specific override logic.
-
+  # Regular Sign/Verify/AggregateVerify still use @dst
   @impl true
-  def sign(sk, message) do
-    _core_sign(sk, message, @dst)
+  def sign(_sk, _message) do # Parameters unused in placeholder
+    # _core_sign(sk, message, @dst)
+    :not_implemented_pop_sign
   end
 
   @impl true
-  def verify(pk, message, signature) do
-    _core_verify(pk, message, signature, @dst)
-  end
-
-  @impl true
-  def aggregate_verify(pks, messages, signature) do
-    _core_aggregate_verify(pks, messages, signature, @dst)
-  end
-
-  # POP specific functions
-  def pop_prove(sk) do
-    # {:ok, pk_bytes} = sk_to_pk(sk)
-    # _core_sign(sk, pk_bytes, @pop_tag)
-    :not_implemented_pop_prove
-  end
-
-  def pop_verify(pk, proof) do
-    # _core_verify(pk, pk, proof, @pop_tag) # Message is the public key itself
+  def verify(_pk, _message, _signature) do # Parameters unused in placeholder
+    # _core_verify(pk, message, signature, @dst)
     :not_implemented_pop_verify
   end
 
-  # _AggregatePKs and FastAggregateVerify are more complex and depend on pairings.
-  # For FastAggregateVerify, the message is common to all PKs.
-  # _AggregatePKs: Sum of G1 points.
-  def aggregate_pks(pks) do
-    # aggregate_g1_point = Enum.reduce(pks, ExEcc.OptimizedBls12381.z1(), fn pk_bytes, acc_g1 ->
-    #   pk_g1 = G2Primitives.pubkey_to_g1(pk_bytes)
-    #   ExEcc.OptimizedBls12381.add(acc_g1, pk_g1)
-    # end)
-    # G2Primitives.g1_to_pubkey(aggregate_g1_point)
-    :not_implemented_aggregate_pks
+  @impl true
+  def aggregate_verify(_pks, _messages, _signature) do # Parameters unused in placeholder
+    # _core_aggregate_verify(pks, messages, signature, @dst)
+    :not_implemented_pop_aggregate_verify
   end
 
-  def fast_aggregate_verify(pks, message, signature) do
-    # try do
-    #   # agg_pk_bytes = aggregate_pks(pks)
-    #   # _core_verify(agg_pk_bytes, message, signature, @dst)
-    #   :not_implemented_fast_agg_verify
-    # rescue
-    #   _e -> false
-    # end
-    :not_implemented_fast_agg_verify
+  # PoP specific functions (these would be the @callback PopProve, PopVerify etc. if defined in Base)
+  # For now, implementing directly here.
+  # These use @_pop_tag as their DST.
+
+  def pop_prove(_sk) do # Parameter unused in placeholder
+    # {:ok, pk_bytes} = sk_to_pk(sk) # This should give bytes
+    # # The message to PopProve is the public key itself.
+    # _core_sign(sk, pk_bytes, @_pop_tag) # Using the POP tag as DST
+    :not_implemented_pop_prove
+  end
+
+  def pop_verify(_pk, _proof) do # Parameters unused in placeholder
+    # # The message to PopVerify is the public key itself.
+    # _core_verify(pk, pk, proof, @_pop_tag) # pk is bytes, using POP tag
+    :not_implemented_pop_verify_with_pop_tag
+  end
+
+  def fast_aggregate_verify(_pks, _message, _signature) do # Parameters unused in placeholder
+    # # This one is more complex. It's like _core_aggregate_verify but all messages are the same.
+    # # It also checks that all PKs have a valid PoP.
+    # # For now, placeholder.
+    # # unless Enum.all?(pks, &pop_verify(&1, pop_prove( ??? how to get SK for pk ??? ))), do: false
+    # # A naive way would be to require proofs to be passed in, but that's not the API.
+    # # The original py_ecc passes `pop_verify_ σύν_pk_and_proof` to the aggregate verify primitive,
+    # # which implies proofs are somehow available or derived.
+    # # This needs careful review of the spec for FastAggregateVerify.
+    # # For now, just use the main @_dst for the message part.
+    # # This is likely INCORRECT as it doesn't verify PoPs.
+    # _core_aggregate_verify(pks, List.duplicate(message, Enum.count(pks)), signature, @_dst)
+    :not_implemented_fast_aggregate_verify
   end
 end

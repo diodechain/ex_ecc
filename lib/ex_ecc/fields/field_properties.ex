@@ -11,17 +11,19 @@ defmodule ExEcc.Fields.FieldProperties do
   @type fq12_modulus_coeffs_type ::
           {integer, integer, integer, integer, integer, integer, integer, integer, integer,
            integer, integer, integer}
+  @type fq2_modulus_coeffs_list_type :: list(integer)
+  @type fq12_modulus_coeffs_list_type :: list(integer)
 
   @typedoc """
   Represents properties of a curve's field.
   - `field_modulus`: The modulus of the prime field FQ.
-  - `fq2_modulus_coeffs`: Coefficients for the FQ2 extension field, e.g., u^2 - beta = 0. Typically (beta, 0).
-  - `fq12_modulus_coeffs`: Coefficients for the FQ12 extension field. e.g. v^6 - xi = 0 where xi is in FQ2.
+  - `fq2_modulus_coeffs`: Coefficients for the FQ2 extension field polynomial (e.g., [-beta, 0, 1] for u^2 - beta = 0).
+  - `fq12_modulus_coeffs`: Coefficients for the FQ12 extension field polynomial.
   """
   @type curve_field_properties :: %{
           required(:field_modulus) => integer,
-          required(:fq2_modulus_coeffs) => fq2_modulus_coeffs_type(),
-          required(:fq12_modulus_coeffs) => fq12_modulus_coeffs_type()
+          required(:fq2_modulus_coeffs) => fq2_modulus_coeffs_list_type(),
+          required(:fq12_modulus_coeffs) => fq12_modulus_coeffs_list_type()
         }
 
   @typedoc """
@@ -38,16 +40,14 @@ defmodule ExEcc.Fields.FieldProperties do
       "bn128" => %{
         field_modulus:
           21_888_242_871_839_275_222_246_405_745_257_275_088_696_311_157_297_823_662_689_037_894_645_226_208_583,
-        fq2_modulus_coeffs: {1, 0},
-        # Implied + [1]
-        fq12_modulus_coeffs: {82, 0, 0, 0, 0, 0, -18, 0, 0, 0, 0, 0}
+        fq2_modulus_coeffs: [-1, 0, 1],
+        fq12_modulus_coeffs: [82, 0, 0, 0, 0, 0, -18, 0, 0, 0, 0, 0, 1]
       },
       "bls12_381" => %{
         field_modulus:
           4_002_409_555_221_667_393_417_789_825_735_904_156_556_882_819_939_007_885_332_058_136_124_031_650_490_837_864_442_687_629_129_015_664_037_894_272_559_787,
-        fq2_modulus_coeffs: {1, 0},
-        # Implied + [1]
-        fq12_modulus_coeffs: {2, 0, 0, 0, 0, 0, -2, 0, 0, 0, 0, 0}
+        fq2_modulus_coeffs: [-1, 0, 1],
+        fq12_modulus_coeffs: [2,0,0,0,0,0, -2,0,0,0,0,0,1]
       }
     }
   end

@@ -120,11 +120,11 @@ defmodule ExEcc.Fields.FieldElements do
   end
 
   # Helper to ensure a value is an FQ element for operations
-  defp ensure_fq(val, field_modulus) when is_integer(val) do
+  def ensure_fq(val, field_modulus) when is_integer(val) do
     new_fq(val, field_modulus)
   end
 
-  defp ensure_fq(fq = %__MODULE__{}, field_modulus) do
+  def ensure_fq(fq = %__MODULE__{}, field_modulus) do
     if fq.field_modulus != field_modulus do
       # This is a potential issue: operating on FQ elements from different fields.
       # Raise an error or handle as per library's design.
@@ -134,7 +134,7 @@ defmodule ExEcc.Fields.FieldElements do
     fq
   end
 
-  defp ensure_fq(other, _field_modulus) do
+  def ensure_fq(other, _field_modulus) do
     raise "Type error: Expected an integer or FQ element, got: #{inspect(other)}"
   end
 
@@ -233,13 +233,13 @@ defmodule ExEcc.Fields.FieldElements do
     def mul(fqp1 = %__MODULE__{}, other) do
       cond do
         # Scalar multiplication (int or FQ)
-        is_integer(other) or (is_map(other) and Map.has_key?(other, :field_modulus)) ->
+        is_integer(other) or is_struct(other, FQMain) ->
           scalar = FQMain.ensure_fq(other, fqp1.field_modulus)
           new_coeffs_raw = Enum.map(fqp1.coeffs, &FQMain.mul(&1, scalar))
           %__MODULE__{fqp1 | coeffs: new_coeffs_raw}
 
         # FQP multiplication (polynomial multiplication)
-        is_map(other) and Map.has_key?(other, :coeffs) ->
+        is_struct(other, __MODULE__) -> # Check if other is an FQP struct
           fqp2 = other
 
           if fqp1.field_modulus != fqp2.field_modulus or fqp1.degree != fqp2.degree do
@@ -256,9 +256,9 @@ defmodule ExEcc.Fields.FieldElements do
           # The product polynomial can have up to degree (len1-1) + (len2-1)
           # The result list should accommodate this many terms: len1 + len2 - 1
           prod_coeffs_len = len1 + len2 - 1
-          prod_coeffs_raw = List.duplicate(FQMain.zero(fqp1.field_modulus), prod_coeffs_len)
+          _prod_coeffs_raw = List.duplicate(FQMain.zero(fqp1.field_modulus), prod_coeffs_len)
 
-          prod_coeffs =
+          _prod_coeffs =
             for {c1, i} <- Enum.with_index(fqp1.coeffs) do
               for {c2, j} <- Enum.with_index(fqp2.coeffs) do
                 term_prod = FQMain.mul(c1, c2)
@@ -336,22 +336,21 @@ defmodule ExEcc.Fields.FieldElements do
     # __div__ for FQP involves multiplying by the inverse.
     def divide(fqp1 = %__MODULE__{}, other) do
       cond do
-        # Scalar division
-        is_integer(other) or (is_map(other) and Map.has_key?(other, :field_modulus)) ->
+        # Scalar division: other is an integer or an FQ element
+        is_integer(other) or is_struct(other, FQMain) ->
           scalar = FQMain.ensure_fq(other, fqp1.field_modulus)
-          # 1 / scalar
           inv_scalar = FQMain.divide(FQMain.one(fqp1.field_modulus), scalar)
           new_coeffs_raw = Enum.map(fqp1.coeffs, &FQMain.mul(&1, inv_scalar))
           %__MODULE__{fqp1 | coeffs: new_coeffs_raw}
 
-        # FQP division
-        is_map(other) and Map.has_key?(other, :coeffs) ->
+        # FQP division: other is an FQP element
+        is_struct(other, __MODULE__) -> # Check if other is an FQP struct
           fqp2 = other
           # a / b = a * inv(b)
           mul(fqp1, inv(fqp2))
 
         true ->
-          raise "Type error: Expected an integer, FQ, or FQP element for division"
+          raise "Type error: Expected an integer, FQ, or FQP element for division, got: #{inspect(other)}"
       end
     end
 

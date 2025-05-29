@@ -46,7 +46,7 @@ defmodule ExEcc.Bls.PointCompression do
   # --- G1 Compression/Decompression ---
 
   # @spec compress_g1(ExEcc.Bls.Typing.g1_uncompressed()) :: ExEcc.Bls.Typing.g1_compressed()
-  def compress_g1(pt) do
+  def compress_g1(_pt) do
     # q = ExEcc.OptimizedBls12381.field_modulus()
     # if ExEcc.OptimizedBls12381.is_inf(pt) do
     #   Constants.pow_2_383() + Constants.pow_2_382()
@@ -62,7 +62,7 @@ defmodule ExEcc.Bls.PointCompression do
   end
 
   # @spec decompress_g1(ExEcc.Bls.Typing.g1_compressed()) :: ExEcc.Bls.Typing.g1_uncompressed()
-  def decompress_g1(z_compressed) do
+  def decompress_g1(_z_compressed) do
     # z = z_compressed # If G1Compressed is just an integer alias
     # {c_flag, b_flag, a_flag} = get_flags(z)
     # q_val = ExEcc.OptimizedBls12381.field_modulus()
@@ -110,7 +110,7 @@ defmodule ExEcc.Bls.PointCompression do
   This requires FQ2 arithmetic (pow, division, negation, comparison of coeffs).
   """
   # @spec modular_squareroot_in_fq2(ExEcc.Fields.OptimizedFieldElements.FQ2.t_fq2()) :: ExEcc.Fields.OptimizedFieldElements.FQ2.t_fq2() | nil
-  def modular_squareroot_in_fq2(value_fq2) do
+  def modular_squareroot_in_fq2(_value_fq2) do
     # eighth_roots = Constants.eighth_roots_of_unity() # List of FQ2 elements
     # fq2_order_val = Constants.fq2_order()
 
@@ -142,7 +142,7 @@ defmodule ExEcc.Bls.PointCompression do
   end
 
   # @spec compress_g2(ExEcc.Bls.Typing.g2_uncompressed()) :: ExEcc.Bls.Typing.g2_compressed()
-  def compress_g2(pt) do
+  def compress_g2(_pt) do
     # q_val = ExEcc.OptimizedBls12381.field_modulus()
     # b2_val = ExEcc.OptimizedBls12381.b2() # FQ2 element
     # unless ExEcc.OptimizedBls12381.is_on_curve(pt, b2_val), do: raise ArgumentError, "Point not on twisted curve G2"
@@ -169,7 +169,7 @@ defmodule ExEcc.Bls.PointCompression do
   end
 
   # @spec decompress_g2(ExEcc.Bls.Typing.g2_compressed()) :: ExEcc.Bls.Typing.g2_uncompressed()
-  def decompress_g2(p_compressed) do
+  def decompress_g2(_p_compressed) do
     # {z1, z2} = p_compressed # If G2Compressed is a tuple {int, int}
     # {c_flag1, b_flag1, a_flag1} = get_flags(z1)
     # q_val = ExEcc.OptimizedBls12381.field_modulus()
