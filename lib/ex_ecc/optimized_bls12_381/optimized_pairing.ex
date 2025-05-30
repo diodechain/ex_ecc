@@ -66,14 +66,14 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedPairing do
       true
     else
       {x, y, z} = pt # These are FQ structs
-      # y^2 * z - x^3 == b * z^3  (projective)
+      # y^2 * z - x^3 == b_val * z^3  (projective)
       # All ops are FQ ops here because x,y,z are FQ for G1
-      term1 = FQ.multiply(FQ.multiply(y, y), z)
-      term2 = FQ.multiply(FQ.multiply(x, x), x)
-      lhs = FQ.sub(term1, term2)
+      term1 = FQ.mul(FQ.mul(y, y), z)
+      term2 = FQ.mul(FQ.mul(x, x), x)
+      lhs = FQ.subtract(term1, term2)
       # Ensure b_val is an FQ struct for mul; if it's integer, convert
       b_fq = FQ.ensure_fq(b_val, @field_modulus)
-      rhs = FQ.multiply(b_fq, FQ.multiply(FQ.multiply(z, z), z))
+      rhs = FQ.mul(b_fq, FQ.mul(FQ.mul(z, z), z))
       FQ.equal?(lhs, rhs)
     end
   end
@@ -96,10 +96,10 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedPairing do
       w = op_module.multiply(fq_3, op_module.multiply(x, x)) # 3 * x^2
       s = op_module.multiply(y, z) # y * z
       big_b_val = op_module.multiply(x, op_module.multiply(y, s)) # x * y * s
-      h = op_module.sub(op_module.multiply(w, w), op_module.multiply(fq_8, big_b_val)) # w^2 - 8 * B
+      h = op_module.subtract(op_module.multiply(w, w), op_module.multiply(fq_8, big_b_val)) # w^2 - 8 * B
       s_squared = op_module.multiply(s, s) # s^2
       newx = op_module.multiply(fq_2, op_module.multiply(h, s)) # 2 * h * s
-      newy = op_module.sub(op_module.multiply(w, op_module.sub(op_module.multiply(fq_4, big_b_val), h)), op_module.multiply(fq_8, op_module.multiply(y, op_module.multiply(y, s_squared)))) # w * (4B - h) - 8 * y^2 * s^2
+      newy = op_module.subtract(op_module.multiply(w, op_module.subtract(op_module.multiply(fq_4, big_b_val), h)), op_module.multiply(fq_8, op_module.multiply(y, op_module.multiply(y, s_squared)))) # w * (4B - h) - 8 * y^2 * s^2
       newz = op_module.multiply(fq_8, op_module.multiply(s, s_squared)) # 8 * s^3
       {newx, newy, newz}
     else # For G2 (FQP points)
@@ -108,10 +108,10 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedPairing do
       w = op_module.multiply(x, x) |> op_module.multiply(3) # 3 * x^2
       s = op_module.multiply(y, z) # y * z
       big_b_val = op_module.multiply(x, op_module.multiply(y, s)) # x * y * s
-      h = op_module.sub(op_module.multiply(w, w), op_module.multiply(big_b_val, 8)) # w^2 - 8 * B
+      h = op_module.subtract(op_module.multiply(w, w), op_module.multiply(big_b_val, 8)) # w^2 - 8 * B
       s_squared = op_module.multiply(s, s) # s^2
       newx = op_module.multiply(h, s) |> op_module.multiply(2) # 2 * h * s
-      newy = op_module.sub(op_module.multiply(w, op_module.sub(op_module.multiply(big_b_val, 4), h)), op_module.multiply(op_module.multiply(y, op_module.multiply(y, s_squared)), 8)) # w * (4B - h) - 8 * y^2 * s^2
+      newy = op_module.subtract(op_module.multiply(w, op_module.subtract(op_module.multiply(big_b_val, 4), h)), op_module.multiply(op_module.multiply(y, op_module.multiply(y, s_squared)), 8)) # w * (4B - h) - 8 * y^2 * s^2
       newz = op_module.multiply(s, s_squared) |> op_module.multiply(8) # 8 * s^3
       {newx, newy, newz}
     end
@@ -139,8 +139,8 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedPairing do
           op_module.equal?(v1, v2) and op_module.equal?(u1, u2) -> double(p1)
           op_module.equal?(v1, v2) -> {one, one, zero} # Point at infinity
           true ->
-            u = op_module.sub(u1, u2)
-            v = op_module.sub(v1, v2)
+            u = op_module.subtract(u1, u2)
+            v = op_module.subtract(v1, v2)
             v_squared = op_module.multiply(v, v)
             v_squared_times_v2 = op_module.multiply(v_squared, v2)
             v_cubed = op_module.multiply(v, v_squared)
@@ -149,9 +149,9 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedPairing do
             # If op_module is FQP, its mul handles integer scalars.
             two_val = if op_module == FQ, do: FQ.new(2), else: 2
 
-            a_val = op_module.sub(op_module.sub(op_module.multiply(op_module.multiply(u, u), w_val), v_cubed), op_module.multiply(v_squared_times_v2, two_val))
+            a_val = op_module.subtract(op_module.subtract(op_module.multiply(op_module.multiply(u, u), w_val), v_cubed), op_module.multiply(v_squared_times_v2, two_val))
             newx = op_module.multiply(v, a_val)
-            newy = op_module.sub(op_module.multiply(u, op_module.sub(v_squared_times_v2, a_val)), op_module.multiply(v_cubed, u2))
+            newy = op_module.subtract(op_module.multiply(u, op_module.subtract(v_squared_times_v2, a_val)), op_module.multiply(v_cubed, u2))
             newz = op_module.multiply(v_cubed, w_val)
             {newx, newy, newz}
         end

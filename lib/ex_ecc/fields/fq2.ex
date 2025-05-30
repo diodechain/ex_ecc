@@ -91,8 +91,8 @@ defmodule ExEcc.Fields.FQ2 do
     raise "Type error: Expected an integer or FQ2 element, got: #{inspect(other)}"
   end
 
-  def one do
-    %__MODULE__{coeffs: [1, 0], field_modulus: @field_modulus}
+  def one(field_modulus) do
+    %__MODULE__{coeffs: [1, 0], field_modulus: field_modulus}
   end
 
   def zero do
@@ -133,7 +133,7 @@ defmodule ExEcc.Fields.FQ2 do
 
   def pow(fq2 = %__MODULE__{}, exponent) when is_integer(exponent) do
     cond do
-      exponent == 0 -> one()
+      exponent == 0 -> one(fq2.field_modulus)
       exponent == 1 -> fq2
       rem(exponent, 2) == 0 ->
         half_pow = pow(fq2, Kernel.div(exponent, 2))

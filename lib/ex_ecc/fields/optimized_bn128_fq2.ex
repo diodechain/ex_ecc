@@ -32,4 +32,5 @@ defmodule ExEcc.Fields.OptimizedBN128FQ2 do
   def pow(fq2, exponent), do: FQP.pow(fq2, exponent)
   def negate(fq2), do: FQP.neg(fq2)
   def eq(fq2a, fq2b), do: FQP.equal?(fq2a, fq2b)
+  def mul(a, b), do: multiply(a, b)
 end

@@ -62,17 +62,17 @@ defmodule ExEcc.OptimizedBN128.OptimizedCurve do
   defp ensure_fq2(%{__struct__: FQP} = element, _field_modulus), do: element
   defp ensure_fq2(%{__struct__: FQ12} = element, _field_modulus), do: element
 
-  defp ensure_fq12(element, field_modulus) do
-    FQ12.new([element | List.duplicate(0, 11)], field_modulus)
+  defp ensure_fq12(%{__struct__: FQ12} = element, _field_modulus), do: element
+  defp ensure_fq12(%{__struct__: FQP} = element, _field_modulus), do: element
+  defp ensure_fq12(%{__struct__: FQ2} = element, field_modulus) do
+    FQ12.new([element.coeffs | List.duplicate(0, 10)], field_modulus)
   end
   defp ensure_fq12(%{__struct__: FQ} = element, field_modulus) do
     FQ12.new([element.coeffs | List.duplicate(0, 11)], field_modulus)
   end
-  defp ensure_fq12(%{__struct__: FQ2} = element, field_modulus) do
-    FQ12.new([element.coeffs | List.duplicate(0, 10)], field_modulus)
+  defp ensure_fq12(element, field_modulus) do
+    FQ12.new([element | List.duplicate(0, 11)], field_modulus)
   end
-  defp ensure_fq12(%{__struct__: FQ12} = element, _field_modulus), do: element
-  defp ensure_fq12(%{__struct__: FQP} = element, _field_modulus), do: element
 
   # Helper to get the module for field operations based on the element type
   # defp field_module_for_pt(pt) do

@@ -5,19 +5,27 @@ defmodule ExEcc.Fields.OptimizedBN128FQ12 do
   @modulus_coeffs [0, 1, 0, 0, 0, 0, 9, 0, 0, 0, 0, 0]
 
   def new(coeffs) when is_list(coeffs) do
-    coeffs_mod = Enum.map(coeffs, fn
-      %ExEcc.Fields.OptimizedBN128FQ{n: n} ->
-        rem(rem(n, @field_modulus) + @field_modulus, @field_modulus)
-      c when is_integer(c) ->
-        rem(rem(c, @field_modulus) + @field_modulus, @field_modulus)
-      other ->
-        raise "Invalid coefficient type: #{inspect(other)}"
-    end)
-    FQP.new_fqp(coeffs_mod, @modulus_coeffs, @field_modulus)
+    new(coeffs, @field_modulus)
   end
 
   def new(tuple) when is_tuple(tuple) do
     new(Tuple.to_list(tuple))
+  end
+
+  def new(coeffs, field_modulus) when is_list(coeffs) do
+    coeffs_mod = Enum.map(coeffs, fn
+      %ExEcc.Fields.OptimizedBN128FQ{n: n} ->
+        rem(rem(n, field_modulus) + field_modulus, field_modulus)
+      c when is_integer(c) ->
+        rem(rem(c, field_modulus) + field_modulus, field_modulus)
+      other ->
+        raise "Invalid coefficient type: #{inspect(other)}"
+    end)
+    FQP.new_fqp(coeffs_mod, @modulus_coeffs, field_modulus)
+  end
+
+  def new(tuple, field_modulus) when is_tuple(tuple) do
+    new(Tuple.to_list(tuple), field_modulus)
   end
 
   def one do
@@ -31,4 +39,6 @@ defmodule ExEcc.Fields.OptimizedBN128FQ12 do
   def field_modulus, do: @field_modulus
 
   def modulus_coeffs, do: @modulus_coeffs
+
+  def mul(a, b), do: FQP.multiply(a, b)
 end

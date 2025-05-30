@@ -196,11 +196,4 @@ defmodule ExEcc.Utils do
       legendre(z, p) == -1
     end)
   end
-
-  defp while(condition, body) do
-    if condition.() do
-      body.()
-      while(condition, body)
-    end
-  end
 end
