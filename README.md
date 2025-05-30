@@ -10,3 +10,4 @@ Same goes for the tests.
 
 Original python files are in py_ecc/ and tests/ the new ported files are in lib/ and test/ correspondingly.
 
+Unused module attributes are covered with getters such as `def b(), do: @b` to avoid warnings.

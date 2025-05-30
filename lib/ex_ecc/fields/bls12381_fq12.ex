@@ -5,7 +5,7 @@ defmodule ExEcc.Fields.Bls12381FQ12 do
 
   def new_fq12(coeffs, field_modulus), do: FQP.new_fqp(coeffs, @modulus_coeffs, field_modulus)
   def add(a, b), do: FQP.add(a, b)
-  def sub(a, b), do: FQP.sub(a, b)
+  def sub(a, b), do: FQP.subtract(a, b)
   def mul(a, b), do: FQP.mul(a, b)
   def divide(a, b), do: FQP.divide(a, b)
   def pow(a, n), do: FQP.pow(a, n)
@@ -19,7 +19,6 @@ defmodule ExEcc.Fields.Bls12381FQ12 do
   def zero(field_modulus), do: FQP.zero(field_modulus, 12, @modulus_coeffs)
   def new(val), do: FQP.new_fqp(val, @modulus_coeffs, nil) # field_modulus must be provided
   def multiply(a, b), do: FQP.mul(a, b)
-  def divide(a, b), do: FQP.divide(a, b)
   def negate(a), do: FQP.neg(a)
 
   # Add missing functions
@@ -27,4 +26,7 @@ defmodule ExEcc.Fields.Bls12381FQ12 do
   def conjugate(a), do: FQP.conjugate(a)
   def frobenius(a, power), do: FQP.frobenius(a, power)
   def sgn0(a), do: FQP.sgn0(a)
+
+  # Add getter for @modulus_coeffs
+  def modulus_coeffs, do: @modulus_coeffs
 end

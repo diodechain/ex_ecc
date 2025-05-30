@@ -74,18 +74,39 @@ defmodule ExEcc.Bn128.Bn128Curve do
       {x, y} = pt
       elem_module = module_for_point(x)
       # Ensure numbers like 2 and 3 are FQ elements in the correct field
-      fq_2 = FQ.new_fq(2, x.field_modulus)
+      fq_2_typed =
+        case x do
+          %FQP{modulus_coeffs: mc, degree: deg, field_modulus: fm} ->
+            FQP.new_fqp([
+              FQ.new_fq(2, fm) | List.duplicate(FQ.zero(fm), deg - 1)
+            ], mc, fm)
+          _ -> FQ.new_fq(2, x.field_modulus)
+        end
       fq_3 = FQ.new_fq(3, x.field_modulus)
 
-      three_x_squared = elem_module.mul(fq_3, elem_module.pow(x, 2))
-      two_y = elem_module.mul(fq_2, y)
+      fq_3_typed =
+        case x do
+          %FQP{modulus_coeffs: mc, degree: deg, field_modulus: fm} ->
+            FQP.new_fqp([
+              FQ.new_fq(3, fm) | List.duplicate(FQ.zero(fm), deg - 1)
+            ], mc, fm)
+          _ -> fq_3
+        end
+      three_x_squared = elem_module.mul(fq_3_typed, elem_module.pow(x, 2))
+      two_y = elem_module.mul(fq_2_typed, y)
 
       # If two_y is zero, the point is at infinity
-      if elem_module.equal?(two_y, FQ.zero(x.field_modulus)) do
+      zero_typed =
+        case x do
+          %FQP{degree: deg, modulus_coeffs: mc, field_modulus: fm} ->
+            FQP.zero(fm, deg, mc)
+          _ -> FQ.zero(x.field_modulus)
+        end
+      if elem_module.equal?(two_y, zero_typed) do
         nil
       else
         m = elem_module.div(three_x_squared, two_y)
-        new_x = elem_module.sub(elem_module.pow(m, 2), elem_module.mul(fq_2, x))
+        new_x = elem_module.sub(elem_module.pow(m, 2), elem_module.mul(fq_2_typed, x))
         new_y = elem_module.sub(elem_module.mul(m, elem_module.sub(x, new_x)), y)
         {new_x, new_y}
       end
@@ -179,4 +200,5 @@ defmodule ExEcc.Bn128.Bn128Curve do
   def b12(), do: @b12
   def curve_order(), do: @curve_order
   def g12(), do: twist(@g2)
+  def w(), do: @w
 end

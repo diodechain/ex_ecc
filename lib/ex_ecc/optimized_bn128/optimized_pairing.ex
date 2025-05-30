@@ -1,6 +1,5 @@
 defmodule ExEcc.OptimizedBN128.OptimizedPairing do
   alias ExEcc.Fields.OptimizedBN128FQ, as: FQ
-  alias ExEcc.Fields.OptimizedBN128FQ2, as: FQ2
   alias ExEcc.Fields.OptimizedBN128FQ12, as: FQ12
   alias ExEcc.OptimizedBN128.OptimizedCurve, as: Curve
 
@@ -273,7 +272,7 @@ defmodule ExEcc.OptimizedBN128.OptimizedPairing do
 
     # Calculate (p^12 - 1)
     # Using a larger modulus for intermediate step to avoid issues with direct calc if numbers are too big for direct :math.pow
-    p12m1 = :crypto.mod_pow(@field_modulus, 12, @curve_order * 2) - 1
+    _p12m1 = :crypto.mod_pow(@field_modulus, 12, @curve_order * 2) - 1
     # This calculation of p12m1 itself is complex with large numbers.
     # A direct calculation using :math.pow or similar might overflow or lose precision.
     # It's better to compute with integer math if p, r are known.
@@ -339,4 +338,10 @@ defmodule ExEcc.OptimizedBN128.OptimizedPairing do
 
     FQ12.pow(f_fq12_val, exponent_val)
   end
+
+  def field_modulus, do: @field_modulus
+  def curve_order, do: @curve_order
+  def ate_loop_count, do: @ate_loop_count
+  def log_ate_loop_count, do: @log_ate_loop_count
+  def pseudo_binary_encoding, do: @pseudo_binary_encoding
 end

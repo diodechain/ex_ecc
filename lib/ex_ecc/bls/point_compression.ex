@@ -16,16 +16,14 @@ defmodule ExEcc.Bls.PointCompression do
   # FQ2.coeffs would be [real_part, imag_part], both integers.
 
   @doc """
-  Extracts the C, B, and A flags from a compressed G1/G2 coordinate component.
-  The format: (c_flag, b_flag, a_flag, x_bits)
+  Gets the flags from a point.
   """
   @spec get_flags(integer) :: {boolean, boolean, boolean}
   def get_flags(z) when is_integer(z) do
-    # POW_2_381, POW_2_382, POW_2_383 are large integers
-    c_flag = Bitwise.band(Bitwise.sr(z, 383), 1) == 1
-    b_flag = Bitwise.band(Bitwise.sr(z, 382), 1) == 1
-    a_flag = Bitwise.band(Bitwise.sr(z, 381), 1) == 1
-    {c_flag, b_flag, a_flag}
+    c_flag = Bitwise.band(Bitwise.bsr(z, 383), 1) == 1
+    i_flag = Bitwise.band(Bitwise.bsr(z, 382), 1) == 1
+    s_flag = Bitwise.band(Bitwise.bsr(z, 381), 1) == 1
+    {c_flag, i_flag, s_flag}
   end
 
   @doc """

@@ -111,7 +111,11 @@ defmodule ExEcc.Fields.FieldElements do
   # Comparison functions for ordering (Python's @total_ordering)
   def compare(fq1 = %__MODULE__{}, fq2_val) do
     fq2_n = if is_integer(fq2_val), do: fq2_val, else: ensure_fq(fq2_val, fq1.field_modulus).n
-    Kernel.compare(fq1.n, fq2_n)
+    cond do
+      fq1.n > fq2_n -> 1
+      fq1.n < fq2_n -> -1
+      true -> 0
+    end
   end
 
   # Helper to ensure a value is an FQ element for operations
@@ -340,7 +344,7 @@ defmodule ExEcc.Fields.FieldElements do
       frobenius(fqp, fqp.degree)
     end
 
-    def frobenius(fqp = %__MODULE__{}, power) do
+    def frobenius(fqp = %__MODULE__{}, _power) do
       # Frobenius map: (a + b*w)^p = a^p + b^p*w^p
       # For FQP, w^p = w^(p mod n)
       p = fqp.field_modulus
@@ -377,7 +381,10 @@ defmodule ExEcc.Fields.FieldElements do
     def is_zero(a), do: FQP.is_zero(a)
     def is_one(a), do: FQP.is_one(a)
 
-    def one(field_modulus) do
+    @doc """
+    Creates a new FQ2 element representing one in the field.
+    """
+    def one(field_modulus) when is_integer(field_modulus) do
       FQP.one(field_modulus, 2, [-1, 0])
     end
 
@@ -443,7 +450,6 @@ defmodule ExEcc.Fields.FieldElements do
   def multiply(fq1, fq2), do: mul(fq1, fq2)
   def divide(fq1, fq2), do: field_div(fq1, fq2)
   def div(fq1, fq2), do: field_div(fq1, fq2)
-  def negate(fq), do: neg(fq)
   def eq(fq1, fq2), do: equal?(fq1, fq2)
 
   def inv(fq = %__MODULE__{}) do

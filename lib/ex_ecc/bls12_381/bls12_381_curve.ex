@@ -2,7 +2,6 @@ defmodule ExEcc.Bls12_381.Bls12381Curve do
   alias ExEcc.Fields.OptimizedFieldElements, as: FQ
   alias ExEcc.Fields.OptimizedBls12381FQ2, as: FQ2
   alias ExEcc.Fields.FQ12
-  alias ExEcc.Fields.FieldProperties
 
   @field_modulus 0x1A0111EA397FE69A4B1BA7B6434BACD764774B84F38512BF6730D2A0F6B0F6241EABFFFEB153FFFFB9FEFFFFFFFFAAAB
   @curve_order 0x73EDA753299D7D483339D80809A1D80553BDA402FFFE5BFEFFFFFFFF00000001
@@ -19,6 +18,22 @@ defmodule ExEcc.Bls12_381.Bls12381Curve do
 
   def field_modulus, do: @field_modulus
   def curve_order, do: @curve_order
+
+  def b, do: @b
+
+  def b2, do: @b2
+
+  def g1_x, do: @g1_x
+
+  def g1_y, do: @g1_y
+
+  def g2_x1, do: @g2_x1
+
+  def g2_x2, do: @g2_x2
+
+  def g2_y1, do: @g2_y1
+
+  def g2_y2, do: @g2_y2
 
   @doc """
   Returns the G1 generator point for BLS12-381 curve.
@@ -184,8 +199,6 @@ defmodule ExEcc.Bls12_381.Bls12381Curve do
     case elem do
       %FQ{} -> FQ
       %FQ2{} -> FQ2
-      %{__struct__: FQ} -> FQ
-      %{__struct__: FQ2} -> FQ2
       %{__struct__: FQP} -> FQ2  # Map FQP to FQ2 since FQ2 is built on FQP
       _ -> raise "Invalid element type: #{inspect(elem)}"
     end

@@ -43,24 +43,83 @@ defmodule ExEcc.OptimizedBN128.OptimizedCurve do
   @z1 {FQ.one(), FQ.one(), FQ.zero()}
   @z2 {FQ2.one(), FQ2.one(), FQ2.zero()}
 
+  # Helper functions for mixed-type arithmetic
+  defp ensure_fq(element, field_modulus) when is_integer(element) do
+    FQ.new(element, field_modulus)
+  end
+  defp ensure_fq(%{__struct__: FQ} = element, _field_modulus), do: element
+  defp ensure_fq(%{__struct__: FQP} = element, _field_modulus), do: element
+  defp ensure_fq(%{__struct__: FQ2} = element, _field_modulus), do: element
+  defp ensure_fq(%{__struct__: FQ12} = element, _field_modulus), do: element
+
+  defp ensure_fq2(element, field_modulus) when is_integer(element) do
+    FQ2.new([element, 0], field_modulus)
+  end
+  defp ensure_fq2(%{__struct__: FQ} = element, field_modulus) do
+    FQ2.new([element.coeffs, 0], field_modulus)
+  end
+  defp ensure_fq2(%{__struct__: FQ2} = element, _field_modulus), do: element
+  defp ensure_fq2(%{__struct__: FQP} = element, _field_modulus), do: element
+  defp ensure_fq2(%{__struct__: FQ12} = element, _field_modulus), do: element
+
+  defp ensure_fq12(element, field_modulus) do
+    FQ12.new([element | List.duplicate(0, 11)], field_modulus)
+  end
+  defp ensure_fq12(%{__struct__: FQ} = element, field_modulus) do
+    FQ12.new([element.coeffs | List.duplicate(0, 11)], field_modulus)
+  end
+  defp ensure_fq12(%{__struct__: FQ2} = element, field_modulus) do
+    FQ12.new([element.coeffs | List.duplicate(0, 10)], field_modulus)
+  end
+  defp ensure_fq12(%{__struct__: FQ12} = element, _field_modulus), do: element
+  defp ensure_fq12(%{__struct__: FQP} = element, _field_modulus), do: element
+
   # Helper to get the module for field operations based on the element type
-  defp field_module_for_pt(pt) do
-    # Assumes point elements are FQ/FQ2/FQ12 structs or nil
-    # The first element of the point tuple (x-coordinate) determines the field type
-    case elem(pt, 0) do
-      %FQ{} -> FQ
-      %FQP{degree: 2} -> FQ2
-      %FQP{degree: 12} -> FQ12
-      # Or raise an error for unknown type
-      _ -> nil
+  # defp field_module_for_pt(pt) do
+  #   case elem(pt, 0) do
+  #     %{__struct__: FQ} -> FQ
+  #     %{__struct__: FQP, degree: 2} -> FQ2
+  #     %{__struct__: FQP, degree: 12} -> FQ12
+  #     _ -> nil
+  #   end
+  # end
+
+  # Helper to determine the target field type for mixed operations
+  defp target_field_type(a, b) do
+    cond do
+      is_struct(a, FQ12) or is_struct(b, FQ12) -> FQ12
+      is_struct(a, FQ2) or is_struct(b, FQ2) -> FQ2
+      true -> FQ
     end
   end
 
+  # Helper to convert elements to the target field type
+  defp convert_to_target_type(element, target_type, field_modulus) do
+    case target_type do
+      FQ12 -> ensure_fq12(element, field_modulus)
+      FQ2 -> ensure_fq2(element, field_modulus)
+      FQ -> ensure_fq(element, field_modulus)
+    end
+  end
+
+  # Mixed-type arithmetic operations
+  # defp mixed_add(a, b, field_modulus) do ... end
+
+  def mixed_sub(a, b, target_type) do
+    a_converted = ensure_fq(a, @field_modulus)
+    b_converted = ensure_fq(b, @field_modulus)
+    target_type.subtract(a_converted, b_converted)
+  end
+
+  defp mixed_mul(a, b, field_modulus) do
+    target_type = target_field_type(a, b)
+    a_converted = convert_to_target_type(a, target_type, field_modulus)
+    b_converted = convert_to_target_type(b, target_type, field_modulus)
+    target_type.mul(a_converted, b_converted)
+  end
+
   def is_inf(pt) do
-    # Third element (z-coordinate) of the point tuple
-    # Access the zero() function from the specific field module of z
     z_coord = elem(pt, 2)
-    # Get module from struct type
     field_module = z_coord.__struct__
     field_module.eq(z_coord, field_module.zero())
   end
@@ -70,13 +129,12 @@ defmodule ExEcc.OptimizedBN128.OptimizedCurve do
       true
     else
       {x, y, z} = pt
-      # Assuming x, y, z are of the same field type
+      # y^2 * z - x^3 == b_val * z^3  (projective)
+      term1 = mixed_mul(mixed_mul(y, y, @field_modulus), z, @field_modulus)
+      term2 = mixed_mul(mixed_mul(x, x, @field_modulus), x, @field_modulus)
+      lhs = mixed_sub(term1, term2, @field_modulus)
+      rhs = mixed_mul(b_val, mixed_mul(mixed_mul(z, z, @field_modulus), z, @field_modulus), @field_modulus)
       field_module = x.__struct__
-      # y**2 * z - x**3 == b_val * z**3
-      lhs =
-        field_module.subtract(field_module.multiply(field_module.multiply(y, y), z), field_module.multiply(x, x, x))
-
-      rhs = field_module.multiply(b_val, field_module.multiply(z, z, z))
       field_module.eq(lhs, rhs)
     end
   end
@@ -91,87 +149,81 @@ defmodule ExEcc.OptimizedBN128.OptimizedCurve do
 
   def double(pt) do
     {x, y, z} = pt
-    field_module = x.__struct__
+    _field_module = x.__struct__
 
-    w_val = field_module.multiply(field_module.new(3), field_module.multiply(x, x))
-    s_val = field_module.multiply(y, z)
-    # B in Python
-    b_val_internal = field_module.multiply(x, field_module.multiply(y, s_val))
+    w_val = mixed_mul(3, mixed_mul(x, x, @field_modulus), @field_modulus)
+    s_val = mixed_mul(y, z, @field_modulus)
+    b_val_internal = mixed_mul(x, mixed_mul(y, s_val, @field_modulus), @field_modulus)
 
-    h_val =
-      field_module.subtract(
-        field_module.multiply(w_val, w_val),
-        field_module.multiply(field_module.new(8), b_val_internal)
-      )
+    h_val = mixed_sub(
+      mixed_mul(w_val, w_val, @field_modulus),
+      mixed_mul(8, b_val_internal, @field_modulus),
+      @field_modulus
+    )
 
-    s_squared = field_module.multiply(s_val, s_val)
-    newx = field_module.multiply(field_module.new(2), field_module.multiply(h_val, s_val))
+    s_squared = mixed_mul(s_val, s_val, @field_modulus)
+    newx = mixed_mul(2, mixed_mul(h_val, s_val, @field_modulus), @field_modulus)
 
-    newy =
-      field_module.subtract(
-        field_module.multiply(
-          w_val,
-          field_module.subtract(field_module.multiply(field_module.new(4), b_val_internal), h_val)
-        ),
-        field_module.multiply(field_module.new(8), field_module.multiply(y, field_module.multiply(y, s_squared)))
-      )
+    newy = mixed_sub(
+      mixed_mul(
+        w_val,
+        mixed_sub(mixed_mul(4, b_val_internal, @field_modulus), h_val, @field_modulus),
+        @field_modulus
+      ),
+      mixed_mul(8, mixed_mul(y, mixed_mul(y, s_squared, @field_modulus), @field_modulus), @field_modulus),
+      @field_modulus
+    )
 
-    newz = field_module.multiply(field_module.new(8), field_module.multiply(s_val, s_squared))
+    newz = mixed_mul(8, mixed_mul(s_val, s_squared, @field_modulus), @field_modulus)
     {newx, newy, newz}
   end
 
   def add(p1, p2) do
-    {x1, y1, z1} = p1
-    {x2, y2, z2} = p2
-    field_module = x1.__struct__
-    one = field_module.one()
-    zero = field_module.zero()
-
     cond do
-      field_module.eq(z1, zero) or field_module.eq(z2, zero) ->
-        if field_module.eq(z2, zero), do: p1, else: p2
-
+      is_inf(p1) -> p2
+      is_inf(p2) -> p1
       true ->
-        u1 = field_module.multiply(y2, z1)
-        u2 = field_module.multiply(y1, z2)
-        v1 = field_module.multiply(x2, z1)
-        v2 = field_module.multiply(x1, z2)
+        {x1, y1, z1} = p1
+        {x2, y2, z2} = p2
+        field_module = x1.__struct__
 
         cond do
-          field_module.eq(v1, v2) and field_module.eq(u1, u2) ->
+          field_module.eq(x1, x2) and field_module.eq(y1, y2) ->
             double(p1)
 
-          field_module.eq(v1, v2) ->
-            {one, one, zero}
+          field_module.eq(x1, x2) ->
+            {field_module.one(), field_module.one(), field_module.zero()}
 
           true ->
-            u_val = field_module.subtract(u1, u2)
-            v_val = field_module.subtract(v1, v2)
-            v_squared = field_module.multiply(v_val, v_val)
-            v_squared_times_v2 = field_module.multiply(v_squared, v2)
-            v_cubed = field_module.multiply(v_val, v_squared)
-            # W in Python
-            w_val = field_module.multiply(z1, z2)
+            u1 = mixed_mul(y2, z1, @field_modulus)
+            u2 = mixed_mul(y1, z2, @field_modulus)
+            v1 = mixed_mul(x2, z1, @field_modulus)
+            v2 = mixed_mul(x1, z2, @field_modulus)
 
-            a_val =
-              field_module.subtract(
-                field_module.subtract(
-                  field_module.multiply(field_module.multiply(u_val, u_val), w_val),
-                  v_cubed
-                ),
-                field_module.multiply(field_module.new(2), v_squared_times_v2)
-              )
+            u = mixed_sub(u1, u2, @field_modulus)
+            v = mixed_sub(v1, v2, @field_modulus)
+            v_squared = mixed_mul(v, v, @field_modulus)
+            v_squared_times_v2 = mixed_mul(v_squared, v2, @field_modulus)
+            v_cubed = mixed_mul(v, v_squared, @field_modulus)
+            w_val = mixed_mul(z1, z2, @field_modulus)
 
-            # A in Python
-            newx = field_module.multiply(v_val, a_val)
+            a_val = mixed_sub(
+              mixed_sub(
+                mixed_mul(mixed_mul(u, u, @field_modulus), w_val, @field_modulus),
+                v_cubed,
+                @field_modulus
+              ),
+              mixed_mul(v_squared_times_v2, 2, @field_modulus),
+              @field_modulus
+            )
 
-            newy =
-              field_module.subtract(
-                field_module.multiply(u_val, field_module.subtract(v_squared_times_v2, a_val)),
-                field_module.multiply(v_cubed, u2)
-              )
-
-            newz = field_module.multiply(v_cubed, w_val)
+            newx = mixed_mul(v, a_val, @field_modulus)
+            newy = mixed_sub(
+              mixed_mul(u, mixed_sub(v_squared_times_v2, a_val, @field_modulus), @field_modulus),
+              mixed_mul(v_cubed, u2, @field_modulus),
+              @field_modulus
+            )
+            newz = mixed_mul(v_cubed, w_val, @field_modulus)
             {newx, newy, newz}
         end
     end
@@ -179,19 +231,12 @@ defmodule ExEcc.OptimizedBN128.OptimizedCurve do
 
   def multiply(pt, n) when is_integer(n) do
     field_module = elem(pt, 0).__struct__
-
     cond do
-      n == 0 ->
-        {field_module.one(), field_module.one(), field_module.zero()}
-
-      n == 1 ->
-        pt
-
-      rem(n, 2) == 0 ->
-        multiply(double(pt), div(n, 2))
-
-      true ->
-        add(multiply(double(pt), div(n, 2)), pt)
+      n == 0 -> {field_module.one(), field_module.one(), field_module.zero()}
+      n == 1 -> pt
+      n < 0 -> multiply(neg(pt), -n)
+      rem(n, 2) == 0 -> multiply(double(pt), div(n, 2))
+      true -> add(multiply(double(pt), div(n, 2)), pt)
     end
   end
 
@@ -208,15 +253,15 @@ defmodule ExEcc.OptimizedBN128.OptimizedCurve do
         false
 
       true ->
-        field_module.eq(field_module.multiply(x1, z2), field_module.multiply(x2, z1)) and
-          field_module.eq(field_module.multiply(y1, z2), field_module.multiply(y2, z1))
+        field_module.eq(mixed_mul(x1, z2, @field_modulus), mixed_mul(x2, z1, @field_modulus)) and
+          field_module.eq(mixed_mul(y1, z2, @field_modulus), mixed_mul(y2, z1, @field_modulus))
     end
   end
 
   def neg(pt) do
     {x, y, z} = pt
     field_module = x.__struct__
-    {x, field_module.negate(y), z}
+    {x, field_module.neg(y), z}
   end
 
   def negate(pt), do: neg(pt)
@@ -230,4 +275,15 @@ defmodule ExEcc.OptimizedBN128.OptimizedCurve do
   def b12, do: @b12
   def field_modulus, do: @field_modulus
   def curve_order, do: @curve_order
+
+  def normalize({x, y, z}) do
+    field_module = x.__struct__
+    zero = field_module.zero()
+    if field_module.eq(z, zero) do
+      {zero, zero}
+    else
+      z_inv = field_module.inv(z)
+      {field_module.mul(x, z_inv), field_module.mul(y, z_inv)}
+    end
+  end
 end

@@ -143,47 +143,51 @@ defmodule ExEcc.Utils do
   @doc """
   Computes the square root of a number modulo a prime.
   """
-  def sqrt_mod(a, p) when is_integer(a) and is_integer(p) and p > 2 and rem(p, 2) == 1 do
-    a = rem(a, p)
+  def sqrt_mod(n, p) do
+    # Tonelli-Shanks algorithm
     cond do
-      a == 0 -> 0
-      legendre(a, p) != 1 -> nil
-      rem(p, 4) == 3 ->
-        mod_pow(a, div(p + 1, 4), p)
+      n == 0 -> 0
+      n == 1 -> 1
       true ->
-        # Tonelli-Shanks algorithm
-        q = p - 1
-        s = 0
-        while rem(q, 2) == 0 do
-          q = div(q, 2)
-          s = s + 1
-        end
+        # Find Q and S such that p-1 = Q*2^S
+        {q, s} = find_q_and_s(p - 1)
 
+        # Find a quadratic non-residue z
         z = find_non_residue(p)
-        m = s
+
+        # Initialize variables
         c = mod_pow(z, q, p)
-        t = mod_pow(a, q, p)
-        r = mod_pow(a, div(q + 1, 2), p)
+        t = mod_pow(n, q, p)
+        r = mod_pow(n, div(q + 1, 2), p)
 
-        while t != 1 do
-          i = 0
-          temp = t
-          while temp != 1 do
-            temp = mod_pow(temp, 2, p)
-            i = i + 1
-            if i == m do
-              nil
-            end
-          end
+        # Main loop
+        tonelli_shanks_loop(t, r, c, s, p)
+    end
+  end
 
-          b = mod_pow(c, :math.pow(2, m - i - 1) |> trunc(), p)
-          m = i
-          c = mod_pow(b, 2, p)
-          t = rem(t * c, p)
-          r = rem(r * b, p)
-        end
+  defp find_q_and_s(n, s \\ 0) do
+    if rem(n, 2) == 0 do
+      find_q_and_s(div(n, 2), s + 1)
+    else
+      {n, s}
+    end
+  end
 
-        r
+  defp tonelli_shanks_loop(1, r, _c, _m, _p), do: r
+  defp tonelli_shanks_loop(t, r, c, m, p) do
+    i = find_i(t, p)
+    b = mod_pow(c, :math.pow(2, m - i - 1) |> trunc(), p)
+    new_c = mod_pow(b, 2, p)
+    new_t = rem(t * new_c, p)
+    new_r = rem(r * b, p)
+    tonelli_shanks_loop(new_t, new_r, new_c, i, p)
+  end
+
+  defp find_i(t, p, i \\ 0) do
+    if mod_pow(t, :math.pow(2, i) |> trunc(), p) == 1 do
+      i
+    else
+      find_i(t, p, i + 1)
     end
   end
 

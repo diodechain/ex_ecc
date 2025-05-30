@@ -27,4 +27,8 @@ defmodule ExEcc.Fields.OptimizedBN128FQ12 do
   def zero do
     new(List.duplicate(0, 12))
   end
+
+  def field_modulus, do: @field_modulus
+
+  def modulus_coeffs, do: @modulus_coeffs
 end

@@ -8,7 +8,7 @@ defmodule ExEcc.Bls.Hash do
   """
   @spec hkdf_extract(binary, binary) :: binary
   def hkdf_extract(salt, ikm) when is_binary(salt) and is_binary(ikm) do
-    :crypto.hmac(:sha256, salt, ikm)
+    :crypto.mac(:hmac, :sha256, salt, ikm)
   end
 
   @doc """

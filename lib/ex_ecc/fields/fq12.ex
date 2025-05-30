@@ -141,7 +141,10 @@ defmodule ExEcc.Fields.FQ12 do
     frobenius(fq12, 6)
   end
 
-  def frobenius(fq12 = %__MODULE__{}, power) do
+  @doc """
+  Computes the Frobenius map of an FQ12 element.
+  """
+  def frobenius(fq12 = %__MODULE__{}, _power) do
     # Frobenius map: (a + b*w)^p = a^p + b^p*w^p
     # For FQ12, w^p = w^(p mod 12)
     p = fq12.field_modulus

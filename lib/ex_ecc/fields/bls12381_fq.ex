@@ -5,7 +5,7 @@ defmodule ExEcc.Fields.Bls12381FQ do
 
   def new_fq(val, field_modulus), do: FQ.new_fq(val, field_modulus)
   def add(a, b), do: FQ.add(a, b)
-  def sub(a, b), do: FQ.sub(a, b)
+  def sub(a, b), do: FQ.subtract(a, b)
   def mul(a, b), do: FQ.mul(a, b)
   def divide(a, b), do: FQ.divide(a, b)
   def pow(a, n), do: FQ.pow(a, n)
@@ -19,7 +19,6 @@ defmodule ExEcc.Fields.Bls12381FQ do
   def zero(field_modulus), do: FQ.zero(field_modulus)
   def new(val), do: FQ.new_fq(val, @field_modulus)
   def multiply(a, b), do: FQ.mul(a, b)
-  def divide(a, b), do: FQ.divide(a, b)
   def negate(a), do: FQ.neg(a)
 
   # Add missing functions

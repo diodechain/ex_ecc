@@ -1,6 +1,6 @@
 defmodule ExEcc.Bls12_381.Bls12381Pairing do
   alias ExEcc.Fields.OptimizedFieldElements, as: FQ
-  alias ExEcc.Fields.FQ2
+  alias ExEcc.Fields.OptimizedBls12381FQ2, as: FQ2
   alias ExEcc.Fields.FQ12
   alias ExEcc.Bls12_381.Bls12381Curve, as: Curve
 
@@ -33,32 +33,32 @@ defmodule ExEcc.Bls12_381.Bls12381Pairing do
     cond do
       not field_module.eq(x1, x2) ->
         # m = (y2 - y1) / (x2 - x1)
-        m = field_module.divide(field_module.sub(y2, y1), field_module.sub(x2, x1))
+        m = field_module.divide(field_module.subtract(y2, y1), field_module.subtract(x2, x1))
         # return m * (xt - x1) - (yt - y1)
-        field_module.sub(field_module.mul(m, field_module.sub(xt, x1)), field_module.sub(yt, y1))
+        field_module.subtract(field_module.multiply(m, field_module.subtract(xt, x1)), field_module.subtract(yt, y1))
 
       # x1 == x2 is implied by falling through the first condition
       field_module.eq(y1, y2) ->
         # m = 3 * x1**2 / (2 * y1)
         m =
           field_module.divide(
-            field_module.mul(field_module.new_fq(3, field_modulus()), field_module.pow(x1, 2)),
-            field_module.mul(field_module.new_fq(2, field_modulus()), y1)
+            field_module.multiply(field_module.new(3, field_modulus()), field_module.pow(x1, 2)),
+            field_module.multiply(field_module.new(2, field_modulus()), y1)
           )
 
         # return m * (xt - x1) - (yt - y1)
-        field_module.sub(field_module.mul(m, field_module.sub(xt, x1)), field_module.sub(yt, y1))
+        field_module.subtract(field_module.multiply(m, field_module.subtract(xt, x1)), field_module.subtract(yt, y1))
 
       # x1 == x2 and y1 != y2 (P1 and P2 are inverses, line is vertical)
       true ->
-        field_module.sub(xt, x1)
+        field_module.subtract(xt, x1)
     end
   end
 
   def cast_point_to_fq12({x, y}) when is_struct(x, FQ) and is_struct(y, FQ) do
     # Create FQ12 elements with x.n and y.n as the first coefficients
-    x_fq12 = FQ12.new([x.n] ++ List.duplicate(0, 5), field_modulus())
-    y_fq12 = FQ12.new([y.n] ++ List.duplicate(0, 5), field_modulus())
+    x_fq12 = FQ12.new([x.n] ++ List.duplicate(0, 11), field_modulus())
+    y_fq12 = FQ12.new([y.n] ++ List.duplicate(0, 11), field_modulus())
     {x_fq12, y_fq12}
   end
 
@@ -92,12 +92,12 @@ defmodule ExEcc.Bls12_381.Bls12381Pairing do
   # Main miller loop
   def miller_loop(q_fq12, p_fq12) do
     if is_nil(q_fq12) or is_nil(p_fq12) do
-      FQ12.new([1] ++ List.duplicate(0, 5), field_modulus())
+      FQ12.new([1] ++ List.duplicate(0, 11), field_modulus())
     else
       # R starts as Q
       # f starts as FQ12.one()
       {_final_r, final_f} =
-        Enum.reduce(@log_ate_loop_count..0//-1, {q_fq12, FQ12.new([1] ++ List.duplicate(0, 5), field_modulus())}, fn i, {r_acc, f_acc} ->
+        Enum.reduce(@log_ate_loop_count..0//-1, {q_fq12, FQ12.new([1] ++ List.duplicate(0, 11), field_modulus())}, fn i, {r_acc, f_acc} ->
           # f = f * f * linefunc(R, R, P)
           f_doubled = FQ12.mul(f_acc, f_acc)
           f_new = FQ12.mul(f_doubled, linefunc(r_acc, r_acc, p_fq12))
@@ -131,7 +131,7 @@ defmodule ExEcc.Bls12_381.Bls12381Pairing do
     if is_nil(q_twisted_fq12) or is_nil(p_cast_fq12) do
       # If twist or cast results in nil (e.g. from point at infinity)
       # typically the pairing result is FQ12.one()
-      FQ12.new([1] ++ List.duplicate(0, 5), field_modulus())
+      FQ12.new([1] ++ List.duplicate(0, 11), field_modulus())
     else
       miller_loop(q_twisted_fq12, p_cast_fq12)
     end
@@ -154,4 +154,8 @@ defmodule ExEcc.Bls12_381.Bls12381Pairing do
       _ -> raise "Invalid element type"
     end
   end
+
+  def ate_loop_count, do: @ate_loop_count
+
+  def log_ate_loop_count, do: @log_ate_loop_count
 end
