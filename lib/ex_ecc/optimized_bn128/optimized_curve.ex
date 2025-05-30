@@ -126,8 +126,8 @@ defmodule ExEcc.OptimizedBN128.OptimizedCurve do
 
   def is_inf(pt) do
     z_coord = elem(pt, 2)
-    field_module = z_coord.__struct__
-    field_module.eq(z_coord, field_module.zero())
+    FieldMath = z_coord.__struct__
+    FieldMath.eq(z_coord, FieldMath.zero())
   end
 
   def is_on_curve(pt, b_val) do
@@ -147,8 +147,8 @@ defmodule ExEcc.OptimizedBN128.OptimizedCurve do
           @field_modulus
         )
 
-      field_module = x.__struct__
-      field_module.eq(lhs, rhs)
+      FieldMath = x.__struct__
+      FieldMath.eq(lhs, rhs)
     end
   end
 
@@ -208,14 +208,14 @@ defmodule ExEcc.OptimizedBN128.OptimizedCurve do
       true ->
         {x1, y1, z1} = p1
         {x2, y2, z2} = p2
-        field_module = x1.__struct__
+        FieldMath = x1.__struct__
 
         cond do
-          field_module.eq(x1, x2) and field_module.eq(y1, y2) ->
+          FieldMath.eq(x1, x2) and FieldMath.eq(y1, y2) ->
             double(p1)
 
-          field_module.eq(x1, x2) ->
-            {field_module.one(), field_module.one(), field_module.zero()}
+          FieldMath.eq(x1, x2) ->
+            {FieldMath.one(), FieldMath.one(), FieldMath.zero()}
 
           true ->
             u1 = mixed_mul(y2, z1, @field_modulus)
@@ -261,10 +261,10 @@ defmodule ExEcc.OptimizedBN128.OptimizedCurve do
   end
 
   def multiply(pt, n) when is_integer(n) do
-    field_module = elem(pt, 0).__struct__
+    FieldMath = elem(pt, 0).__struct__
 
     cond do
-      n == 0 -> {field_module.one(), field_module.one(), field_module.zero()}
+      n == 0 -> {FieldMath.one(), FieldMath.one(), FieldMath.zero()}
       n == 1 -> pt
       n < 0 -> multiply(neg(pt), -n)
       rem(n, 2) == 0 -> multiply(double(pt), div(n, 2))
@@ -275,25 +275,25 @@ defmodule ExEcc.OptimizedBN128.OptimizedCurve do
   def eq(p1, p2) do
     {x1, y1, z1} = p1
     {x2, y2, z2} = p2
-    field_module = x1.__struct__
+    FieldMath = x1.__struct__
 
     cond do
-      field_module.eq(z1, field_module.zero()) and field_module.eq(z2, field_module.zero()) ->
+      FieldMath.eq(z1, FieldMath.zero()) and FieldMath.eq(z2, FieldMath.zero()) ->
         true
 
-      field_module.eq(z1, field_module.zero()) or field_module.eq(z2, field_module.zero()) ->
+      FieldMath.eq(z1, FieldMath.zero()) or FieldMath.eq(z2, FieldMath.zero()) ->
         false
 
       true ->
-        field_module.eq(mixed_mul(x1, z2, @field_modulus), mixed_mul(x2, z1, @field_modulus)) and
-          field_module.eq(mixed_mul(y1, z2, @field_modulus), mixed_mul(y2, z1, @field_modulus))
+        FieldMath.eq(mixed_mul(x1, z2, @field_modulus), mixed_mul(x2, z1, @field_modulus)) and
+          FieldMath.eq(mixed_mul(y1, z2, @field_modulus), mixed_mul(y2, z1, @field_modulus))
     end
   end
 
   def neg(pt) do
     {x, y, z} = pt
-    field_module = x.__struct__
-    {x, field_module.neg(y), z}
+    FieldMath = x.__struct__
+    {x, FieldMath.neg(y), z}
   end
 
   def negate(pt), do: neg(pt)
@@ -309,14 +309,14 @@ defmodule ExEcc.OptimizedBN128.OptimizedCurve do
   def curve_order, do: @curve_order
 
   def normalize({x, y, z}) do
-    field_module = x.__struct__
-    zero = field_module.zero()
+    FieldMath = x.__struct__
+    zero = FieldMath.zero()
 
-    if field_module.eq(z, zero) do
+    if FieldMath.eq(z, zero) do
       {zero, zero}
     else
-      z_inv = field_module.inv(z)
-      {field_module.mul(x, z_inv), field_module.mul(y, z_inv)}
+      z_inv = FieldMath.inv(z)
+      {FieldMath.mul(x, z_inv), FieldMath.mul(y, z_inv)}
     end
   end
 end

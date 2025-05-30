@@ -11,22 +11,22 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedPairing do
 
   @curve_order 524_358_751_751_261_904_794_477_405_081_859_658_376_905_525_005_276_378_226_036_586_999_385_811_845_13
 
-  # Original @b2 FQ2.new({4, 4}) -> FQP.new_fqp([FQ.new_fq(4, @fm), FQ.new_fq(4, @fm)], @fq2_coeffs, @fm)
+  # Original @b2 FQ2.new({4, 4}) -> FQP.new_fqp([FQ.new(4, @fm), FQ.new(4, @fm)], @fq2_coeffs, @fm)
   @b2 FQ2.new_fqp([4, 4], @fq2_modulus_coeffs, @field_modulus)
 
   # Original @b12 FQ12.new(Tuple.pad({4}, 12, 0))
   # This means coeffs are [4, 0, 0, ..., 0]
   @b12 FQ12.new_fq12([4 | List.duplicate(0, 11)], @field_modulus)
 
-  @g1_x FQ.new_fq(
+  @g1_x FQ.new(
           36_854_167_537_133_870_167_810_883_151_830_777_579_616_207_957_825_464_098_945_783_786_886_075_923_783_763_188_360_549_476_763_458_215_481_041_854_645_07,
           @field_modulus
         )
-  @g1_y FQ.new_fq(
+  @g1_y FQ.new(
           1_339_506_544_944_476_473_020_471_379_941_921_221_584_933_875_938_349_620_426_543_736_416_511_423_956_333_506_472_724_655_353_366_534_992_391_756_441_569,
           @field_modulus
         )
-  @g1_z FQ.new_fq(1, @field_modulus)
+  @g1_z FQ.new(1, @field_modulus)
   @g1 {@g1_x, @g1_y, @g1_z}
 
   # G2 points are FQP structs (representing FQ2 elements) with integer coeffs
@@ -50,7 +50,7 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedPairing do
   @g2_z FQ2.new_fqp([1, 0], @fq2_modulus_coeffs, @field_modulus)
   @g2 {@g2_x, @g2_y, @g2_z}
 
-  @z1 {FQ.new_fq(1, @field_modulus), FQ.new_fq(1, @field_modulus), FQ.new_fq(0, @field_modulus)}
+  @z1 {FQ.new(1, @field_modulus), FQ.new(1, @field_modulus), FQ.new(0, @field_modulus)}
   # For @z2, FQP.one() and FQP.zero() are needed for optimized FQP
   @z2_one_coeffs [1 | List.duplicate(0, length(@fq2_modulus_coeffs) - 1)]
   @z2_zero_coeffs List.duplicate(0, length(@fq2_modulus_coeffs))

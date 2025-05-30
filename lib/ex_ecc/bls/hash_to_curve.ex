@@ -114,7 +114,7 @@ defmodule ExEcc.Bls.HashToCurve do
     #   tv = :binary.part(pseudo_random_bytes, elem_offset, Constants.hash_to_field_l())
     #   fq_val = rem(Hash.os2ip(tv), field_mod)
     #   # Construct FQ element. Assumes OptFQ.new_fq/2 or similar.
-    #   # OptFQ.new_fq(fq_val, field_mod)
+    #   # OptFQ.new(fq_val, field_mod)
     # end)
     # |> List.to_tuple()
     :not_implemented_yet_fq_field_hash

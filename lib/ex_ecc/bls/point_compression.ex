@@ -92,8 +92,8 @@ defmodule ExEcc.Bls.PointCompression do
     #   y_final_n = if y_sign_bit != Bitwise.to_integer(a_flag), do: q_val - y_n, else: y_n
 
     #   # Construct FQ elements for the point (x, y, 1)
-    #   # x_fq = OptFQ.new_fq(x_n, q_val)
-    #   # y_fq = OptFQ.new_fq(y_final_n, q_val)
+    #   # x_fq = OptFQ.new(x_n, q_val)
+    #   # y_fq = OptFQ.new(y_final_n, q_val)
     #   # one_fq = OptFQ.one(q_val)
     #   # {x_fq, y_fq, one_fq}
     #   :not_implemented_yet_non_inf_g1_decomp

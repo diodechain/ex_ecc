@@ -84,8 +84,8 @@ defmodule ExEcc.OptimizedBN128.OptimizedPairing do
 
   def normalize1(p) do
     {x, y} = Curve.normalize(p)
-    field_module = x.__struct__
-    {x, y, field_module.one()}
+    FieldMath = x.__struct__
+    {x, y, FieldMath.one()}
   end
 
   # Returns {numerator, denominator}
@@ -94,53 +94,53 @@ defmodule ExEcc.OptimizedBN128.OptimizedPairing do
     {x2, y2, z2} = p2
     {xt, yt, zt} = t
     # Assumes all points are in the same field FQ12 for pairing line functions
-    field_module = x1.__struct__
-    zero = field_module.zero()
+    FieldMath = x1.__struct__
+    zero = FieldMath.zero()
 
-    m_numerator = field_module.sub(field_module.mul(y2, z1), field_module.mul(y1, z2))
-    m_denominator = field_module.sub(field_module.mul(x2, z1), field_module.mul(x1, z2))
+    m_numerator = FieldMath.sub(FieldMath.mul(y2, z1), FieldMath.mul(y1, z2))
+    m_denominator = FieldMath.sub(FieldMath.mul(x2, z1), FieldMath.mul(x1, z2))
 
     cond do
-      not field_module.eq(m_denominator, zero) ->
+      not FieldMath.eq(m_denominator, zero) ->
         num =
-          field_module.sub(
-            field_module.mul(
+          FieldMath.sub(
+            FieldMath.mul(
               m_numerator,
-              field_module.sub(field_module.mul(xt, z1), field_module.mul(x1, zt))
+              FieldMath.sub(FieldMath.mul(xt, z1), FieldMath.mul(x1, zt))
             ),
-            field_module.mul(
+            FieldMath.mul(
               m_denominator,
-              field_module.sub(field_module.mul(yt, z1), field_module.mul(y1, zt))
+              FieldMath.sub(FieldMath.mul(yt, z1), FieldMath.mul(y1, zt))
             )
           )
 
-        den = field_module.mul(m_denominator, field_module.mul(zt, z1))
+        den = FieldMath.mul(m_denominator, FieldMath.mul(zt, z1))
         {num, den}
 
       # P1 == P2, use tangent line
-      field_module.eq(m_numerator, zero) ->
-        m_num_tangent = field_module.mul(field_module.new(3), field_module.mul(x1, x1))
-        m_den_tangent = field_module.mul(field_module.new(2), field_module.mul(y1, z1))
+      FieldMath.eq(m_numerator, zero) ->
+        m_num_tangent = FieldMath.mul(FieldMath.new(3), FieldMath.mul(x1, x1))
+        m_den_tangent = FieldMath.mul(FieldMath.new(2), FieldMath.mul(y1, z1))
 
         num =
-          field_module.sub(
-            field_module.mul(
+          FieldMath.sub(
+            FieldMath.mul(
               m_num_tangent,
-              field_module.sub(field_module.mul(xt, z1), field_module.mul(x1, zt))
+              FieldMath.sub(FieldMath.mul(xt, z1), FieldMath.mul(x1, zt))
             ),
-            field_module.mul(
+            FieldMath.mul(
               m_den_tangent,
-              field_module.sub(field_module.mul(yt, z1), field_module.mul(y1, zt))
+              FieldMath.sub(FieldMath.mul(yt, z1), FieldMath.mul(y1, zt))
             )
           )
 
-        den = field_module.mul(m_den_tangent, field_module.mul(zt, z1))
+        den = FieldMath.mul(m_den_tangent, FieldMath.mul(zt, z1))
         {num, den}
 
       # Vertical line (P1 == -P2 or P1 or P2 is inf, though inf handled by m_denominator usually)
       true ->
-        num = field_module.sub(field_module.mul(xt, z1), field_module.mul(x1, zt))
-        den = field_module.mul(z1, zt)
+        num = FieldMath.sub(FieldMath.mul(xt, z1), FieldMath.mul(x1, zt))
+        den = FieldMath.mul(z1, zt)
         {num, den}
     end
   end

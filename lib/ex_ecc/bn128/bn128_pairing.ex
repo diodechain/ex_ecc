@@ -21,7 +21,7 @@ defmodule ExEcc.Bn128.Pairing do
     {xt, yt} = t
 
     # Determine field module based on point x1's type (simplified)
-    field_module =
+    FieldMath =
       cond do
         is_struct(x1, FQ) -> FQ
         # Used for G2 points directly in linefunc?
@@ -33,21 +33,21 @@ defmodule ExEcc.Bn128.Pairing do
       end
 
     cond do
-      not field_module.eq(x1, x2) ->
-        m = field_module.div(field_module.sub(y2, y1), field_module.sub(x2, x1))
-        field_module.sub(field_module.mul(m, field_module.sub(xt, x1)), field_module.sub(yt, y1))
+      not FieldMath.eq(x1, x2) ->
+        m = FieldMath.div(FieldMath.sub(y2, y1), FieldMath.sub(x2, x1))
+        FieldMath.sub(FieldMath.mul(m, FieldMath.sub(xt, x1)), FieldMath.sub(yt, y1))
 
-      field_module.eq(y1, y2) ->
+      FieldMath.eq(y1, y2) ->
         m =
-          field_module.div(
-            field_module.mul(field_module.new(3), field_module.pow(x1, 2)),
-            field_module.mul(field_module.new(2), y1)
+          FieldMath.div(
+            FieldMath.mul(FieldMath.new(3), FieldMath.pow(x1, 2)),
+            FieldMath.mul(FieldMath.new(2), y1)
           )
 
-        field_module.sub(field_module.mul(m, field_module.sub(xt, x1)), field_module.sub(yt, y1))
+        FieldMath.sub(FieldMath.mul(m, FieldMath.sub(xt, x1)), FieldMath.sub(yt, y1))
 
       true ->
-        field_module.sub(xt, x1)
+        FieldMath.sub(xt, x1)
     end
   end
 

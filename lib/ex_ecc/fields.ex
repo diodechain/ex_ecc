@@ -12,7 +12,7 @@ defmodule ExEcc.Fields do
     @fq12_modulus_coeffs FieldProperties.field_properties()["bls12_381"].fq12_modulus_coeffs
 
     def fq(n) do
-      FQ.new_fq(n, @field_modulus)
+      FQ.new(n, @field_modulus)
     end
 
     def fqp(coeffs, modulus_coeffs \\ @fq2_modulus_coeffs) do
@@ -35,7 +35,7 @@ defmodule ExEcc.Fields do
     @fq12_modulus_coeffs FieldProperties.field_properties()["bls12_381"].fq12_modulus_coeffs
 
     def fq(n) do
-      OptimizedFQ.new_fq(n, @field_modulus)
+      OptimizedFQ.new(n, @field_modulus)
     end
 
     def fqp(coeffs, modulus_coeffs \\ @fq2_modulus_coeffs) do

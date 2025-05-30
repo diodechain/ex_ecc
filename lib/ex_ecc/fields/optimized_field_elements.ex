@@ -23,13 +23,13 @@ defmodule ExEcc.Fields.OptimizedFieldElements do
   @type t_fq :: %__MODULE__{n: integer, field_modulus: integer}
 
   # Alias new_fq as new for test compatibility
-  def new(val, field_modulus), do: new_fq(val, field_modulus)
+  def new(val, field_modulus), do: new(val, field_modulus)
 
-  def new_fq(val, field_modulus) when is_integer(val) and is_integer(field_modulus) do
+  def new(val, field_modulus) when is_integer(val) and is_integer(field_modulus) do
     %__MODULE__{n: rem(val, field_modulus), field_modulus: field_modulus}
   end
 
-  def new_fq(fq_element = %__MODULE__{}, field_modulus) when is_integer(field_modulus) do
+  def new(fq_element = %__MODULE__{}, field_modulus) when is_integer(field_modulus) do
     if fq_element.field_modulus == field_modulus do
       fq_element
     else
@@ -132,7 +132,7 @@ defmodule ExEcc.Fields.OptimizedFieldElements do
   end
 
   def ensure_fq(val, field_modulus) when is_integer(val) do
-    new_fq(val, field_modulus)
+    new(val, field_modulus)
   end
 
   def ensure_fq(fq = %__MODULE__{}, field_modulus) do

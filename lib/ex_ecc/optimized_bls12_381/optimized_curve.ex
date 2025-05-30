@@ -27,7 +27,7 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedCurve do
 
   @b Fields.fq(4)
 
-  # Original @b2 FQ2.new({4, 4}) -> FQP.new_fqp([FQ.new_fq(4, @fm), FQ.new_fq(4, @fm)], @fq2_coeffs, @fm)
+  # Original @b2 FQ2.new({4, 4}) -> FQP.new_fqp([FQ.new(4, @fm), FQ.new(4, @fm)], @fq2_coeffs, @fm)
   @b2 Fields.fq2([4, 4])
 
   # Original @b12 FQ12.new(Tuple.pad({4}, 12, 0))

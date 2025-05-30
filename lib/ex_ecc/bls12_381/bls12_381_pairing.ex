@@ -1,6 +1,5 @@
 defmodule ExEcc.Bls12_381.Bls12381Pairing do
   alias ExEcc.Fields.OptimizedFieldElements, as: FQ
-  alias ExEcc.Fields.OptimizedBls12381FQ2, as: FQ2
   alias ExEcc.Fields.FQ12
   alias ExEcc.Bls12_381.Bls12381Curve, as: Curve
 
@@ -27,37 +26,34 @@ defmodule ExEcc.Bls12_381.Bls12381Pairing do
     {x2, y2} = p2
     {xt, yt} = t
 
-    # Determine field type from one of the point coordinates
-    field_module = elem_module(x1)
-
     cond do
-      not field_module.eq(x1, x2) ->
+      not FieldMath.eq(x1, x2) ->
         # m = (y2 - y1) / (x2 - x1)
-        m = field_module.divide(field_module.subtract(y2, y1), field_module.subtract(x2, x1))
+        m = FieldMath.divide(FieldMath.sub(y2, y1), FieldMath.sub(x2, x1))
         # return m * (xt - x1) - (yt - y1)
-        field_module.subtract(
-          field_module.multiply(m, field_module.subtract(xt, x1)),
-          field_module.subtract(yt, y1)
+        FieldMath.sub(
+          FieldMath.multiply(m, FieldMath.sub(xt, x1)),
+          FieldMath.sub(yt, y1)
         )
 
       # x1 == x2 is implied by falling through the first condition
-      field_module.eq(y1, y2) ->
+      FieldMath.eq(y1, y2) ->
         # m = 3 * x1**2 / (2 * y1)
         m =
-          field_module.divide(
-            field_module.multiply(field_module.new(3, field_modulus()), field_module.pow(x1, 2)),
-            field_module.multiply(field_module.new(2, field_modulus()), y1)
+          FieldMath.divide(
+            FieldMath.multiply(FieldMath.new(3, field_modulus()), FieldMath.pow(x1, 2)),
+            FieldMath.multiply(FieldMath.new(2, field_modulus()), y1)
           )
 
         # return m * (xt - x1) - (yt - y1)
-        field_module.subtract(
-          field_module.multiply(m, field_module.subtract(xt, x1)),
-          field_module.subtract(yt, y1)
+        FieldMath.sub(
+          FieldMath.multiply(m, FieldMath.sub(xt, x1)),
+          FieldMath.sub(yt, y1)
         )
 
       # x1 == x2 and y1 != y2 (P1 and P2 are inverses, line is vertical)
       true ->
-        field_module.subtract(xt, x1)
+        FieldMath.sub(xt, x1)
     end
   end
 
@@ -154,15 +150,6 @@ defmodule ExEcc.Bls12_381.Bls12381Pairing do
     field_modulus_val = field_modulus()
     exponent_val = div(trunc(:math.pow(field_modulus_val, 12)) - 1, Curve.curve_order())
     FQ12.pow(f_val, exponent_val)
-  end
-
-  defp elem_module(elem) do
-    case elem do
-      %FQ{} -> FQ
-      %FQ2{} -> FQ2
-      %FQ12{} -> FQ12
-      _ -> raise "Invalid element type"
-    end
   end
 
   def ate_loop_count, do: @ate_loop_count

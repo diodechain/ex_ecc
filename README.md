@@ -10,4 +10,6 @@ Same goes for the tests.
 
 Original python files are in py_ecc/ and tests/ the new ported files are in lib/ and test/ correspondingly.
 
+Elixir does not have class inheritance but py_ecc field maths is heavily based on that. So to keep the port mostly source similiar there is an Elixir specific FieldMath module that handles inheritance.
+
 Unused module attributes are covered with getters such as `def b(), do: @b` to avoid warnings.

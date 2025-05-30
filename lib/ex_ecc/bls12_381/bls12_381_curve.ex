@@ -39,7 +39,7 @@ defmodule ExEcc.Bls12_381.Bls12381Curve do
   Returns the G1 generator point for BLS12-381 curve.
   """
   def g1 do
-    {FQ.new_fq(@g1_x, @field_modulus), FQ.new_fq(@g1_y, @field_modulus)}
+    {FQ.new(@g1_x, @field_modulus), FQ.new(@g1_y, @field_modulus)}
   end
 
   @doc """
@@ -82,7 +82,7 @@ defmodule ExEcc.Bls12_381.Bls12381Curve do
 
         b_val =
           if FieldMath == FQ,
-            do: FQ.new_fq(@b, @field_modulus),
+            do: FQ.new(@b, @field_modulus),
             else: FQ2.new([@b2, 0], @field_modulus)
 
         FieldMath.equal?(y_squared, FieldMath.add(x_cubed, b_val))
@@ -113,12 +113,12 @@ defmodule ExEcc.Bls12_381.Bls12381Curve do
 
         fq_2 =
           if FieldMath == FQ,
-            do: FQ.new_fq(2, @field_modulus),
+            do: FQ.new(2, @field_modulus),
             else: FQ2.new([2, 0], @field_modulus)
 
         fq_3 =
           if FieldMath == FQ,
-            do: FQ.new_fq(3, @field_modulus),
+            do: FQ.new(3, @field_modulus),
             else: FQ2.new([3, 0], @field_modulus)
 
         three_x_squared = FieldMath.mul(fq_3, FieldMath.mul(x, x))

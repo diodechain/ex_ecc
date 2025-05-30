@@ -26,7 +26,7 @@ defmodule ExECC.BLS12381 do
   defdelegate final_exponentiate(f), to: Pairing
 
   # Field operations
-  defdelegate new_fq(val, field_modulus), to: FQ
+  defdelegate new(val, field_modulus), to: FQ
   defdelegate new_fq2(coeffs, field_modulus), to: FQ2
   defdelegate new_fq12(coeffs, field_modulus), to: FQ12
 

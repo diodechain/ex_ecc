@@ -1,4 +1,4 @@
-defmodule ExEcc.Fields.FieldElements do
+defmodule ExEcc.Fields.FQ do
   alias ExEcc.Utils
   # alias ExEcc.Typing # Assuming types will be defined here
 
@@ -29,11 +29,11 @@ defmodule ExEcc.Fields.FieldElements do
   This function would typically be part of a specific field module that provides the modulus.
   Example: `MyField.FQ.new(value)`
   """
-  def new_fq(val, field_modulus) when is_integer(val) and is_integer(field_modulus) do
+  def new(val, field_modulus) when is_integer(val) and is_integer(field_modulus) do
     %__MODULE__{n: rem(val, field_modulus), field_modulus: field_modulus}
   end
 
-  def new_fq(fq_element = %__MODULE__{}, field_modulus) when is_integer(field_modulus) do
+  def new(fq_element = %__MODULE__{}, field_modulus) when is_integer(field_modulus) do
     if fq_element.field_modulus == field_modulus do
       fq_element
     else
@@ -121,7 +121,7 @@ defmodule ExEcc.Fields.FieldElements do
 
   # Helper to ensure a value is an FQ element for operations
   defp ensure_fq(val, field_modulus) when is_integer(val) do
-    new_fq(val, field_modulus)
+    new(val, field_modulus)
   end
 
   defp ensure_fq(fq = %__MODULE__{}, field_modulus) do
@@ -176,20 +176,13 @@ end
 # and modulus_coeffs (also FQ elements or integers representing them).
 # The `degree` will be the length of modulus_coeffs.
 
-defmodule FQP do
-  alias ExEcc.Fields.FieldElements, as: FQMain
+defmodule ExEcc.Fields.FQP do
   alias ExEcc.Utils
+  alias ExEcc.Fields.FQ
 
   defstruct coeffs: [], modulus_coeffs: [], degree: 0, field_modulus: nil
 
-  @type t_fqp :: %__MODULE__{
-          coeffs: list(FQMain.t_fq()),
-          modulus_coeffs: list(FQMain.t_fq()) | list(integer),
-          degree: integer,
-          field_modulus: integer
-        }
-
-  def new_fqp(coeffs, modulus_coeffs, field_modulus)
+  def new(coeffs, modulus_coeffs, field_modulus)
       when is_list(coeffs) and is_list(modulus_coeffs) and is_integer(field_modulus) do
     if Enum.any?(coeffs, &is_nil/1) do
       raise "FQP.new_fqp: One of the element coefficients is nil: #{inspect(coeffs)}"
@@ -203,13 +196,13 @@ defmodule FQP do
 
     padded_coeffs =
       if length(coeffs) < degree do
-        coeffs ++ List.duplicate(FQMain.zero(field_modulus), degree - length(coeffs))
+        coeffs ++ List.duplicate(FQ.zero(field_modulus), degree - length(coeffs))
       else
         Enum.take(coeffs, degree)
       end
 
-    fq_coeffs = Enum.map(padded_coeffs, &FQMain.new_fq(&1, field_modulus))
-    fq_modulus_coeffs = Enum.map(modulus_coeffs, &FQMain.new_fq(&1, field_modulus))
+    fq_coeffs = Enum.map(padded_coeffs, &FQ.new(&1, field_modulus))
+    fq_modulus_coeffs = Enum.map(modulus_coeffs, &FQ.new(&1, field_modulus))
 
     %__MODULE__{
       coeffs: fq_coeffs,
@@ -224,7 +217,7 @@ defmodule FQP do
       raise "Cannot add FQP elements from different fields or degrees"
     end
 
-    new_coeffs = Enum.zip_with(fqp1.coeffs, fqp2.coeffs, &FQMain.add(&1, &2))
+    new_coeffs = Enum.zip_with(fqp1.coeffs, fqp2.coeffs, &FQ.add(&1, &2))
     %__MODULE__{fqp1 | coeffs: new_coeffs}
   end
 
@@ -401,8 +394,8 @@ end
 
 # FQ2 - Quadratic extension field
 # FQ2 is FQP where degree = 2 and modulus_coeffs are fixed (e.g., u^2 - beta = 0)
-defmodule FQ2 do
-  alias ExEcc.Fields.FieldElements.FQP
+defmodule ExEcc.Fields.FQ2 do
+  alias ExEcc.Fields.FQP
 
   @type t_fq2 :: FQP.t_fqp()
 
@@ -446,8 +439,8 @@ end
 
 # FQ12 - Twelfth extension field
 # FQ12 is FQP where degree = 12 and modulus_coeffs are fixed (e.g., u^12 - beta = 0)
-defmodule FQ12 do
-  alias ExEcc.Fields.FieldElements.FQP
+defmodule ExEcc.Fields.FQ12 do
+  alias ExEcc.Fields.FQP
 
   @type t_fq12 :: FQP.t_fqp()
 

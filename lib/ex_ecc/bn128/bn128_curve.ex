@@ -1,31 +1,30 @@
 defmodule ExEcc.Bn128.Bn128Curve do
   alias ExEcc.Fields.FieldElements, as: FQ
-  alias ExEcc.Fields.FieldElements.FQP, as: FQP
+  alias ExEcc.Fields.FQP
   alias ExEcc.Fields.FieldProperties
-  # alias ExEcc.Fields.Bn128FQP, as: FQP # Not directly used yet
 
   @curve_order 218_882_428_718_392_752_222_464_057_452_572_750_885_483_644_004_160_343_436_982_041_865_758_084_956_17
   @bn128_field_modulus FieldProperties.field_properties()["bn128"].field_modulus
   @bn128_fq2_modulus_coeffs FieldProperties.field_properties()["bn128"].fq2_modulus_coeffs
   @bn128_fq12_modulus_coeffs FieldProperties.field_properties()["bn128"].fq12_modulus_coeffs
 
-  @b FQ.new_fq(3, @bn128_field_modulus)
+  @b FQ.new(3, @bn128_field_modulus)
 
-  @b2_num_coeffs [FQ.new_fq(3, @bn128_field_modulus), FQ.new_fq(0, @bn128_field_modulus)]
-  @b2_den_coeffs [FQ.new_fq(9, @bn128_field_modulus), FQ.new_fq(1, @bn128_field_modulus)]
-  @b2_modulus_coeffs Enum.map(@bn128_fq2_modulus_coeffs, &FQ.new_fq(&1, @bn128_field_modulus))
+  @b2_num_coeffs [FQ.new(3, @bn128_field_modulus), FQ.new(0, @bn128_field_modulus)]
+  @b2_den_coeffs [FQ.new(9, @bn128_field_modulus), FQ.new(1, @bn128_field_modulus)]
+  @b2_modulus_coeffs Enum.map(@bn128_fq2_modulus_coeffs, &FQ.new(&1, @bn128_field_modulus))
 
-  @b2_num FQP.new_fqp(@b2_num_coeffs, @b2_modulus_coeffs, @bn128_field_modulus)
-  @b2_den FQP.new_fqp(@b2_den_coeffs, @b2_modulus_coeffs, @bn128_field_modulus)
+  @b2_num FQP.new(@b2_num_coeffs, @b2_modulus_coeffs, @bn128_field_modulus)
+  @b2_den FQP.new(@b2_den_coeffs, @b2_modulus_coeffs, @bn128_field_modulus)
   @b2 FQP.div(@b2_num, @b2_den)
 
   @b12_coeffs [
-    FQ.new_fq(3, @bn128_field_modulus) | List.duplicate(FQ.zero(@bn128_field_modulus), 11)
+    FQ.new(3, @bn128_field_modulus) | List.duplicate(FQ.zero(@bn128_field_modulus), 11)
   ]
-  @b12_modulus_coeffs Enum.map(@bn128_fq12_modulus_coeffs, &FQ.new_fq(&1, @bn128_field_modulus))
-  @b12 FQP.new_fqp(@b12_coeffs, @b12_modulus_coeffs, @bn128_field_modulus)
+  @b12_modulus_coeffs Enum.map(@bn128_fq12_modulus_coeffs, &FQ.new(&1, @bn128_field_modulus))
+  @b12 FQP.new(@b12_coeffs, @b12_modulus_coeffs, @bn128_field_modulus)
 
-  @g1 {FQ.new_fq(1, @bn128_field_modulus), FQ.new_fq(2, @bn128_field_modulus)}
+  @g1 {FQ.new(1, @bn128_field_modulus), FQ.new(2, @bn128_field_modulus)}
 
   @g2_x_c0 108_570_469_990_230_571_359_445_707_622_328_294_813_707_563_595_785_180_869_905_199_932_856_558_527_81
   @g2_x_c1 115_597_320_329_863_871_079_910_040_213_922_857_839_258_128_618_211_925_309_174_031_514_523_918_056_34
@@ -33,16 +32,16 @@ defmodule ExEcc.Bn128.Bn128Curve do
   @g2_y_c1 408_236_787_586_343_368_133_220_340_314_543_556_831_685_132_759_340_120_810_574_107_621_412_009_353_1
 
   @g2_x_coeffs [
-    FQ.new_fq(@g2_x_c0, @bn128_field_modulus),
-    FQ.new_fq(@g2_x_c1, @bn128_field_modulus)
+    FQ.new(@g2_x_c0, @bn128_field_modulus),
+    FQ.new(@g2_x_c1, @bn128_field_modulus)
   ]
   @g2_y_coeffs [
-    FQ.new_fq(@g2_y_c0, @bn128_field_modulus),
-    FQ.new_fq(@g2_y_c1, @bn128_field_modulus)
+    FQ.new(@g2_y_c0, @bn128_field_modulus),
+    FQ.new(@g2_y_c1, @bn128_field_modulus)
   ]
 
-  @g2 {FQP.new_fqp(@g2_x_coeffs, @b2_modulus_coeffs, @bn128_field_modulus),
-       FQP.new_fqp(@g2_y_coeffs, @b2_modulus_coeffs, @bn128_field_modulus)}
+  @g2 {FQP.new(@g2_x_coeffs, @b2_modulus_coeffs, @bn128_field_modulus),
+       FQP.new(@g2_y_coeffs, @b2_modulus_coeffs, @bn128_field_modulus)}
 
   @z1 nil
   @z2 nil
@@ -85,26 +84,26 @@ defmodule ExEcc.Bn128.Bn128Curve do
       fq_2_typed =
         case x do
           %FQP{modulus_coeffs: mc, degree: deg, field_modulus: fm} ->
-            FQP.new_fqp(
+            FQP.new(
               [
-                FQ.new_fq(2, fm) | List.duplicate(FQ.zero(fm), deg - 1)
+                FQ.new(2, fm) | List.duplicate(FQ.zero(fm), deg - 1)
               ],
               mc,
               fm
             )
 
           _ ->
-            FQ.new_fq(2, x.field_modulus)
+            FQ.new(2, x.field_modulus)
         end
 
-      fq_3 = FQ.new_fq(3, x.field_modulus)
+      fq_3 = FQ.new(3, x.field_modulus)
 
       fq_3_typed =
         case x do
           %FQP{modulus_coeffs: mc, degree: deg, field_modulus: fm} ->
-            FQP.new_fqp(
+            FQP.new(
               [
-                FQ.new_fq(3, fm) | List.duplicate(FQ.zero(fm), deg - 1)
+                FQ.new(3, fm) | List.duplicate(FQ.zero(fm), deg - 1)
               ],
               mc,
               fm
@@ -201,7 +200,7 @@ defmodule ExEcc.Bn128.Bn128Curve do
     FQ.zero(@bn128_field_modulus),
     FQ.one(@bn128_field_modulus) | List.duplicate(FQ.zero(@bn128_field_modulus), 10)
   ]
-  @w FQP.new_fqp(@w_coeffs, @bn128_fq12_modulus_coeffs, @bn128_field_modulus)
+  @w FQP.new(@w_coeffs, @bn128_fq12_modulus_coeffs, @bn128_field_modulus)
 
   def neg(pt) when is_general_point(pt) or is_nil(pt) do
     if is_inf(pt) do
