@@ -111,6 +111,7 @@ defmodule ExEcc.Fields.FieldElements do
   # Comparison functions for ordering (Python's @total_ordering)
   def compare(fq1 = %__MODULE__{}, fq2_val) do
     fq2_n = if is_integer(fq2_val), do: fq2_val, else: ensure_fq(fq2_val, fq1.field_modulus).n
+
     cond do
       fq1.n > fq2_n -> 1
       fq1.n < fq2_n -> -1
@@ -145,307 +146,6 @@ defmodule ExEcc.Fields.FieldElements do
     %__MODULE__{n: 0, field_modulus: field_modulus}
   end
 
-  # FQP - Elements in polynomial extension fields
-  # This will be a struct containing a list of FQ elements (coeffs)
-  # and modulus_coeffs (also FQ elements or integers representing them).
-  # The `degree` will be the length of modulus_coeffs.
-
-  defmodule FQP do
-    alias ExEcc.Fields.FieldElements, as: FQMain
-    alias ExEcc.Utils
-
-    defstruct coeffs: [], modulus_coeffs: [], degree: 0, field_modulus: nil
-
-    @type t_fqp :: %__MODULE__{
-            coeffs: list(FQMain.t_fq()),
-            modulus_coeffs: list(FQMain.t_fq()) | list(integer),
-            degree: integer,
-            field_modulus: integer
-          }
-
-    def new_fqp(coeffs, modulus_coeffs, field_modulus)
-        when is_list(coeffs) and is_list(modulus_coeffs) and is_integer(field_modulus) do
-      if Enum.any?(coeffs, &is_nil/1) do
-        raise "FQP.new_fqp: One of the element coefficients is nil: #{inspect(coeffs)}"
-      end
-
-      if Enum.any?(modulus_coeffs, &is_nil/1) do
-        raise "FQP.new_fqp: One of the modulus coefficients is nil: #{inspect(modulus_coeffs)}"
-      end
-
-      degree = length(modulus_coeffs)
-      padded_coeffs =
-        if length(coeffs) < degree do
-          coeffs ++ List.duplicate(FQMain.zero(field_modulus), degree - length(coeffs))
-        else
-          Enum.take(coeffs, degree)
-        end
-
-      fq_coeffs = Enum.map(padded_coeffs, &FQMain.new_fq(&1, field_modulus))
-      fq_modulus_coeffs = Enum.map(modulus_coeffs, &FQMain.new_fq(&1, field_modulus))
-
-      %__MODULE__{
-        coeffs: fq_coeffs,
-        modulus_coeffs: fq_modulus_coeffs,
-        degree: degree,
-        field_modulus: field_modulus
-      }
-    end
-
-    def add(fqp1 = %__MODULE__{}, fqp2 = %__MODULE__{}) do
-      if fqp1.field_modulus != fqp2.field_modulus or fqp1.degree != fqp2.degree do
-        raise "Cannot add FQP elements from different fields or degrees"
-      end
-
-      new_coeffs = Enum.zip_with(fqp1.coeffs, fqp2.coeffs, &FQMain.add(&1, &2))
-      %__MODULE__{fqp1 | coeffs: new_coeffs}
-    end
-
-    def sub(fqp1 = %__MODULE__{}, fqp2 = %__MODULE__{}) do
-      if fqp1.field_modulus != fqp2.field_modulus or fqp1.degree != fqp2.degree do
-        raise "Cannot subtract FQP elements from different fields or degrees"
-      end
-
-      new_coeffs = Enum.zip_with(fqp1.coeffs, fqp2.coeffs, &FQMain.sub(&1, &2))
-      %__MODULE__{fqp1 | coeffs: new_coeffs}
-    end
-
-    def mul(fqp1 = %__MODULE__{}, fqp2 = %__MODULE__{}) do
-      if fqp1.field_modulus != fqp2.field_modulus or fqp1.degree != fqp2.degree do
-        raise "Cannot multiply FQP elements from different fields or degrees"
-      end
-
-      # Polynomial multiplication
-      product_coeffs = Enum.reduce(0..(fqp1.degree - 1), List.duplicate(FQMain.zero(fqp1.field_modulus), 2 * fqp1.degree - 1), fn i, acc ->
-        Enum.reduce(0..(fqp2.degree - 1), acc, fn j, acc2 ->
-          idx = i + j
-          current = Enum.at(acc2, idx)
-          new_val = FQMain.add(current, FQMain.mul(Enum.at(fqp1.coeffs, i), Enum.at(fqp2.coeffs, j)))
-          List.replace_at(acc2, idx, new_val)
-        end)
-      end)
-
-      # Reduce modulo the field polynomial
-      reduced_coeffs = reduce_polynomial(product_coeffs, fqp1.modulus_coeffs, fqp1.field_modulus)
-      %__MODULE__{fqp1 | coeffs: reduced_coeffs}
-    end
-
-    def divide(fqp1 = %__MODULE__{}, fqp2 = %__MODULE__{}) do
-      if fqp1.field_modulus != fqp2.field_modulus or fqp1.degree != fqp2.degree do
-        raise "Cannot divide FQP elements from different fields or degrees"
-      end
-
-      # Division in a field extension is multiplication by the inverse
-      mul(fqp1, inv(fqp2))
-    end
-
-    def div(fqp1, fqp2), do: divide(fqp1, fqp2)  # Add alias for div
-
-    def inv(fqp = %__MODULE__{}) do
-      if is_zero(fqp) do
-        raise "Cannot invert zero FQP element"
-      end
-
-      if fqp.degree == 1 do
-        # This is effectively an FQ element
-        inv_coeff0 = FQMain.pow(Enum.at(fqp.coeffs, 0), fqp.field_modulus - 2)
-        %__MODULE__{fqp | coeffs: [inv_coeff0]}
-      else
-        # Use Fermat's Little Theorem for extension fields: a^(q^d - 2)
-        q_power_d = :math.pow(fqp.field_modulus, fqp.degree) |> round()
-        exponent = q_power_d - 2
-        pow(fqp, exponent)
-      end
-    end
-
-    def pow(fqp_base = %__MODULE__{}, exponent) when is_integer(exponent) do
-      cond do
-        exponent == 0 ->
-          one(fqp_base.field_modulus, fqp_base.degree, fqp_base.modulus_coeffs)
-
-        exponent == 1 ->
-          fqp_base
-
-        rem(exponent, 2) == 0 ->
-          half_pow = pow(fqp_base, Kernel.div(exponent, 2))
-          mul(half_pow, half_pow)
-
-        true ->
-          half_pow = pow(fqp_base, Kernel.div(exponent, 2))
-          mul(mul(half_pow, half_pow), fqp_base)
-      end
-    end
-
-    def neg(fqp = %__MODULE__{}) do
-      new_coeffs = Enum.map(fqp.coeffs, &FQMain.neg/1)
-      %__MODULE__{fqp | coeffs: new_coeffs}
-    end
-
-    def equal?(fqp1 = %__MODULE__{}, fqp2 = %__MODULE__{}) do
-      if fqp1.field_modulus != fqp2.field_modulus or fqp1.degree != fqp2.degree do
-        false
-      else
-        Enum.zip_with(fqp1.coeffs, fqp2.coeffs, &FQMain.equal?/2)
-        |> Enum.all?()
-      end
-    end
-
-    def is_zero(fqp = %__MODULE__{}) do
-      Enum.all?(fqp.coeffs, &FQMain.equal?(&1, 0))
-    end
-
-    def is_one(fqp = %__MODULE__{}) do
-      [first | rest] = fqp.coeffs
-      FQMain.equal?(first, 1) and Enum.all?(rest, &FQMain.equal?(&1, 0))
-    end
-
-    def is_one(coeffs) when is_list(coeffs) do
-      [first | rest] = coeffs
-      FQMain.equal?(first, 1) and Enum.all?(rest, &FQMain.equal?(&1, 0))
-    end
-
-    def one(field_modulus, degree, modulus_coeffs) do
-      coeffs = [FQMain.one(field_modulus) | List.duplicate(FQMain.zero(field_modulus), degree - 1)]
-      %__MODULE__{
-        coeffs: coeffs,
-        modulus_coeffs: modulus_coeffs,
-        degree: degree,
-        field_modulus: field_modulus
-      }
-    end
-
-    def zero(field_modulus, degree, modulus_coeffs) do
-      coeffs = List.duplicate(FQMain.zero(field_modulus), degree)
-      %__MODULE__{
-        coeffs: coeffs,
-        modulus_coeffs: modulus_coeffs,
-        degree: degree,
-        field_modulus: field_modulus
-      }
-    end
-
-    # Helper functions for polynomial operations
-    defp reduce_polynomial(coeffs, modulus_coeffs, field_modulus) do
-      degree = length(modulus_coeffs)
-      if length(coeffs) < degree do
-        # Pad with FQ zeros to ensure correct length
-        coeffs ++ List.duplicate(FQMain.zero(field_modulus), degree - length(coeffs))
-      else
-        Enum.take(coeffs, degree)
-      end
-    end
-
-    def negate(fqp), do: neg(fqp)
-    def multiply(fqp1, fqp2), do: mul(fqp1, fqp2)
-    def eq(fqp1, fqp2), do: equal?(fqp1, fqp2)
-
-    def conjugate(fqp = %__MODULE__{}) do
-      # For FQP, conjugation is applying the Frobenius map n times
-      frobenius(fqp, fqp.degree)
-    end
-
-    def frobenius(fqp = %__MODULE__{}, _power) do
-      # Frobenius map: (a + b*w)^p = a^p + b^p*w^p
-      # For FQP, w^p = w^(p mod n)
-      p = fqp.field_modulus
-      new_coeffs = Enum.map(fqp.coeffs, fn coeff ->
-        FQMain.pow(coeff, p)
-      end)
-      %__MODULE__{fqp | coeffs: new_coeffs}
-    end
-  end
-
-  # defmodule FQP
-
-  # FQ2 - Quadratic extension field
-  # FQ2 is FQP where degree = 2 and modulus_coeffs are fixed (e.g., u^2 - beta = 0)
-  defmodule FQ2 do
-    alias ExEcc.Fields.FieldElements.FQP
-
-    @type t_fq2 :: FQP.t_fqp()
-
-    def new_fq2(coeffs, field_modulus) when is_list(coeffs) and is_integer(field_modulus) do
-      # For FQ2, the modulus polynomial is x^2 + 1 = 0 for BLS12-381
-      # The modulus coefficients are [-1, 0] for x^2 + 1 = 0
-      modulus_coeffs = [-1, 0]  # Using -1 as the non-residue for BLS12-381
-      FQP.new_fqp(coeffs, modulus_coeffs, field_modulus)
-    end
-
-    def add(a, b), do: FQP.add(a, b)
-    def sub(a, b), do: FQP.sub(a, b)
-    def mul(a, b), do: FQP.mul(a, b)
-    def divide(a, b), do: FQP.divide(a, b)
-    def pow(a, n), do: FQP.pow(a, n)
-    def neg(a), do: FQP.neg(a)
-    def equal?(a, b), do: FQP.equal?(a, b)
-    def is_zero(a), do: FQP.is_zero(a)
-    def is_one(a), do: FQP.is_one(a)
-
-    @doc """
-    Creates a new FQ2 element representing one in the field.
-    """
-    def one(field_modulus) when is_integer(field_modulus) do
-      FQP.one(field_modulus, 2, [-1, 0])
-    end
-
-    def zero(field_modulus) do
-      FQP.zero(field_modulus, 2, [-1, 0])
-    end
-
-    def sgn0(fq2 = %FQP{}) do
-      [x0, x1] = fq2.coeffs
-      sign_0 = rem(x0.n, 2)
-      zero_0 = x0.n == 0
-      sign_1 = rem(x1.n, 2)
-      rem(sign_0 + (if zero_0, do: sign_1, else: 0), 2)
-    end
-  end
-
-  # FQ12 - Twelfth extension field
-  # FQ12 is FQP where degree = 12 and modulus_coeffs are fixed (e.g., u^12 - beta = 0)
-  defmodule FQ12 do
-    alias ExEcc.Fields.FieldElements.FQP
-
-    @type t_fq12 :: FQP.t_fqp()
-
-    def new_fq12(coeffs, field_modulus) when is_list(coeffs) and is_integer(field_modulus) do
-      # For BLS12-381, FQ12 is constructed as a tower of extensions:
-      # 1. FQ2: x^2 + 1 = 0 (non-residue -1)
-      # 2. FQ6: v^3 - u = 0 where u is the non-residue in FQ2
-      # 3. FQ12: w^2 - v = 0 where v is the non-residue in FQ6
-      # The modulus polynomial for FQ12 is w^2 - v = 0
-      # The modulus coefficients are [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1] for w^2 - v = 0
-      modulus_coeffs = List.duplicate(0, 11) ++ [1]  # Using the correct non-residue for BLS12-381
-      FQP.new_fqp(coeffs, modulus_coeffs, field_modulus)
-    end
-
-    def add(a, b), do: FQP.add(a, b)
-    def sub(a, b), do: FQP.sub(a, b)
-    def mul(a, b), do: FQP.mul(a, b)
-    def divide(a, b), do: FQP.divide(a, b)
-    def pow(a, n), do: FQP.pow(a, n)
-    def neg(a), do: FQP.neg(a)
-    def equal?(a, b), do: FQP.equal?(a, b)
-    def is_zero(a), do: FQP.is_zero(a)
-    def is_one(a), do: FQP.is_one(a)
-
-    def one(field_modulus) do
-      FQP.one(field_modulus, 12, List.duplicate(0, 11) ++ [1])
-    end
-
-    def zero(field_modulus) do
-      FQP.zero(field_modulus, 12, List.duplicate(0, 11) ++ [1])
-    end
-
-    def sgn0(fq12 = %FQP{}) do
-      Enum.with_index(fq12.coeffs)
-      |> Enum.reduce(0, fn {c, i}, acc ->
-        acc + rem(c.n, 2) * :math.pow(2, i) |> round()
-      end)
-      |> rem(2)
-    end
-  end
-
   # Add aliases for backward compatibility
   def multiply(fq1, fq2), do: mul(fq1, fq2)
   def divide(fq1, fq2), do: field_div(fq1, fq2)
@@ -456,6 +156,7 @@ defmodule ExEcc.Fields.FieldElements do
     if fq.n == 0 do
       raise "Cannot invert zero element"
     end
+
     pow(fq, fq.field_modulus - 2)
   end
 
@@ -468,5 +169,323 @@ defmodule ExEcc.Fields.FieldElements do
     # For FQ, Frobenius map is identity
     fq
   end
+end
 
+# FQP - Elements in polynomial extension fields
+# This will be a struct containing a list of FQ elements (coeffs)
+# and modulus_coeffs (also FQ elements or integers representing them).
+# The `degree` will be the length of modulus_coeffs.
+
+defmodule FQP do
+  alias ExEcc.Fields.FieldElements, as: FQMain
+  alias ExEcc.Utils
+
+  defstruct coeffs: [], modulus_coeffs: [], degree: 0, field_modulus: nil
+
+  @type t_fqp :: %__MODULE__{
+          coeffs: list(FQMain.t_fq()),
+          modulus_coeffs: list(FQMain.t_fq()) | list(integer),
+          degree: integer,
+          field_modulus: integer
+        }
+
+  def new_fqp(coeffs, modulus_coeffs, field_modulus)
+      when is_list(coeffs) and is_list(modulus_coeffs) and is_integer(field_modulus) do
+    if Enum.any?(coeffs, &is_nil/1) do
+      raise "FQP.new_fqp: One of the element coefficients is nil: #{inspect(coeffs)}"
+    end
+
+    if Enum.any?(modulus_coeffs, &is_nil/1) do
+      raise "FQP.new_fqp: One of the modulus coefficients is nil: #{inspect(modulus_coeffs)}"
+    end
+
+    degree = length(modulus_coeffs)
+
+    padded_coeffs =
+      if length(coeffs) < degree do
+        coeffs ++ List.duplicate(FQMain.zero(field_modulus), degree - length(coeffs))
+      else
+        Enum.take(coeffs, degree)
+      end
+
+    fq_coeffs = Enum.map(padded_coeffs, &FQMain.new_fq(&1, field_modulus))
+    fq_modulus_coeffs = Enum.map(modulus_coeffs, &FQMain.new_fq(&1, field_modulus))
+
+    %__MODULE__{
+      coeffs: fq_coeffs,
+      modulus_coeffs: fq_modulus_coeffs,
+      degree: degree,
+      field_modulus: field_modulus
+    }
+  end
+
+  def add(fqp1 = %__MODULE__{}, fqp2 = %__MODULE__{}) do
+    if fqp1.field_modulus != fqp2.field_modulus or fqp1.degree != fqp2.degree do
+      raise "Cannot add FQP elements from different fields or degrees"
+    end
+
+    new_coeffs = Enum.zip_with(fqp1.coeffs, fqp2.coeffs, &FQMain.add(&1, &2))
+    %__MODULE__{fqp1 | coeffs: new_coeffs}
+  end
+
+  def sub(fqp1 = %__MODULE__{}, fqp2 = %__MODULE__{}) do
+    if fqp1.field_modulus != fqp2.field_modulus or fqp1.degree != fqp2.degree do
+      raise "Cannot subtract FQP elements from different fields or degrees"
+    end
+
+    new_coeffs = Enum.zip_with(fqp1.coeffs, fqp2.coeffs, &FQMain.sub(&1, &2))
+    %__MODULE__{fqp1 | coeffs: new_coeffs}
+  end
+
+  def mul(fqp1 = %__MODULE__{}, fqp2 = %__MODULE__{}) do
+    if fqp1.field_modulus != fqp2.field_modulus or fqp1.degree != fqp2.degree do
+      raise "Cannot multiply FQP elements from different fields or degrees"
+    end
+
+    # Polynomial multiplication
+    product_coeffs =
+      Enum.reduce(
+        0..(fqp1.degree - 1),
+        List.duplicate(FQMain.zero(fqp1.field_modulus), 2 * fqp1.degree - 1),
+        fn i, acc ->
+          Enum.reduce(0..(fqp2.degree - 1), acc, fn j, acc2 ->
+            idx = i + j
+            current = Enum.at(acc2, idx)
+
+            new_val =
+              FQMain.add(current, FQMain.mul(Enum.at(fqp1.coeffs, i), Enum.at(fqp2.coeffs, j)))
+
+            List.replace_at(acc2, idx, new_val)
+          end)
+        end
+      )
+
+    # Reduce modulo the field polynomial
+    reduced_coeffs = reduce_polynomial(product_coeffs, fqp1.modulus_coeffs, fqp1.field_modulus)
+    %__MODULE__{fqp1 | coeffs: reduced_coeffs}
+  end
+
+  def divide(fqp1 = %__MODULE__{}, fqp2 = %__MODULE__{}) do
+    if fqp1.field_modulus != fqp2.field_modulus or fqp1.degree != fqp2.degree do
+      raise "Cannot divide FQP elements from different fields or degrees"
+    end
+
+    # Division in a field extension is multiplication by the inverse
+    mul(fqp1, inv(fqp2))
+  end
+
+  # Add alias for div
+  def div(fqp1, fqp2), do: divide(fqp1, fqp2)
+
+  def inv(fqp = %__MODULE__{}) do
+    if is_zero(fqp) do
+      raise "Cannot invert zero FQP element"
+    end
+
+    if fqp.degree == 1 do
+      # This is effectively an FQ element
+      inv_coeff0 = FQMain.pow(Enum.at(fqp.coeffs, 0), fqp.field_modulus - 2)
+      %__MODULE__{fqp | coeffs: [inv_coeff0]}
+    else
+      # Use Fermat's Little Theorem for extension fields: a^(q^d - 2)
+      q_power_d = :math.pow(fqp.field_modulus, fqp.degree) |> round()
+      exponent = q_power_d - 2
+      pow(fqp, exponent)
+    end
+  end
+
+  def pow(fqp_base = %__MODULE__{}, exponent) when is_integer(exponent) do
+    cond do
+      exponent == 0 ->
+        one(fqp_base.field_modulus, fqp_base.degree, fqp_base.modulus_coeffs)
+
+      exponent == 1 ->
+        fqp_base
+
+      rem(exponent, 2) == 0 ->
+        half_pow = pow(fqp_base, Kernel.div(exponent, 2))
+        mul(half_pow, half_pow)
+
+      true ->
+        half_pow = pow(fqp_base, Kernel.div(exponent, 2))
+        mul(mul(half_pow, half_pow), fqp_base)
+    end
+  end
+
+  def neg(fqp = %__MODULE__{}) do
+    new_coeffs = Enum.map(fqp.coeffs, &FQMain.neg/1)
+    %__MODULE__{fqp | coeffs: new_coeffs}
+  end
+
+  def equal?(fqp1 = %__MODULE__{}, fqp2 = %__MODULE__{}) do
+    if fqp1.field_modulus != fqp2.field_modulus or fqp1.degree != fqp2.degree do
+      false
+    else
+      Enum.zip_with(fqp1.coeffs, fqp2.coeffs, &FQMain.equal?/2)
+      |> Enum.all?()
+    end
+  end
+
+  def is_zero(fqp = %__MODULE__{}) do
+    Enum.all?(fqp.coeffs, &FQMain.equal?(&1, 0))
+  end
+
+  def is_one(fqp = %__MODULE__{}) do
+    [first | rest] = fqp.coeffs
+    FQMain.equal?(first, 1) and Enum.all?(rest, &FQMain.equal?(&1, 0))
+  end
+
+  def is_one(coeffs) when is_list(coeffs) do
+    [first | rest] = coeffs
+    FQMain.equal?(first, 1) and Enum.all?(rest, &FQMain.equal?(&1, 0))
+  end
+
+  def one(field_modulus, degree, modulus_coeffs) do
+    coeffs = [FQMain.one(field_modulus) | List.duplicate(FQMain.zero(field_modulus), degree - 1)]
+
+    %__MODULE__{
+      coeffs: coeffs,
+      modulus_coeffs: modulus_coeffs,
+      degree: degree,
+      field_modulus: field_modulus
+    }
+  end
+
+  def zero(field_modulus, degree, modulus_coeffs) do
+    coeffs = List.duplicate(FQMain.zero(field_modulus), degree)
+
+    %__MODULE__{
+      coeffs: coeffs,
+      modulus_coeffs: modulus_coeffs,
+      degree: degree,
+      field_modulus: field_modulus
+    }
+  end
+
+  # Helper functions for polynomial operations
+  defp reduce_polynomial(coeffs, modulus_coeffs, field_modulus) do
+    degree = length(modulus_coeffs)
+
+    if length(coeffs) < degree do
+      # Pad with FQ zeros to ensure correct length
+      coeffs ++ List.duplicate(FQMain.zero(field_modulus), degree - length(coeffs))
+    else
+      Enum.take(coeffs, degree)
+    end
+  end
+
+  def negate(fqp), do: neg(fqp)
+  def multiply(fqp1, fqp2), do: mul(fqp1, fqp2)
+  def eq(fqp1, fqp2), do: equal?(fqp1, fqp2)
+
+  def conjugate(fqp = %__MODULE__{}) do
+    # For FQP, conjugation is applying the Frobenius map n times
+    frobenius(fqp, fqp.degree)
+  end
+
+  def frobenius(fqp = %__MODULE__{}, _power) do
+    # Frobenius map: (a + b*w)^p = a^p + b^p*w^p
+    # For FQP, w^p = w^(p mod n)
+    p = fqp.field_modulus
+
+    new_coeffs =
+      Enum.map(fqp.coeffs, fn coeff ->
+        FQMain.pow(coeff, p)
+      end)
+
+    %__MODULE__{fqp | coeffs: new_coeffs}
+  end
+end
+
+# defmodule FQP
+
+# FQ2 - Quadratic extension field
+# FQ2 is FQP where degree = 2 and modulus_coeffs are fixed (e.g., u^2 - beta = 0)
+defmodule FQ2 do
+  alias ExEcc.Fields.FieldElements.FQP
+
+  @type t_fq2 :: FQP.t_fqp()
+
+  def new_fq2(coeffs, field_modulus) when is_list(coeffs) and is_integer(field_modulus) do
+    # For FQ2, the modulus polynomial is x^2 + 1 = 0 for BLS12-381
+    # The modulus coefficients are [-1, 0] for x^2 + 1 = 0
+    # Using -1 as the non-residue for BLS12-381
+    modulus_coeffs = [-1, 0]
+    FQP.new_fqp(coeffs, modulus_coeffs, field_modulus)
+  end
+
+  def add(a, b), do: FQP.add(a, b)
+  def sub(a, b), do: FQP.sub(a, b)
+  def mul(a, b), do: FQP.mul(a, b)
+  def divide(a, b), do: FQP.divide(a, b)
+  def pow(a, n), do: FQP.pow(a, n)
+  def neg(a), do: FQP.neg(a)
+  def equal?(a, b), do: FQP.equal?(a, b)
+  def is_zero(a), do: FQP.is_zero(a)
+  def is_one(a), do: FQP.is_one(a)
+
+  @doc """
+  Creates a new FQ2 element representing one in the field.
+  """
+  def one(field_modulus) when is_integer(field_modulus) do
+    FQP.one(field_modulus, 2, [-1, 0])
+  end
+
+  def zero(field_modulus) do
+    FQP.zero(field_modulus, 2, [-1, 0])
+  end
+
+  def sgn0(fq2 = %FQP{}) do
+    [x0, x1] = fq2.coeffs
+    sign_0 = rem(x0.n, 2)
+    zero_0 = x0.n == 0
+    sign_1 = rem(x1.n, 2)
+    rem(sign_0 + if(zero_0, do: sign_1, else: 0), 2)
+  end
+end
+
+# FQ12 - Twelfth extension field
+# FQ12 is FQP where degree = 12 and modulus_coeffs are fixed (e.g., u^12 - beta = 0)
+defmodule FQ12 do
+  alias ExEcc.Fields.FieldElements.FQP
+
+  @type t_fq12 :: FQP.t_fqp()
+
+  def new_fq12(coeffs, field_modulus) when is_list(coeffs) and is_integer(field_modulus) do
+    # For BLS12-381, FQ12 is constructed as a tower of extensions:
+    # 1. FQ2: x^2 + 1 = 0 (non-residue -1)
+    # 2. FQ6: v^3 - u = 0 where u is the non-residue in FQ2
+    # 3. FQ12: w^2 - v = 0 where v is the non-residue in FQ6
+    # The modulus polynomial for FQ12 is w^2 - v = 0
+    # The modulus coefficients are [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1] for w^2 - v = 0
+    # Using the correct non-residue for BLS12-381
+    modulus_coeffs = List.duplicate(0, 11) ++ [1]
+    FQP.new_fqp(coeffs, modulus_coeffs, field_modulus)
+  end
+
+  def add(a, b), do: FQP.add(a, b)
+  def sub(a, b), do: FQP.sub(a, b)
+  def mul(a, b), do: FQP.mul(a, b)
+  def divide(a, b), do: FQP.divide(a, b)
+  def pow(a, n), do: FQP.pow(a, n)
+  def neg(a), do: FQP.neg(a)
+  def equal?(a, b), do: FQP.equal?(a, b)
+  def is_zero(a), do: FQP.is_zero(a)
+  def is_one(a), do: FQP.is_one(a)
+
+  def one(field_modulus) do
+    FQP.one(field_modulus, 12, List.duplicate(0, 11) ++ [1])
+  end
+
+  def zero(field_modulus) do
+    FQP.zero(field_modulus, 12, List.duplicate(0, 11) ++ [1])
+  end
+
+  def sgn0(fq12 = %FQP{}) do
+    Enum.with_index(fq12.coeffs)
+    |> Enum.reduce(0, fn {c, i}, acc ->
+      (acc + rem(c.n, 2) * :math.pow(2, i)) |> round()
+    end)
+    |> rem(2)
+  end
 end

@@ -1,15 +1,18 @@
 defmodule ExEcc.Fields.OptimizedBN128FQ2 do
   alias ExEcc.Fields.OptimizedFieldElements.FQP
 
-  @field_modulus 21888242871839275222246405745257275088548364400416034343698204186575808495617
-  @modulus_coeffs [1, 0]  # For BN128, the irreducible polynomial is x^2 + 1
+  @field_modulus 21_888_242_871_839_275_222_246_405_745_257_275_088_548_364_400_416_034_343_698_204_186_575_808_495_617
+  # For BN128, the irreducible polynomial is x^2 + 1
+  @modulus_coeffs [1, 0]
 
   defstruct coeffs: [], field_modulus: @field_modulus
 
   def new(coeffs) when is_list(coeffs) do
-    coeffs_mod = Enum.map(coeffs, fn c ->
-      rem(rem(c, @field_modulus) + @field_modulus, @field_modulus)
-    end)
+    coeffs_mod =
+      Enum.map(coeffs, fn c ->
+        rem(rem(c, @field_modulus) + @field_modulus, @field_modulus)
+      end)
+
     FQP.new_fqp(coeffs_mod, @modulus_coeffs, @field_modulus)
   end
 

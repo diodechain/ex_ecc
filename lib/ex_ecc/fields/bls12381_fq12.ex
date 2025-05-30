@@ -13,11 +13,13 @@ defmodule ExEcc.Fields.Bls12381FQ12 do
   def equal?(a, b), do: FQP.equal?(a, b)
   def is_zero(a), do: FQP.is_zero(a)
   def is_one(a), do: FQP.is_one(a)
-  def from_coords(x, y), do: FQP.new_fqp([x, y] ++ List.duplicate(0, 10), @modulus_coeffs, nil) # field_modulus must be provided
+  # field_modulus must be provided
+  def from_coords(x, y), do: FQP.new_fqp([x, y] ++ List.duplicate(0, 10), @modulus_coeffs, nil)
   def to_coords(a), do: a.coeffs
   def one(field_modulus), do: FQP.one(field_modulus, 12, @modulus_coeffs)
   def zero(field_modulus), do: FQP.zero(field_modulus, 12, @modulus_coeffs)
-  def new(val), do: FQP.new_fqp(val, @modulus_coeffs, nil) # field_modulus must be provided
+  # field_modulus must be provided
+  def new(val), do: FQP.new_fqp(val, @modulus_coeffs, nil)
   def multiply(a, b), do: FQP.mul(a, b)
   def negate(a), do: FQP.neg(a)
 

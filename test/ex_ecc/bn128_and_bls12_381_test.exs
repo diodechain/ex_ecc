@@ -38,27 +38,40 @@ defmodule ExEcc.Bn128AndBls12381Test do
     for {module, fq_module, _fq2_module, _fq12_module} <- @modules do
       mod = module
       fq_mod = fq_module
+
       test "#{inspect(mod)} FQ operations" do
         field_modulus = ExEcc.Bn128AndBls12381Test.get_field_modulus(unquote(mod))
         fq_module = unquote(fq_module)
 
-        assert fq_module.multiply(fq_module.new(2, field_modulus), fq_module.new(2, field_modulus)) == fq_module.new(4, field_modulus)
+        assert fq_module.multiply(
+                 fq_module.new(2, field_modulus),
+                 fq_module.new(2, field_modulus)
+               ) == fq_module.new(4, field_modulus)
 
-        result1 = fq_module.add(
-          fq_module.divide(fq_module.new(2, field_modulus), fq_module.new(7, field_modulus)),
-          fq_module.divide(fq_module.new(9, field_modulus), fq_module.new(7, field_modulus))
-        )
-        expected1 = fq_module.divide(fq_module.new(11, field_modulus), fq_module.new(7, field_modulus))
+        result1 =
+          fq_module.add(
+            fq_module.divide(fq_module.new(2, field_modulus), fq_module.new(7, field_modulus)),
+            fq_module.divide(fq_module.new(9, field_modulus), fq_module.new(7, field_modulus))
+          )
+
+        expected1 =
+          fq_module.divide(fq_module.new(11, field_modulus), fq_module.new(7, field_modulus))
+
         assert result1 == expected1
 
-        result2 = fq_module.add(
-          fq_module.multiply(fq_module.new(2, field_modulus), fq_module.new(7, field_modulus)),
-          fq_module.multiply(fq_module.new(9, field_modulus), fq_module.new(7, field_modulus))
-        )
-        expected2 = fq_module.multiply(fq_module.new(11, field_modulus), fq_module.new(7, field_modulus))
+        result2 =
+          fq_module.add(
+            fq_module.multiply(fq_module.new(2, field_modulus), fq_module.new(7, field_modulus)),
+            fq_module.multiply(fq_module.new(9, field_modulus), fq_module.new(7, field_modulus))
+          )
+
+        expected2 =
+          fq_module.multiply(fq_module.new(11, field_modulus), fq_module.new(7, field_modulus))
+
         assert result2 == expected2
 
-        assert fq_module.pow(fq_module.new(9, field_modulus), field_modulus) == fq_module.new(9, field_modulus)
+        assert fq_module.pow(fq_module.new(9, field_modulus), field_modulus) ==
+                 fq_module.new(9, field_modulus)
 
         neg_one = fq_module.negate(fq_module.new(1, field_modulus))
         assert neg_one.n > 0
@@ -71,6 +84,7 @@ defmodule ExEcc.Bn128AndBls12381Test do
     for {module, _fq_module, fq2_module, _fq12_module} <- @modules do
       mod = module
       fq2_mod = fq2_module
+
       test "#{inspect(mod)} FQ2 operations" do
         field_modulus = ExEcc.Bn128AndBls12381Test.get_field_modulus(unquote(mod))
         fq2_module = unquote(fq2_mod)
@@ -83,17 +97,21 @@ defmodule ExEcc.Bn128AndBls12381Test do
         assert fq2_module.add(x, f) == fpx
         assert fq2_module.divide(f, f) == one
 
-        result1 = fq2_module.add(
-          fq2_module.divide(one, f),
-          fq2_module.divide(x, f)
-        )
+        result1 =
+          fq2_module.add(
+            fq2_module.divide(one, f),
+            fq2_module.divide(x, f)
+          )
+
         expected1 = fq2_module.divide(fq2_module.add(one, x), f)
         assert result1 == expected1
 
-        result2 = fq2_module.add(
-          fq2_module.multiply(one, f),
-          fq2_module.multiply(x, f)
-        )
+        result2 =
+          fq2_module.add(
+            fq2_module.multiply(one, f),
+            fq2_module.multiply(x, f)
+          )
+
         expected2 = fq2_module.multiply(fq2_module.add(one, x), f)
         assert result2 == expected2
 
@@ -111,6 +129,7 @@ defmodule ExEcc.Bn128AndBls12381Test do
   describe "G1 objects" do
     for {module, _fq_module, _fq2_module, _fq12_module} <- @modules do
       mod = module
+
       test "#{inspect(mod)} G1 operations" do
         g1 = apply(unquote(mod), :g1, [])
         z1 = apply(unquote(mod), :z1, [])
@@ -135,6 +154,7 @@ defmodule ExEcc.Bn128AndBls12381Test do
   describe "G2 objects" do
     for {module, _fq_module, _fq2_module, _fq12_module} <- @modules do
       mod = module
+
       test "#{inspect(mod)} G2 operations" do
         g2 = apply(unquote(mod), :g2, [])
         z2 = apply(unquote(mod), :z2, [])
@@ -162,6 +182,7 @@ defmodule ExEcc.Bn128AndBls12381Test do
       mod = module
       fq12_mod = fq12_module
       pairing_module = if mod == Bn128, do: Pairing, else: Bls12381Pairing
+
       test "#{inspect(mod)} pairing operations" do
         g1 = apply(unquote(mod), :g1, [])
         g2 = apply(unquote(mod), :g2, [])

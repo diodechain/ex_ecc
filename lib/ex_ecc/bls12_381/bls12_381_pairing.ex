@@ -35,7 +35,10 @@ defmodule ExEcc.Bls12_381.Bls12381Pairing do
         # m = (y2 - y1) / (x2 - x1)
         m = field_module.divide(field_module.subtract(y2, y1), field_module.subtract(x2, x1))
         # return m * (xt - x1) - (yt - y1)
-        field_module.subtract(field_module.multiply(m, field_module.subtract(xt, x1)), field_module.subtract(yt, y1))
+        field_module.subtract(
+          field_module.multiply(m, field_module.subtract(xt, x1)),
+          field_module.subtract(yt, y1)
+        )
 
       # x1 == x2 is implied by falling through the first condition
       field_module.eq(y1, y2) ->
@@ -47,7 +50,10 @@ defmodule ExEcc.Bls12_381.Bls12381Pairing do
           )
 
         # return m * (xt - x1) - (yt - y1)
-        field_module.subtract(field_module.multiply(m, field_module.subtract(xt, x1)), field_module.subtract(yt, y1))
+        field_module.subtract(
+          field_module.multiply(m, field_module.subtract(xt, x1)),
+          field_module.subtract(yt, y1)
+        )
 
       # x1 == x2 and y1 != y2 (P1 and P2 are inverses, line is vertical)
       true ->
@@ -97,23 +103,27 @@ defmodule ExEcc.Bls12_381.Bls12381Pairing do
       # R starts as Q
       # f starts as FQ12.one()
       {_final_r, final_f} =
-        Enum.reduce(@log_ate_loop_count..0//-1, {q_fq12, FQ12.new([1] ++ List.duplicate(0, 11), field_modulus())}, fn i, {r_acc, f_acc} ->
-          # f = f * f * linefunc(R, R, P)
-          f_doubled = FQ12.mul(f_acc, f_acc)
-          f_new = FQ12.mul(f_doubled, linefunc(r_acc, r_acc, p_fq12))
-          # double function needs to handle FQ12 points
-          r_new = Curve.double(r_acc)
+        Enum.reduce(
+          @log_ate_loop_count..0//-1,
+          {q_fq12, FQ12.new([1] ++ List.duplicate(0, 11), field_modulus())},
+          fn i, {r_acc, f_acc} ->
+            # f = f * f * linefunc(R, R, P)
+            f_doubled = FQ12.mul(f_acc, f_acc)
+            f_new = FQ12.mul(f_doubled, linefunc(r_acc, r_acc, p_fq12))
+            # double function needs to handle FQ12 points
+            r_new = Curve.double(r_acc)
 
-          if Bitwise.band(@ate_loop_count, Bitwise.bsl(1, i)) != 0 do
-            # f = f * linefunc(R, Q, P)
-            f_updated = FQ12.mul(f_new, linefunc(r_new, q_fq12, p_fq12))
-            # add function needs to handle FQ12 points
-            r_updated = Curve.add(r_new, q_fq12)
-            {r_updated, f_updated}
-          else
-            {r_new, f_new}
+            if Bitwise.band(@ate_loop_count, Bitwise.bsl(1, i)) != 0 do
+              # f = f * linefunc(R, Q, P)
+              f_updated = FQ12.mul(f_new, linefunc(r_new, q_fq12, p_fq12))
+              # add function needs to handle FQ12 points
+              r_updated = Curve.add(r_new, q_fq12)
+              {r_updated, f_updated}
+            else
+              {r_new, f_new}
+            end
           end
-        end)
+        )
 
       # Final exponentiation
       exponent = div(trunc(:math.pow(field_modulus(), 12)) - 1, Curve.curve_order())

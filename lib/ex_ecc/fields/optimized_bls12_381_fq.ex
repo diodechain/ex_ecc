@@ -12,7 +12,10 @@ defmodule ExEcc.Fields.OptimizedBls12381FQ do
   end
 
   def new(n, field_modulus) when is_integer(n) and is_integer(field_modulus) do
-    %__MODULE__{n: rem(rem(n, field_modulus) + field_modulus, field_modulus), field_modulus: field_modulus}
+    %__MODULE__{
+      n: rem(rem(n, field_modulus) + field_modulus, field_modulus),
+      field_modulus: field_modulus
+    }
   end
 
   def one(field_modulus \\ @field_modulus) do
@@ -67,7 +70,10 @@ defmodule ExEcc.Fields.OptimizedBls12381FQ do
   end
 
   def negate(fq = %__MODULE__{}) do
-    %__MODULE__{n: rem(-fq.n + fq.field_modulus, fq.field_modulus), field_modulus: fq.field_modulus}
+    %__MODULE__{
+      n: rem(-fq.n + fq.field_modulus, fq.field_modulus),
+      field_modulus: fq.field_modulus
+    }
   end
 
   def neg(fq = %__MODULE__{}), do: negate(fq)
@@ -89,6 +95,7 @@ defmodule ExEcc.Fields.OptimizedBls12381FQ do
 
   def compare(fq1 = %__MODULE__{}, fq2_val) do
     fq2_n = if is_integer(fq2_val), do: fq2_val, else: ensure_fq(fq2_val, fq1.field_modulus).n
+
     cond do
       fq1.n > fq2_n -> 1
       fq1.n < fq2_n -> -1
@@ -108,6 +115,7 @@ defmodule ExEcc.Fields.OptimizedBls12381FQ do
     if fq.field_modulus != field_modulus do
       raise "Cannot operate on FQ elements from different fields without explicit conversion."
     end
+
     fq
   end
 

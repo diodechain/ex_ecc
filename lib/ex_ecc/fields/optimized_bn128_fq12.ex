@@ -1,7 +1,7 @@
 defmodule ExEcc.Fields.OptimizedBN128FQ12 do
   alias ExEcc.Fields.OptimizedFieldElements.FQP
 
-  @field_modulus 21888242871839275222246405745257275088548364400416034343698204186575808495617
+  @field_modulus 21_888_242_871_839_275_222_246_405_745_257_275_088_548_364_400_416_034_343_698_204_186_575_808_495_617
   @modulus_coeffs [0, 1, 0, 0, 0, 0, 9, 0, 0, 0, 0, 0]
 
   def new(coeffs) when is_list(coeffs) do
@@ -13,14 +13,18 @@ defmodule ExEcc.Fields.OptimizedBN128FQ12 do
   end
 
   def new(coeffs, field_modulus) when is_list(coeffs) do
-    coeffs_mod = Enum.map(coeffs, fn
-      %ExEcc.Fields.OptimizedBN128FQ{n: n} ->
-        rem(rem(n, field_modulus) + field_modulus, field_modulus)
-      c when is_integer(c) ->
-        rem(rem(c, field_modulus) + field_modulus, field_modulus)
-      other ->
-        raise "Invalid coefficient type: #{inspect(other)}"
-    end)
+    coeffs_mod =
+      Enum.map(coeffs, fn
+        %ExEcc.Fields.OptimizedBN128FQ{n: n} ->
+          rem(rem(n, field_modulus) + field_modulus, field_modulus)
+
+        c when is_integer(c) ->
+          rem(rem(c, field_modulus) + field_modulus, field_modulus)
+
+        other ->
+          raise "Invalid coefficient type: #{inspect(other)}"
+      end)
+
     FQP.new_fqp(coeffs_mod, @modulus_coeffs, field_modulus)
   end
 

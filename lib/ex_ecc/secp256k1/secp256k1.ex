@@ -152,9 +152,11 @@ defmodule ExEcc.Secp256k1 do
 
   def privtopub(privkey_bytes) when is_binary(privkey_bytes) do
     priv_int = bytes_to_int(privkey_bytes)
+
     if priv_int >= @n do
       raise ArgumentError, "Private key must be less than the curve order"
     end
+
     multiply(@g, priv_int)
   end
 
@@ -194,7 +196,7 @@ defmodule ExEcc.Secp256k1 do
     # v = 27 + (y % 2) ^ (0 if s * 2 < N else 1)
     # s_final = if s * 2 < N, do: s, else: N - s
     s_final = if s_val * 2 < @n, do: s_val, else: @n - s_val
-    v = 27 + rem(y_val, 2) + (if s_val * 2 < @n, do: 0, else: 1)
+    v = 27 + rem(y_val, 2) + if s_val * 2 < @n, do: 0, else: 1
 
     {v, r_val, s_final}
   end
@@ -223,6 +225,7 @@ defmodule ExEcc.Secp256k1 do
   end
 
   defp pow_mod(_base, 0, _mod, acc), do: acc
+
   defp pow_mod(base, exp, mod, acc) do
     if rem(exp, 2) == 1 do
       pow_mod(rem(base * base, mod), div(exp, 2), mod, rem(acc * base, mod))

@@ -235,7 +235,8 @@ defmodule ExEcc.Bls.Ciphersuites.G2MessageAugmentation do
   def dst, do: @dst
 
   @impl true
-  def sign(_sk, _message) do # Parameters unused in placeholder
+  # Parameters unused in placeholder
+  def sign(_sk, _message) do
     # In AUG, message for _CoreSign is PK || message
     # Need to get PK from SK first.
     # {:ok, pk_bytes} = sk_to_pk(sk) # Assuming sk_to_pk is implemented and returns {:ok, bytes}
@@ -245,14 +246,16 @@ defmodule ExEcc.Bls.Ciphersuites.G2MessageAugmentation do
   end
 
   @impl true
-  def verify(_pk, _message, _signature) do # Parameters unused in placeholder
+  # Parameters unused in placeholder
+  def verify(_pk, _message, _signature) do
     # augmented_message = pk <> message # pk is already bytes here
     # _core_verify(pk, augmented_message, signature, @dst)
     :not_implemented_aug_verify
   end
 
   @impl true
-  def aggregate_verify(_pks, _messages, _signature) do # Parameters unused in placeholder
+  # Parameters unused in placeholder
+  def aggregate_verify(_pks, _messages, _signature) do
     # augmented_messages = Enum.zip_with(pks, messages, fn pk_bytes, msg_bytes -> pk_bytes <> msg_bytes end)
     :not_implemented_aug_agg_verify
   end
@@ -264,29 +267,34 @@ defmodule ExEcc.Bls.Ciphersuites.G2ProofOfPossession do
   """
 
   use ExEcc.Bls.Ciphersuites.Base
-  @behaviour ExEcc.Bls.Ciphersuites.Base # Explicitly define behaviour
+  # Explicitly define behaviour
+  @behaviour ExEcc.Bls.Ciphersuites.Base
 
   @dst <<"BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_">>
-  @pop_tag <<"BLS_POP_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_">> # Tag for PoP
+  # Tag for PoP
+  @pop_tag <<"BLS_POP_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_">>
 
   def dst, do: @dst
   def pop_tag, do: @pop_tag
 
   # Regular Sign/Verify/AggregateVerify still use @dst
   @impl true
-  def sign(_sk, _message) do # Parameters unused in placeholder
+  # Parameters unused in placeholder
+  def sign(_sk, _message) do
     # _core_sign(sk, message, @dst)
     :not_implemented_pop_sign
   end
 
   @impl true
-  def verify(_pk, _message, _signature) do # Parameters unused in placeholder
+  # Parameters unused in placeholder
+  def verify(_pk, _message, _signature) do
     # _core_verify(pk, message, signature, @dst)
     :not_implemented_pop_verify
   end
 
   @impl true
-  def aggregate_verify(_pks, _messages, _signature) do # Parameters unused in placeholder
+  # Parameters unused in placeholder
+  def aggregate_verify(_pks, _messages, _signature) do
     # _core_aggregate_verify(pks, messages, signature, @dst)
     :not_implemented_pop_aggregate_verify
   end
@@ -295,20 +303,23 @@ defmodule ExEcc.Bls.Ciphersuites.G2ProofOfPossession do
   # For now, implementing directly here.
   # These use @_pop_tag as their DST.
 
-  def pop_prove(_sk) do # Parameter unused in placeholder
+  # Parameter unused in placeholder
+  def pop_prove(_sk) do
     # {:ok, pk_bytes} = sk_to_pk(sk) # This should give bytes
     # # The message to PopProve is the public key itself.
     # _core_sign(sk, pk_bytes, @_pop_tag) # Using the POP tag as DST
     :not_implemented_pop_prove
   end
 
-  def pop_verify(_pk, _proof) do # Parameters unused in placeholder
+  # Parameters unused in placeholder
+  def pop_verify(_pk, _proof) do
     # # The message to PopVerify is the public key itself.
     # _core_verify(pk, pk, proof, @_pop_tag) # pk is bytes, using POP tag
     :not_implemented_pop_verify_with_pop_tag
   end
 
-  def fast_aggregate_verify(_pks, _message, _signature) do # Parameters unused in placeholder
+  # Parameters unused in placeholder
+  def fast_aggregate_verify(_pks, _message, _signature) do
     # # This one is more complex. It's like _core_aggregate_verify but all messages are the same.
     # # It also checks that all PKs have a valid PoP.
     # # For now, placeholder.

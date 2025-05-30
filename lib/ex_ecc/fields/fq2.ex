@@ -1,16 +1,17 @@
 defmodule ExEcc.Fields.FQ2 do
   alias ExEcc.Utils
 
-  @field_modulus 21888242871839275222246405745257275088696311157297823662689037894645226208583
+  @field_modulus 21_888_242_871_839_275_222_246_405_745_257_275_088_696_311_157_297_823_662_689_037_894_645_226_208_583
 
   defstruct [:coeffs, :field_modulus]
 
   @type t :: %__MODULE__{
-    coeffs: list(integer),
-    field_modulus: integer
-  }
+          coeffs: list(integer),
+          field_modulus: integer
+        }
 
-  def new(coeffs, field_modulus) when is_list(coeffs) and length(coeffs) == 2 and is_integer(field_modulus) do
+  def new(coeffs, field_modulus)
+      when is_list(coeffs) and length(coeffs) == 2 and is_integer(field_modulus) do
     %__MODULE__{
       coeffs: Enum.map(coeffs, &rem(&1, field_modulus)),
       field_modulus: field_modulus
@@ -23,17 +24,23 @@ defmodule ExEcc.Fields.FQ2 do
 
   def add(fq2_1 = %__MODULE__{}, fq2_2) do
     fq2_2 = ensure_fq2(fq2_2, fq2_1.field_modulus)
-    new_coeffs = Enum.zip_with(fq2_1.coeffs, fq2_2.coeffs, fn a, b ->
-      rem(a + b, fq2_1.field_modulus)
-    end)
+
+    new_coeffs =
+      Enum.zip_with(fq2_1.coeffs, fq2_2.coeffs, fn a, b ->
+        rem(a + b, fq2_1.field_modulus)
+      end)
+
     %__MODULE__{coeffs: new_coeffs, field_modulus: fq2_1.field_modulus}
   end
 
   def subtract(fq2_1 = %__MODULE__{}, fq2_2) do
     fq2_2 = ensure_fq2(fq2_2, fq2_1.field_modulus)
-    new_coeffs = Enum.zip_with(fq2_1.coeffs, fq2_2.coeffs, fn a, b ->
-      rem(a - b, fq2_1.field_modulus)
-    end)
+
+    new_coeffs =
+      Enum.zip_with(fq2_1.coeffs, fq2_2.coeffs, fn a, b ->
+        rem(a - b, fq2_1.field_modulus)
+      end)
+
     %__MODULE__{coeffs: new_coeffs, field_modulus: fq2_1.field_modulus}
   end
 
@@ -84,6 +91,7 @@ defmodule ExEcc.Fields.FQ2 do
     if fq2.field_modulus != field_modulus do
       raise "Cannot operate on FQ2 elements from different fields"
     end
+
     fq2
   end
 
@@ -133,11 +141,16 @@ defmodule ExEcc.Fields.FQ2 do
 
   def pow(fq2 = %__MODULE__{}, exponent) when is_integer(exponent) do
     cond do
-      exponent == 0 -> one(fq2.field_modulus)
-      exponent == 1 -> fq2
+      exponent == 0 ->
+        one(fq2.field_modulus)
+
+      exponent == 1 ->
+        fq2
+
       rem(exponent, 2) == 0 ->
         half_pow = pow(fq2, Kernel.div(exponent, 2))
         multiply(half_pow, half_pow)
+
       true ->
         half_pow = pow(fq2, Kernel.div(exponent, 2))
         multiply(multiply(half_pow, half_pow), fq2)

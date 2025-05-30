@@ -15,11 +15,17 @@ defmodule ExEcc.Utils do
   def prime_field_inv(a, n) do
     # Ensure a is positive and within the field
     a = rem(a + n, n)
+
     cond do
-      a == 0 -> raise "Cannot find modular inverse of 0"
-      a == n -> raise "Cannot find modular inverse of n"
+      a == 0 ->
+        raise "Cannot find modular inverse of 0"
+
+      a == n ->
+        raise "Cannot find modular inverse of n"
+
       true ->
         {g, x, _y} = egcd(a, n)
+
         if g != 1 do
           raise "No modular inverse for #{a} mod #{n}"
         else
@@ -29,6 +35,7 @@ defmodule ExEcc.Utils do
   end
 
   defp egcd(a, 0), do: {a, 1, 0}
+
   defp egcd(a, b) do
     {g, x1, y1} = egcd(b, rem(a, b))
     {g, y1, x1 - div(a, b) * y1}
@@ -38,6 +45,7 @@ defmodule ExEcc.Utils do
   # Elixir typically uses lists for sequences. `p` is assumed to be a list.
   # The type `Union[int, "FQ", "optimized_FQ"]` needs to be resolved once FQ types are defined.
   def deg([]), do: 0
+
   def deg(p) when is_list(p) do
     d = length(p) - 1
     do_deg(p, d)
@@ -94,13 +102,19 @@ defmodule ExEcc.Utils do
   @doc """
   Computes the modular exponentiation of a number.
   """
-  def mod_pow(base, exponent, modulus) when is_integer(base) and is_integer(exponent) and is_integer(modulus) do
+  def mod_pow(base, exponent, modulus)
+      when is_integer(base) and is_integer(exponent) and is_integer(modulus) do
     cond do
-      exponent == 0 -> 1
-      exponent == 1 -> rem(base, modulus)
+      exponent == 0 ->
+        1
+
+      exponent == 1 ->
+        rem(base, modulus)
+
       rem(exponent, 2) == 0 ->
         half_pow = mod_pow(base, Kernel.div(exponent, 2), modulus)
         rem(half_pow * half_pow, modulus)
+
       true ->
         half_pow = mod_pow(base, Kernel.div(exponent, 2), modulus)
         rem(rem(half_pow * half_pow, modulus) * rem(base, modulus), modulus)
@@ -112,9 +126,14 @@ defmodule ExEcc.Utils do
   """
   def jacobi(a, n) when is_integer(a) and is_integer(n) and n > 0 and rem(n, 2) == 1 do
     a = rem(a, n)
+
     cond do
-      a == 0 -> 0
-      a == 1 -> 1
+      a == 0 ->
+        0
+
+      a == 1 ->
+        1
+
       a == 2 ->
         case rem(n, 8) do
           1 -> 1
@@ -122,8 +141,10 @@ defmodule ExEcc.Utils do
           5 -> -1
           7 -> 1
         end
+
       rem(a, 2) == 0 ->
         jacobi(2, n) * jacobi(div(a, 2), n)
+
       true ->
         if rem(a, 4) == 3 and rem(n, 4) == 3 do
           -jacobi(n, a)
@@ -146,8 +167,12 @@ defmodule ExEcc.Utils do
   def sqrt_mod(n, p) do
     # Tonelli-Shanks algorithm
     cond do
-      n == 0 -> 0
-      n == 1 -> 1
+      n == 0 ->
+        0
+
+      n == 1 ->
+        1
+
       true ->
         # Find Q and S such that p-1 = Q*2^S
         {q, s} = find_q_and_s(p - 1)
@@ -174,6 +199,7 @@ defmodule ExEcc.Utils do
   end
 
   defp tonelli_shanks_loop(1, r, _c, _m, _p), do: r
+
   defp tonelli_shanks_loop(t, r, c, m, p) do
     i = find_i(t, p)
     b = mod_pow(c, :math.pow(2, m - i - 1) |> trunc(), p)

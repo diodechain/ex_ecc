@@ -76,20 +76,29 @@ defmodule ExEcc.Bls12_381.Bls12381Curve do
 
       true ->
         {x, y} = pt
-        op_module = elem_module(x)
-        y_squared = op_module.multiply(y, y)
-        x_cubed = op_module.multiply(op_module.multiply(x, x), x)
-        b_val = if op_module == FQ, do: FQ.new_fq(@b, @field_modulus), else: FQ2.new([@b2, 0], @field_modulus)
-        op_module.equal?(y_squared, op_module.add(x_cubed, b_val))
+        FieldMath = elem_module(x)
+        y_squared = FieldMath.mul(y, y)
+        x_cubed = FieldMath.mul(FieldMath.mul(x, x), x)
+
+        b_val =
+          if FieldMath == FQ,
+            do: FQ.new_fq(@b, @field_modulus),
+            else: FQ2.new([@b2, 0], @field_modulus)
+
+        FieldMath.equal?(y_squared, FieldMath.add(x_cubed, b_val))
     end
   end
 
   def is_inf(pt) do
     cond do
-      is_nil(pt) -> true
+      is_nil(pt) ->
+        true
+
       {x, y} = pt ->
-        op_module = elem_module(x)
-        op_module.equal?(x, op_module.zero(@field_modulus)) and op_module.equal?(y, op_module.zero(@field_modulus))
+        FieldMath = elem_module(x)
+
+        FieldMath.equal?(x, FieldMath.zero(@field_modulus)) and
+          FieldMath.equal?(y, FieldMath.zero(@field_modulus))
     end
   end
 
@@ -100,16 +109,24 @@ defmodule ExEcc.Bls12_381.Bls12381Curve do
 
       true ->
         {x, y} = pt
-        op_module = elem_module(x)
-        fq_2 = if op_module == FQ, do: FQ.new_fq(2, @field_modulus), else: FQ2.new([2, 0], @field_modulus)
-        fq_3 = if op_module == FQ, do: FQ.new_fq(3, @field_modulus), else: FQ2.new([3, 0], @field_modulus)
+        FieldMath = elem_module(x)
 
-        three_x_squared = op_module.multiply(fq_3, op_module.multiply(x, x))
-        two_y = op_module.multiply(fq_2, y)
-        m = op_module.divide(three_x_squared, two_y)
+        fq_2 =
+          if FieldMath == FQ,
+            do: FQ.new_fq(2, @field_modulus),
+            else: FQ2.new([2, 0], @field_modulus)
 
-        new_x = op_module.subtract(op_module.multiply(m, m), op_module.multiply(fq_2, x))
-        new_y = op_module.subtract(op_module.multiply(m, op_module.subtract(x, new_x)), y)
+        fq_3 =
+          if FieldMath == FQ,
+            do: FQ.new_fq(3, @field_modulus),
+            else: FQ2.new([3, 0], @field_modulus)
+
+        three_x_squared = FieldMath.mul(fq_3, FieldMath.mul(x, x))
+        two_y = FieldMath.mul(fq_2, y)
+        m = FieldMath.divide(three_x_squared, two_y)
+
+        new_x = FieldMath.sub(FieldMath.mul(m, m), FieldMath.mul(fq_2, x))
+        new_y = FieldMath.sub(FieldMath.mul(m, FieldMath.sub(x, new_x)), y)
         {new_x, new_y}
     end
   end
@@ -125,22 +142,22 @@ defmodule ExEcc.Bls12_381.Bls12381Curve do
       true ->
         {x1, y1} = p1
         {x2, y2} = p2
-        op_module = elem_module(x1)
+        FieldMath = elem_module(x1)
 
         cond do
-          op_module.eq(x1, x2) and op_module.eq(y1, y2) ->
+          FieldMath.eq(x1, x2) and FieldMath.eq(y1, y2) ->
             double(p1)
 
-          op_module.eq(x1, x2) ->
-            if op_module == FQ, do: z1(), else: z2()
+          FieldMath.eq(x1, x2) ->
+            if FieldMath == FQ, do: z1(), else: z2()
 
           true ->
-            m_num = op_module.subtract(y2, y1)
-            m_den = op_module.subtract(x2, x1)
-            m = op_module.divide(m_num, m_den)
+            m_num = FieldMath.sub(y2, y1)
+            m_den = FieldMath.sub(x2, x1)
+            m = FieldMath.divide(m_num, m_den)
 
-            new_x = op_module.subtract(op_module.subtract(op_module.multiply(m, m), x1), x2)
-            new_y = op_module.subtract(op_module.multiply(m, op_module.subtract(x1, new_x)), y1)
+            new_x = FieldMath.sub(FieldMath.sub(FieldMath.mul(m, m), x1), x2)
+            new_y = FieldMath.sub(FieldMath.mul(m, FieldMath.sub(x1, new_x)), y1)
             {new_x, new_y}
         end
     end
@@ -170,8 +187,8 @@ defmodule ExEcc.Bls12_381.Bls12381Curve do
       pt
     else
       {x, y} = pt
-      op_module = elem_module(y)
-      {x, op_module.neg(y)}
+      FieldMath = elem_module(y)
+      {x, FieldMath.neg(y)}
     end
   end
 
@@ -188,8 +205,8 @@ defmodule ExEcc.Bls12_381.Bls12381Curve do
       true ->
         {x1, y1} = p1
         {x2, y2} = p2
-        op_module = elem_module(x1)
-        op_module.eq(x1, x2) and op_module.eq(y1, y2)
+        FieldMath = elem_module(x1)
+        FieldMath.eq(x1, x2) and FieldMath.eq(y1, y2)
     end
   end
 
@@ -199,7 +216,8 @@ defmodule ExEcc.Bls12_381.Bls12381Curve do
     case elem do
       %FQ{} -> FQ
       %FQ2{} -> FQ2
-      %{__struct__: FQP} -> FQ2  # Map FQP to FQ2 since FQ2 is built on FQP
+      # Map FQP to FQ2 since FQ2 is built on FQP
+      %{__struct__: FQP} -> FQ2
       _ -> raise "Invalid element type: #{inspect(elem)}"
     end
   end
