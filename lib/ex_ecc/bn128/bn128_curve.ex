@@ -1,4 +1,4 @@
-defmodule ExEcc.Bn128.Curve do
+defmodule ExEcc.Bn128.Bn128Curve do
   alias ExEcc.Fields.FieldElements, as: FQ
   alias ExEcc.Fields.FieldElements.FQP, as: FQP
   alias ExEcc.Fields.FieldProperties
@@ -13,14 +13,15 @@ defmodule ExEcc.Bn128.Curve do
 
   @b2_num_coeffs [FQ.new_fq(3, @bn128_field_modulus), FQ.new_fq(0, @bn128_field_modulus)]
   @b2_den_coeffs [FQ.new_fq(9, @bn128_field_modulus), FQ.new_fq(1, @bn128_field_modulus)]
+  @b2_modulus_coeffs Enum.map(@bn128_fq2_modulus_coeffs, &FQ.new_fq(&1, @bn128_field_modulus))
 
-  @b2 FQP.divide(
-    FQP.new_fqp(@b2_num_coeffs, [-1, 0, 1], @bn128_field_modulus),
-    FQP.new_fqp(@b2_den_coeffs, [-1, 0, 1], @bn128_field_modulus)
-  )
+  @b2_num FQP.new_fqp(@b2_num_coeffs, @b2_modulus_coeffs, @bn128_field_modulus)
+  @b2_den FQP.new_fqp(@b2_den_coeffs, @b2_modulus_coeffs, @bn128_field_modulus)
+  @b2 FQP.div(@b2_num, @b2_den)
 
   @b12_coeffs [FQ.new_fq(3, @bn128_field_modulus) | List.duplicate(FQ.zero(@bn128_field_modulus), 11)]
-  @b12 FQP.new_fqp(@b12_coeffs, @bn128_fq12_modulus_coeffs, @bn128_field_modulus)
+  @b12_modulus_coeffs Enum.map(@bn128_fq12_modulus_coeffs, &FQ.new_fq(&1, @bn128_field_modulus))
+  @b12 FQP.new_fqp(@b12_coeffs, @b12_modulus_coeffs, @bn128_field_modulus)
 
   @g1 {FQ.new_fq(1, @bn128_field_modulus), FQ.new_fq(2, @bn128_field_modulus)}
 
@@ -32,8 +33,8 @@ defmodule ExEcc.Bn128.Curve do
   @g2_x_coeffs [FQ.new_fq(@g2_x_c0, @bn128_field_modulus), FQ.new_fq(@g2_x_c1, @bn128_field_modulus)]
   @g2_y_coeffs [FQ.new_fq(@g2_y_c0, @bn128_field_modulus), FQ.new_fq(@g2_y_c1, @bn128_field_modulus)]
 
-  @g2 {FQP.new_fqp(@g2_x_coeffs, @bn128_fq2_modulus_coeffs, @bn128_field_modulus),
-       FQP.new_fqp(@g2_y_coeffs, @bn128_fq2_modulus_coeffs, @bn128_field_modulus)}
+  @g2 {FQP.new_fqp(@g2_x_coeffs, @b2_modulus_coeffs, @bn128_field_modulus),
+       FQP.new_fqp(@g2_y_coeffs, @b2_modulus_coeffs, @bn128_field_modulus)}
 
   @z1 nil
   @z2 nil
@@ -72,14 +73,22 @@ defmodule ExEcc.Bn128.Curve do
     else
       {x, y} = pt
       elem_module = module_for_point(x)
-      three = FQ.new_fq(3, x.field_modulus)
-      two = FQ.new_fq(2, x.field_modulus)
-      numerator = elem_module.mul(three, elem_module.pow(x, 2))
-      denominator = elem_module.mul(two, y)
-      m = elem_module.div(numerator, denominator)
-      newx = elem_module.sub(elem_module.pow(m, 2), elem_module.mul(two, x))
-      newy = elem_module.sub(elem_module.mul(m, elem_module.sub(x, newx)), y)
-      {newx, newy}
+      # Ensure numbers like 2 and 3 are FQ elements in the correct field
+      fq_2 = FQ.new_fq(2, x.field_modulus)
+      fq_3 = FQ.new_fq(3, x.field_modulus)
+
+      three_x_squared = elem_module.mul(fq_3, elem_module.pow(x, 2))
+      two_y = elem_module.mul(fq_2, y)
+
+      # If two_y is zero, the point is at infinity
+      if elem_module.equal?(two_y, FQ.zero(x.field_modulus)) do
+        nil
+      else
+        m = elem_module.div(three_x_squared, two_y)
+        new_x = elem_module.sub(elem_module.pow(m, 2), elem_module.mul(fq_2, x))
+        new_y = elem_module.sub(elem_module.mul(m, elem_module.sub(x, new_x)), y)
+        {new_x, new_y}
+      end
     end
   end
 

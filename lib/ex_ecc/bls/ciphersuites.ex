@@ -226,7 +226,7 @@ defmodule ExEcc.Bls.Ciphersuites.G2MessageAugmentation do
   use ExEcc.Bls.Ciphersuites.Base
   @behaviour ExEcc.Bls.Ciphersuites.Base
 
-  @_dst <<"BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_AUG_">> # Prefixed unused attribute
+  @dst <<"BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_AUG_">>
 
   @impl true
   def sign(_sk, _message) do # Parameters unused in placeholder
@@ -256,8 +256,8 @@ defmodule ExEcc.Bls.Ciphersuites.G2ProofOfPossession do
   use ExEcc.Bls.Ciphersuites.Base
   @behaviour ExEcc.Bls.Ciphersuites.Base # Explicitly define behaviour
 
-  @_dst <<"BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_">>
-  @_pop_tag <<"BLS_POP_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_">> # Tag for PoP
+  @dst <<"BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_">>
+  @pop_tag <<"BLS_POP_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_">> # Tag for PoP
 
   # Regular Sign/Verify/AggregateVerify still use @dst
   @impl true

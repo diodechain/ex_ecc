@@ -10,38 +10,34 @@ defmodule ExEcc.Utils do
 
   @doc """
   Extended Euclidean algorithm to find modular inverses for integers.
-
-  To address a == n edge case.
-  https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-09#section-4
-  inv0(x): This function returns the multiplicative inverse of x in
-  F, extended to all of F by fixing inv0(0) == 0.
+  Returns the modular multiplicative inverse of a modulo n.
   """
-  def prime_field_inv(a, n) when is_integer(a) and is_integer(n) do
-    a = rem(a, n)
-
-    if a == 0 do
-      0
-    else
-      # Elixir's :crypto.mod_inverse/2 might be a more direct equivalent for positive integers.
-      # This is a direct port of the Python logic.
-      loop_prime_field_inv(a, n, 1, 0, rem(a, n), n)
+  def prime_field_inv(a, n) do
+    # Ensure a is positive and within the field
+    a = rem(a + n, n)
+    cond do
+      a == 0 -> raise "Cannot find modular inverse of 0"
+      a == n -> raise "Cannot find modular inverse of n"
+      true ->
+        {g, x, _y} = egcd(a, n)
+        if g != 1 do
+          raise "No modular inverse for #{a} mod #{n}"
+        else
+          rem(x + n, n)
+        end
     end
   end
 
-  defp loop_prime_field_inv(_a, n, lm, _hm, low, _high) when low <= 1 do
-    rem(lm, n)
-  end
-
-  defp loop_prime_field_inv(a, n, lm, hm, low, high) do
-    r = div(high, low)
-    nm = hm - lm * r
-    new = high - low * r
-    loop_prime_field_inv(a, n, nm, lm, new, low)
+  defp egcd(a, 0), do: {a, 1, 0}
+  defp egcd(a, b) do
+    {g, x1, y1} = egcd(b, rem(a, b))
+    {g, y1, x1 - div(a, b) * y1}
   end
 
   # Utility methods for polynomial math
   # Elixir typically uses lists for sequences. `p` is assumed to be a list.
   # The type `Union[int, "FQ", "optimized_FQ"]` needs to be resolved once FQ types are defined.
+  def deg([]), do: 0
   def deg(p) when is_list(p) do
     d = length(p) - 1
     do_deg(p, d)
@@ -79,5 +75,128 @@ defmodule ExEcc.Utils do
     # end
     # # List.to_tuple(Enum.slice(o, 0, deg(o) + 1))
     :not_implemented_yet
+  end
+
+  @doc """
+  Computes the greatest common divisor of two integers.
+  """
+  def gcd(a, b) when is_integer(a) and is_integer(b) do
+    if b == 0, do: abs(a), else: gcd(b, rem(a, b))
+  end
+
+  @doc """
+  Computes the least common multiple of two integers.
+  """
+  def lcm(a, b) when is_integer(a) and is_integer(b) do
+    div(abs(a * b), gcd(a, b))
+  end
+
+  @doc """
+  Computes the modular exponentiation of a number.
+  """
+  def mod_pow(base, exponent, modulus) when is_integer(base) and is_integer(exponent) and is_integer(modulus) do
+    cond do
+      exponent == 0 -> 1
+      exponent == 1 -> rem(base, modulus)
+      rem(exponent, 2) == 0 ->
+        half_pow = mod_pow(base, Kernel.div(exponent, 2), modulus)
+        rem(half_pow * half_pow, modulus)
+      true ->
+        half_pow = mod_pow(base, Kernel.div(exponent, 2), modulus)
+        rem(rem(half_pow * half_pow, modulus) * rem(base, modulus), modulus)
+    end
+  end
+
+  @doc """
+  Computes the Jacobi symbol (a/n).
+  """
+  def jacobi(a, n) when is_integer(a) and is_integer(n) and n > 0 and rem(n, 2) == 1 do
+    a = rem(a, n)
+    cond do
+      a == 0 -> 0
+      a == 1 -> 1
+      a == 2 ->
+        case rem(n, 8) do
+          1 -> 1
+          3 -> -1
+          5 -> -1
+          7 -> 1
+        end
+      rem(a, 2) == 0 ->
+        jacobi(2, n) * jacobi(div(a, 2), n)
+      true ->
+        if rem(a, 4) == 3 and rem(n, 4) == 3 do
+          -jacobi(n, a)
+        else
+          jacobi(n, a)
+        end
+    end
+  end
+
+  @doc """
+  Computes the Legendre symbol (a/p).
+  """
+  def legendre(a, p) when is_integer(a) and is_integer(p) and p > 2 and rem(p, 2) == 1 do
+    jacobi(a, p)
+  end
+
+  @doc """
+  Computes the square root of a number modulo a prime.
+  """
+  def sqrt_mod(a, p) when is_integer(a) and is_integer(p) and p > 2 and rem(p, 2) == 1 do
+    a = rem(a, p)
+    cond do
+      a == 0 -> 0
+      legendre(a, p) != 1 -> nil
+      rem(p, 4) == 3 ->
+        mod_pow(a, div(p + 1, 4), p)
+      true ->
+        # Tonelli-Shanks algorithm
+        q = p - 1
+        s = 0
+        while rem(q, 2) == 0 do
+          q = div(q, 2)
+          s = s + 1
+        end
+
+        z = find_non_residue(p)
+        m = s
+        c = mod_pow(z, q, p)
+        t = mod_pow(a, q, p)
+        r = mod_pow(a, div(q + 1, 2), p)
+
+        while t != 1 do
+          i = 0
+          temp = t
+          while temp != 1 do
+            temp = mod_pow(temp, 2, p)
+            i = i + 1
+            if i == m do
+              nil
+            end
+          end
+
+          b = mod_pow(c, :math.pow(2, m - i - 1) |> trunc(), p)
+          m = i
+          c = mod_pow(b, 2, p)
+          t = rem(t * c, p)
+          r = rem(r * b, p)
+        end
+
+        r
+    end
+  end
+
+  defp find_non_residue(p) do
+    Enum.find(2..(p - 1), fn z ->
+      legendre(z, p) == -1
+    end)
+  end
+
+  defp while(condition, body) do
+    if condition.() do
+      body.()
+      while(condition, body)
+    end
   end
 end

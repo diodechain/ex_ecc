@@ -55,7 +55,7 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedCurve do
   # Helper to get the module (FQ or FQP) for point operations based on element type
   defp elem_op_module(%FQ{}), do: FQ
   defp elem_op_module(%FQP{}), do: FQP
-  defp elem_op_module(pt_elem) when is_map(pt_elem) and Map.has_key?(pt_elem, :coeffs) and Map.has_key?(pt_elem, :modulus_coeffs), do: FQP # FQP struct duck typing
+  defp elem_op_module(%{coeffs: _coeffs, modulus_coeffs: _modulus_coeffs}), do: FQP # FQP struct duck typing
   defp elem_op_module(_), do: FQ # Default for safety, or raise error
 
   def is_inf(pt) do

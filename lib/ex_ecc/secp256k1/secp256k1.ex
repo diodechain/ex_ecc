@@ -108,11 +108,6 @@ defmodule ExEcc.Secp256k1 do
 
   def from_jacobian({x, y, z}) do
     if z == 0 do
-      # This case implies point at infinity, typically represented differently or handled by context.
-      # For secp256k1, usually {0,0} is not a valid point. Let's return a marker or raise.
-      # Given inv(0, P) would be problematic. Python returns (0,0) if z=0 via inv(0,P)=0.
-      # Let's align: if z_inv is 0, coords will be 0.
-      # Or consider a specific representation for infinity like :infinity
       {0, 0}
     else
       z_inv = inv(z, @p)
@@ -156,7 +151,11 @@ defmodule ExEcc.Secp256k1 do
   end
 
   def privtopub(privkey_bytes) when is_binary(privkey_bytes) do
-    multiply(@g, bytes_to_int(privkey_bytes))
+    priv_int = bytes_to_int(privkey_bytes)
+    if priv_int >= @n do
+      raise ArgumentError, "Private key must be less than the curve order"
+    end
+    multiply(@g, priv_int)
   end
 
   def deterministic_generate_k(msghash_bytes, priv_bytes) do
@@ -175,12 +174,9 @@ defmodule ExEcc.Secp256k1 do
     v = :crypto.mac(:hmac, :sha256, k, v)
 
     # RFC 6979 Step H.3 (loop): Generate T until 0 < T < q
-    # The Python code directly returns bytes_to_int(hmac.new(k, v, hashlib.sha256).digest())
-    # This implies one iteration is assumed sufficient or the RFC loop is simplified.
-    # We will follow py_ecc's simplification for now.
-    # T = HMAC_K(V)
     t_bytes = :crypto.mac(:hmac, :sha256, k, v)
-    bytes_to_int(t_bytes)
+    t = bytes_to_int(t_bytes)
+    if t >= @n, do: deterministic_generate_k(msghash_bytes, priv_bytes), else: t
   end
 
   def ecdsa_raw_sign(msghash_bytes, priv_bytes) do
@@ -198,76 +194,40 @@ defmodule ExEcc.Secp256k1 do
     # v = 27 + (y % 2) ^ (0 if s * 2 < N else 1)
     # s_final = if s * 2 < N, do: s, else: N - s
     s_final = if s_val * 2 < @n, do: s_val, else: @n - s_val
+    v = 27 + rem(y_val, 2) + (if s_val * 2 < @n, do: 0, else: 1)
 
-    # y_parity = rem(y_val, 2)
-    # s_parity_check = if s_final == s_val, do: 0, else: 1 # 0 if s was not flipped, 1 if it was
-    # v_val = 27 + (y_parity ^ s_parity_check)
-    # Simpler: v = 27 + (y % 2) if s == s_final else 27 + ((y % 2) ^ 1)
-    # Or from py_ecc: 27 + ((y % 2) ^ (0 if s * 2 < N else 1))
-    # This means y_parity is XORed with 1 if s was flipped (s*2 >= N implies s_final = N-s)
-    v_val = 27 + Bitwise.bxor(rem(y_val, 2), if(s_val * 2 < @n, do: 0, else: 1))
-
-    {v_val, r_val, s_final}
+    {v, r_val, s_final}
   end
 
-  def ecdsa_raw_recover(msghash_bytes, {v_val, r_val, s_val}) do
-    unless v_val >= 27 and v_val <= 34 do
-      raise ArgumentError, "Invalid recovery ID v: #{v_val}"
-    end
-
-    unless r_val > 0 and r_val < @n do
-      raise ArgumentError, "Invalid r value: #{r_val}"
-    end
-
-    unless s_val > 0 and s_val < @n do
-      raise ArgumentError, "Invalid s value: #{s_val}"
-    end
-
+  def ecdsa_raw_recover(msghash_bytes, {v, r, s}) do
     z = bytes_to_int(msghash_bytes)
-    # x = r + n*k for k = 0 or 1
-    x_val = rem(r_val + @n * div(v_val - 27, 2), @p)
+    x = r
+    y_squared = rem(x * x * x + @a * x + @b, @p)
+    y = pow_mod(y_squared, div(@p + 1, 4), @p)
 
-    # y^2 = x^3 + ax + b (mod p)
-    # y^2 = x^3 + 7 (mod p) for secp256k1
-    y_sq = rem(x_val * x_val * x_val + @a * x_val + @b, @p)
-    y = modular_sqrt(y_sq, @p)
+    # Determine which y to use based on v
+    y = if rem(v, 2) == 0, do: y, else: @p - y
 
-    if rem(y, 2) != rem(v_val - 27, 2) do
-      y = rem(@p - y, @p)
-    end
+    # Calculate R = (x, y)
+    r_point = {x, y}
 
-    # Point R = (x, y)
-    r_inv = inv(r_val, @n)
-
-    # e = -z * r^-1 mod N
-    e_val = rem(-z * r_inv, @n)
-    # f = s * r^-1 mod N
-    f_val = rem(s_val * r_inv, @n)
-
-    # Q = eG + fR
-    eG = multiply(@g, e_val)
-    fR = multiply({x_val, y}, f_val)
-    add(eG, fR)
+    # Calculate Q = (z * s^-1) * R + (r * s^-1) * G
+    s_inv = inv(s, @n)
+    u1 = multiply(r_point, rem(z * s_inv, @n))
+    u2 = multiply(@g, rem(r * s_inv, @n))
+    add(u1, u2)
   end
 
-  # Modular square root using Tonelli-Shanks or similar for y^2 = n (mod p)
-  # For secp256k1, p % 4 == 3, so sqrt(n) = n^((p+1)/4) mod p
-  defp modular_sqrt(n, p) do
-    # Since P % 4 == 3 for secp256k1, we can use the simpler formula:
-    # x = n^((P+1)/4) mod P
-    exponent = div(p + 1, 4)
-    # This requires a modular exponentiation function for large integers.
-    # :crypto.mod_pow(base, exp, mod)
-    candidate = :crypto.mod_pow(n, exponent, p)
+  defp pow_mod(base, exp, mod) do
+    pow_mod(base, exp, mod, 1)
+  end
 
-    # Verify: candidate^2 mod p == n
-    if rem(candidate * candidate, p) == rem(n, p) do
-      candidate
+  defp pow_mod(_base, 0, _mod, acc), do: acc
+  defp pow_mod(base, exp, mod, acc) do
+    if rem(exp, 2) == 1 do
+      pow_mod(rem(base * base, mod), div(exp, 2), mod, rem(acc * base, mod))
     else
-      # This should not happen if n is a quadratic residue and p % 4 == 3.
-      # If n is not a quadratic residue, there is no sqrt.
-      # The calling context (ecdsa_raw_recover) implies a solution should exist.
-      raise "Failed to find modular square root, n may not be a quadratic residue or p is not suitable for this simple formula."
+      pow_mod(rem(base * base, mod), div(exp, 2), mod, acc)
     end
   end
 end

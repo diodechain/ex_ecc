@@ -51,4 +51,12 @@ defmodule ExEcc.Fields.FieldProperties do
       }
     }
   end
+
+  @doc """
+  Returns the field properties for a given curve name ("bn128" or "bls12_381").
+  """
+  @spec get_field_properties(String.t()) :: map() | nil
+  def get_field_properties(curve_name) do
+    field_properties()[curve_name]
+  end
 end

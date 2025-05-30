@@ -21,6 +21,9 @@ defmodule ExEcc.Fields.OptimizedFieldElements do
 
   @type t_fq :: %__MODULE__{n: integer, field_modulus: integer}
 
+  # Alias new_fq as new for test compatibility
+  def new(val, field_modulus), do: new_fq(val, field_modulus)
+
   def new_fq(val, field_modulus) when is_integer(val) and is_integer(field_modulus) do
     %__MODULE__{n: rem(val, field_modulus), field_modulus: field_modulus}
   end
@@ -33,19 +36,22 @@ defmodule ExEcc.Fields.OptimizedFieldElements do
     end
   end
 
+  # Alias add as add for test compatibility
   def add(fq1 = %__MODULE__{}, fq2_val) do
     fq2 = ensure_fq(fq2_val, fq1.field_modulus)
     val = rem(fq1.n + fq2.n, fq1.field_modulus)
     %__MODULE__{n: val, field_modulus: fq1.field_modulus}
   end
 
-  def mul(fq1 = %__MODULE__{}, fq2_val) do
+  # Alias mul as multiply for test compatibility
+  def multiply(fq1 = %__MODULE__{}, fq2_val) do
     fq2 = ensure_fq(fq2_val, fq1.field_modulus)
     val = rem(fq1.n * fq2.n, fq1.field_modulus)
     %__MODULE__{n: val, field_modulus: fq1.field_modulus}
   end
 
-  def sub(fq1 = %__MODULE__{}, fq2_val) do
+  # Alias sub as subtract for test compatibility
+  def subtract(fq1 = %__MODULE__{}, fq2_val) do
     fq2 = ensure_fq(fq2_val, fq1.field_modulus)
     val = rem(fq1.n - fq2.n, fq1.field_modulus)
     %__MODULE__{n: val, field_modulus: fq1.field_modulus}
@@ -56,6 +62,7 @@ defmodule ExEcc.Fields.OptimizedFieldElements do
     raise "Modulo Operation not yet supported by fields"
   end
 
+  # Alias divide as divide for test compatibility
   def divide(fq1 = %__MODULE__{}, fq2_val) do
     fq2 = ensure_fq(fq2_val, fq1.field_modulus)
     inv_fq2_n = Utils.prime_field_inv(fq2.n, fq1.field_modulus)
@@ -63,6 +70,7 @@ defmodule ExEcc.Fields.OptimizedFieldElements do
     %__MODULE__{n: val, field_modulus: fq1.field_modulus}
   end
 
+  # Alias pow as pow for test compatibility
   def pow(fq_base = %__MODULE__{}, exponent) when is_integer(exponent) do
     cond do
       exponent == 0 ->
@@ -73,17 +81,24 @@ defmodule ExEcc.Fields.OptimizedFieldElements do
 
       rem(exponent, 2) == 0 ->
         half_pow = pow(fq_base, Kernel.div(exponent, 2))
-        mul(half_pow, half_pow)
+        multiply(half_pow, half_pow)
 
       true ->
         half_pow = pow(fq_base, Kernel.div(exponent, 2))
-        mul(mul(half_pow, half_pow), fq_base)
+        multiply(multiply(half_pow, half_pow), fq_base)
     end
   end
 
-  def neg(fq = %__MODULE__{}) do
+  # Alias neg as negate for test compatibility
+  def negate(fq = %__MODULE__{}) do
     %__MODULE__{n: rem(-fq.n, fq.field_modulus), field_modulus: fq.field_modulus}
   end
+
+  # Add neg as an alias for negate
+  def neg(fq = %__MODULE__{}), do: negate(fq)
+
+  # Alias equal? as eq for test compatibility
+  def eq(fq1 = %__MODULE__{}, fq2_val), do: equal?(fq1, fq2_val)
 
   def equal?(fq1 = %__MODULE__{}, fq2_val) do
     cond do
@@ -136,13 +151,8 @@ defmodule ExEcc.Fields.OptimizedFieldElements do
 
   # --- Optimized FQP ---
   defmodule FQP do
-    # Alias to current module for FQ ops
-    alias ExEcc.Fields.OptimizedFieldElements, as: FQMain
     alias ExEcc.Utils
 
-    # In optimized version, coeffs are stored as integers, not FQ objects, for performance.
-    # `modulus_coeffs` might also be integers.
-    # `mc_tuples` is new here: List[Tuple[int, int]] - its usage needs to be understood from Python code.
     defstruct coeffs: [], modulus_coeffs: [], degree: 0, field_modulus: nil, mc_tuples: []
 
     @type t_fqp :: %__MODULE__{
@@ -158,347 +168,375 @@ defmodule ExEcc.Fields.OptimizedFieldElements do
 
     def new_fqp(coeffs, modulus_coeffs, field_modulus)
         when is_list(coeffs) and is_list(modulus_coeffs) and is_integer(field_modulus) do
-      # Optimized FQP doesn't convert coeffs to FQ objects immediately.
-      # It stores them as integers modulo field_modulus.
-      # Python: `self.coeffs = tuple(coeff % self.field_modulus for coeff in coeffs)` if coeffs[0] is int.
-      # Or `tuple(coeff.n % self.field_modulus for coeff in coeffs)` if FQ objects.
-      # Assuming input `coeffs` are integers for the optimized path.
-      processed_coeffs = Enum.map(coeffs, &rem(&1, field_modulus))
-      processed_modulus_coeffs = Enum.map(modulus_coeffs, &rem(&1, field_modulus))
+      if Enum.any?(coeffs, &is_nil/1) do
+        raise "FQP.new_fqp: One of the element coefficients is nil: #{inspect(coeffs)}"
+      end
+      if Enum.any?(modulus_coeffs, &is_nil/1) do
+        raise "FQP.new_fqp: One of the modulus coefficients is nil: #{inspect(modulus_coeffs)}"
+      end
 
-      # `mc_tuples` initialization - this needs to be figured out from its usage in Python.
-      # For now, an empty list or based on modulus_coeffs.
-      # Python FQP `__init__`: No `mc_tuples` init. It appears in FQ2/FQ12 optimized versions.
-      # So, for generic FQP, it might remain uninitialized or default.
+      degree = length(modulus_coeffs)
+      padded_coeffs =
+        if length(coeffs) < degree do
+          coeffs ++ List.duplicate(0, degree - length(coeffs))
+        else
+          Enum.take(coeffs, degree)
+        end
+
+      # Convert all coefficients to integers mod field_modulus
+      fq_coeffs = Enum.map(padded_coeffs, &rem(&1, field_modulus))
+      fq_modulus_coeffs = Enum.map(modulus_coeffs, &rem(&1, field_modulus))
+
+      # Create mc_tuples for optimized multiplication
+      mc_tuples = Enum.with_index(fq_modulus_coeffs) |> Enum.map(fn {c, i} -> {i, c} end)
 
       %__MODULE__{
-        coeffs: processed_coeffs,
-        modulus_coeffs: processed_modulus_coeffs,
-        # Or fixed based on type (FQ2, FQ12)
-        degree: length(modulus_coeffs),
+        coeffs: fq_coeffs,
+        modulus_coeffs: fq_modulus_coeffs,
+        degree: degree,
         field_modulus: field_modulus,
-        # Placeholder, to be confirmed by FQ2/FQ12 optimized versions
-        mc_tuples: []
+        mc_tuples: mc_tuples
       }
     end
-
-    # Basic arithmetic operations for FQP (coeffs are integers)
-    # These will need to perform operations and then take `rem field_modulus`.
 
     def add(fqp1 = %__MODULE__{}, fqp2 = %__MODULE__{}) do
       if fqp1.field_modulus != fqp2.field_modulus or fqp1.degree != fqp2.degree do
         raise "Cannot add FQP elements from different fields or degrees"
       end
 
-      # Ensure coeffs lists are aligned (e.g. by padding, or assuming they are already correct length)
-      # Python code `coeffs = [(x + y) % self.field_modulus for x, y in zip(self.coeffs, other.coeffs)]`
-      # This assumes `coeffs` are same length.
-      new_coeffs =
-        Enum.zip_with(fqp1.coeffs, fqp2.coeffs, fn x, y ->
-          rem(x + y, fqp1.field_modulus)
-        end)
+      new_coeffs = Enum.zip_with(fqp1.coeffs, fqp2.coeffs, fn a, b ->
+        rem(a + b, fqp1.field_modulus)
+      end)
 
       %__MODULE__{fqp1 | coeffs: new_coeffs}
     end
 
-    def sub(fqp1 = %__MODULE__{}, fqp2 = %__MODULE__{}) do
+    def subtract(fqp1 = %__MODULE__{}, fqp2 = %__MODULE__{}) do
       if fqp1.field_modulus != fqp2.field_modulus or fqp1.degree != fqp2.degree do
         raise "Cannot subtract FQP elements from different fields or degrees"
       end
 
-      new_coeffs =
-        Enum.zip_with(fqp1.coeffs, fqp2.coeffs, fn x, y ->
-          rem(x - y, fqp1.field_modulus)
-        end)
+      new_coeffs = Enum.zip_with(fqp1.coeffs, fqp2.coeffs, fn a, b ->
+        rem(a - b + fqp1.field_modulus, fqp1.field_modulus)
+      end)
 
       %__MODULE__{fqp1 | coeffs: new_coeffs}
     end
 
-    # `__mod__` for FQP was NotImplementedError
-    def modulo(_fqp1, _other) do
-      raise "Modulo Operation not yet supported by fields"
-    end
-
-    # Optimized mul: FQP by scalar (int or FQ) or FQP by FQP
-    def mul(fqp1 = %__MODULE__{}, other) do
-      fm = fqp1.field_modulus
-
-      cond do
-        is_integer(other) ->
-          scalar = rem(other, fm)
-          new_coeffs = Enum.map(fqp1.coeffs, &rem(&1 * scalar, fm))
-          %__MODULE__{fqp1 | coeffs: new_coeffs}
-
-        # FQ object
-        is_map(other) and Map.has_key?(other, :n) and Map.has_key?(other, :field_modulus) ->
-          # This case assumes `other` is an FQ struct from FQMain (OptimizedFieldElements.FQ)
-          # Its .n is already an integer mod fm.
-          scalar = other.n
-          new_coeffs = Enum.map(fqp1.coeffs, &rem(&1 * scalar, fm))
-          %__MODULE__{fqp1 | coeffs: new_coeffs}
-
-        # FQP multiplication
-        is_map(other) and Map.has_key?(other, :coeffs) ->
-          fqp2 = other
-
-          if fqp1.field_modulus != fqp2.field_modulus or fqp1.degree != fqp2.degree do
-            raise "Cannot multiply FQP elements from different fields or degrees"
-          end
-
-          # Python optimized FQP `__mul__`:
-          #   coeffs = [0] * self.degree
-          #   for i, c1 in enumerate(self.coeffs):
-          #       if c1 == 0: continue
-          #       for j, c2 in enumerate(other.coeffs):
-          #           if c2 == 0: continue
-          #           coeffs[(i + j) % self.degree] = (
-          #               coeffs[(i + j) % self.degree] + c1 * c2
-          #           ) % self.field_modulus
-          # This is the same (potentially simplified) polynomial multiplication logic as non-optimized.
-          res_coeffs_int = List.duplicate(0, fqp1.degree)
-
-          updates =
-            for {c1, i} <- Enum.with_index(fqp1.coeffs), c1 != 0 do
-              for {c2, j} <- Enum.with_index(fqp2.coeffs), c2 != 0 do
-                # Raw integer product
-                product = c1 * c2
-                target_idx = rem(i + j, fqp1.degree)
-                {target_idx, product}
-              end
-            end
-            |> List.flatten()
-
-          final_coeffs_int =
-            Enum.reduce(updates, res_coeffs_int, fn {idx, val_to_add}, acc_coeffs ->
-              current_val_at_idx = Enum.at(acc_coeffs, idx)
-              new_val_at_idx = rem(current_val_at_idx + val_to_add, fm)
-              List.replace_at(acc_coeffs, idx, new_val_at_idx)
-            end)
-
-          %__MODULE__{fqp1 | coeffs: final_coeffs_int}
-
-        true ->
-          raise "Type error: Expected an integer, FQ, or FQP element for multiplication"
-      end
-    end
-
-    # Optimized div: FQP by scalar (int or FQ) or FQP by FQP
-    def divide(fqp1 = %__MODULE__{}, other) do
-      fm = fqp1.field_modulus
-
-      cond do
-        is_integer(other) ->
-          inv_scalar = Utils.prime_field_inv(rem(other, fm), fm)
-          new_coeffs = Enum.map(fqp1.coeffs, &rem(&1 * inv_scalar, fm))
-          %__MODULE__{fqp1 | coeffs: new_coeffs}
-
-        # FQ object
-        is_map(other) and Map.has_key?(other, :n) and Map.has_key?(other, :field_modulus) ->
-          # other.n is already mod fm
-          inv_scalar = Utils.prime_field_inv(other.n, fm)
-          new_coeffs = Enum.map(fqp1.coeffs, &rem(&1 * inv_scalar, fm))
-          %__MODULE__{fqp1 | coeffs: new_coeffs}
-
-        # FQP division by FQP
-        is_map(other) and Map.has_key?(other, :coeffs) ->
-          fqp2 = other
-          # a / b = a * inv(b)
-          mul(fqp1, inv(fqp2))
-
-        true ->
-          raise "Type error: Expected an integer, FQ, or FQP element for division"
-      end
-    end
-
-    # Optimized pow for FQP (exponent is an integer)
-    def pow(fqp_base = %__MODULE__{}, exponent) when is_integer(exponent) do
-      cond do
-        exponent == 0 ->
-          %__MODULE__{fqp_base | coeffs: set_coeffs_to_one_opt(fqp_base)}
-
-        exponent == 1 ->
-          fqp_base
-
-        exponent < 0 ->
-          pow(inv(fqp_base), -exponent)
-
-        rem(exponent, 2) == 0 ->
-          half_pow = pow(fqp_base, Kernel.div(exponent, 2))
-          mul(half_pow, half_pow)
-
-        true ->
-          half_pow = pow(fqp_base, Kernel.div(exponent, 2))
-          mul(mul(half_pow, half_pow), fqp_base)
-      end
-    end
-
-    defp set_coeffs_to_one_opt(fqp = %__MODULE__{}) do
-      # Coeffs are integers: [1, 0, ..., 0]
-      [1 | List.duplicate(0, fqp.degree - 1)]
-    end
-
-    # `optimized_poly_rounded_div` - This was a method in Python, may need translation if used by inv().
-    # It seems it was not used by the FQP.inv in Python optimized code, which uses EEA instead.
-    # Python: `inv` uses `extended_euclidean_algorithm_polynomial` for FQP.
-    # Similar to non-optimized, will use Fermat's Little Theorem for now: a^(q^d - 2)
-    def inv(fqp = %__MODULE__{}) do
-      if equal?(fqp, zero(fqp.field_modulus, fqp.degree, fqp.modulus_coeffs, fqp.mc_tuples)) do
-        raise ZeroDivisionError, "Cannot invert zero FQP element"
+    def multiply(fqp1 = %__MODULE__{}, fqp2 = %__MODULE__{}) do
+      if fqp1.field_modulus != fqp2.field_modulus or fqp1.degree != fqp2.degree do
+        raise "Cannot multiply FQP elements from different fields or degrees"
       end
 
-      # For optimized FQP, coeffs are integers. Field order is field_modulus^degree.
-      # If degree 1, it's an FQ element (represented by a single integer).
-      if fqp.degree == 1 do
-        inv_coeff0 = Utils.prime_field_inv(Enum.at(fqp.coeffs, 0), fqp.field_modulus)
-        %__MODULE__{fqp | coeffs: [inv_coeff0]}
+      # For quadratic extensions (degree 2), we can optimize multiplication
+      if fqp1.degree == 2 do
+        [a1, b1] = fqp1.coeffs
+        [a2, b2] = fqp2.coeffs
+        p = fqp1.field_modulus
+
+        # For BLS12-381, the irreducible polynomial is x^2 + 1
+        # So (a1 + b1*i) * (a2 + b2*i) = (a1*a2 - b1*b2) + (a1*b2 + a2*b1)*i
+        a = rem(a1 * a2 - b1 * b2, p)
+        b = rem(a1 * b2 + a2 * b1, p)
+
+        %__MODULE__{fqp1 | coeffs: [a, b]}
       else
-        q_power_d = :math.pow(fqp.field_modulus, fqp.degree) |> round()
-        exponent = q_power_d - 2
-        pow(fqp, exponent)
-      end
-    end
+        # Use the optimized multiplication algorithm with mc_tuples for higher degrees
+        new_coeffs = Enum.map(0..(fqp1.degree - 1), fn i ->
+          Enum.reduce(fqp1.mc_tuples, 0, fn {j, c}, acc ->
+            rem(acc + Enum.at(fqp1.coeffs, i) * Enum.at(fqp2.coeffs, j) * c, fqp1.field_modulus)
+          end)
+        end)
 
-    def equal?(fqp1 = %__MODULE__{}, fqp2) do
-      cond do
-        is_map(fqp2) and Map.has_key?(fqp2, :coeffs) and Map.has_key?(fqp2, :degree) ->
-          # Comparing two FQP-like structs (coeffs are lists of integers)
-          # Direct list comparison for integers
-          fqp1.field_modulus == fqp2.field_modulus and
-            fqp1.degree == fqp2.degree and
-            fqp1.coeffs == fqp2.coeffs
-
-        true ->
-          # Compare to FQP.zero
-          if fqp2 == 0 do
-            equal?(
-              fqp1,
-              zero(fqp1.field_modulus, fqp1.degree, fqp1.modulus_coeffs, fqp1.mc_tuples)
-            )
-          else
-            false
-          end
+        %__MODULE__{fqp1 | coeffs: new_coeffs}
       end
     end
 
     def neg(fqp = %__MODULE__{}) do
-      fm = fqp.field_modulus
-      neg_coeffs = Enum.map(fqp.coeffs, &rem(-&1, fm))
-      %__MODULE__{fqp | coeffs: neg_coeffs}
+      new_coeffs = Enum.map(fqp.coeffs, &rem(-&1 + fqp.field_modulus, fqp.field_modulus))
+      %__MODULE__{fqp | coeffs: new_coeffs}
     end
 
-    # sgn0 for FQP: Python code is complex, uses `sum(sgn0(c) * 2**i for i,c in enumerate(self.coeffs))`
-    # where sgn0 for individual coeffs (which are FQ like) is `n % 2`.
-    # Since our coeffs are integers, sgn0(c) is `rem(c,2)`.
-    def sgn0(fqp = %__MODULE__{}) do
-      Enum.with_index(fqp.coeffs)
-      |> Enum.reduce(0, fn {c, i}, acc ->
-        acc + rem(c, 2) * round(:math.pow(2, i))
-      end)
-      # The final result seems to be mod 2 based on hash_to_curve draft
-      |> rem(2)
-    end
-
-    @spec one(integer, integer, list(integer), list({integer, integer})) :: t_fqp
-    def one(field_modulus, degree, modulus_coeffs_repr, mc_tuples_repr) do
-      coeffs = [1 | List.duplicate(0, degree - 1)]
-
-      %__MODULE__{
-        coeffs: coeffs,
-        # Assumed to be list of ints
-        modulus_coeffs: modulus_coeffs_repr,
-        degree: degree,
-        field_modulus: field_modulus,
-        mc_tuples: mc_tuples_repr
-      }
-    end
-
-    @spec zero(integer, integer, list(integer), list({integer, integer})) :: t_fqp
-    def zero(field_modulus, degree, modulus_coeffs_repr, mc_tuples_repr) do
-      coeffs = List.duplicate(0, degree)
-
-      %__MODULE__{
-        coeffs: coeffs,
-        modulus_coeffs: modulus_coeffs_repr,
-        degree: degree,
-        field_modulus: field_modulus,
-        mc_tuples: mc_tuples_repr
-      }
-    end
-  end
-
-  # defmodule FQP
-
-  # --- Optimized FQ2 ---
-  defmodule FQ2 do
-    alias ExEcc.Fields.OptimizedFieldElements.FQP
-
-    @type t_fq2 :: FQP.t_fqp()
-    # FQ2 specific modulus_coeffs (e.g. for u^2 - beta = 0) and mc_tuples
-    # These would typically come from curve parameters.
-    defstruct [:coeffs, :modulus_coeffs, :degree, :field_modulus, :mc_tuples]
-
-    def new_fq2(coeffs_list, fq2_modulus_coeffs, mc_tuples_for_fq2, field_modulus)
-        # e.g. [-1, 0] for u^2+1=0
-        when is_list(coeffs_list) and length(coeffs_list) == 2 and
-               is_list(fq2_modulus_coeffs) and
-               is_list(mc_tuples_for_fq2) and
-               is_integer(field_modulus) do
-      %FQP{}
-      |> FQP.new_fqp(coeffs_list, fq2_modulus_coeffs, field_modulus)
-      |> Map.put(:__struct__, __MODULE__)
-      |> Map.put(:mc_tuples, mc_tuples_for_fq2)
-      # Explicitly degree 2
-      |> Map.put(:degree, 2)
-    end
-
-    # sgn0 for FQ2: Python code has specific override.
-    # `(sgn0(self.coeffs[0]) + sgn0(self.coeffs[1]) * 2) % 2` if `Q == -1` (BLS12_381)
-    # `sgn0(self.coeffs[0])` otherwise. This depends on curve params (Q = FQ2_MODULUS_COEFFS[0])
-    # For now, general FQP sgn0 will be inherited. Needs specialization if porting specific curves.
-    # The optimized FQ2 `sgn0` in Python is:
-    # if self.FQ2_MODULUS_COEFFS[0] == -1:  # BLS12_381 specific optimization
-    #   return (self.coeffs[0] % 2 + self.coeffs[1] % 2 * 2) % 2
-    # else:
-    #   return self.coeffs[0] % 2
-    # This requires FQ2_MODULUS_COEFFS to be accessible here.
-    # Let's pass it or retrieve from the struct.
-    def sgn0(fq2 = %__MODULE__{coeffs: [c0, c1], modulus_coeffs: [mc0 | _]}) do
-      # Assuming mc0 is the equivalent of FQ2_MODULUS_COEFFS[0] (beta for u^2-beta=0)
-      # BLS12-381 specific like optimization
-      if mc0 == -1 do
-        rem(rem(c0, 2) + rem(c1, 2) * 2, 2)
+    def equal?(fqp1 = %__MODULE__{}, fqp2 = %__MODULE__{}) do
+      if fqp1.field_modulus != fqp2.field_modulus or fqp1.degree != fqp2.degree do
+        false
       else
-        rem(c0, 2)
+        Enum.zip_with(fqp1.coeffs, fqp2.coeffs, &(&1 == &2)) |> Enum.all?()
       end
     end
-  end
 
-  # defmodule FQ2
+    def pow(fqp = %__MODULE__{}, exponent) when is_integer(exponent) do
+      cond do
+        exponent == 0 -> one(fqp.field_modulus, fqp.degree)
+        exponent == 1 -> fqp
+        rem(exponent, 2) == 0 ->
+          half_pow = pow(fqp, Kernel.div(exponent, 2))
+          multiply(half_pow, half_pow)
+        true ->
+          half_pow = pow(fqp, Kernel.div(exponent, 2))
+          multiply(multiply(half_pow, half_pow), fqp)
+      end
+    end
+
+    def inv(fqp = %__MODULE__{}) do
+      # For quadratic extensions (degree 2), we can optimize inversion
+      if fqp.degree == 2 do
+        [a, b] = fqp.coeffs
+        p = fqp.field_modulus
+
+        # For BLS12-381, the irreducible polynomial is x^2 + 1
+        # So (a + b*i)^(-1) = (a - b*i)/(a^2 + b^2)
+        denom = rem(a * a + b * b, p)
+        denom_inv = Utils.prime_field_inv(denom, p)
+        a_inv = rem(a * denom_inv, p)
+        b_inv = rem(-b * denom_inv, p)
+
+        %__MODULE__{fqp | coeffs: [a_inv, b_inv]}
+      else
+        # For higher degrees, use the fact that x^(p^n-1) = 1 in FQP
+        # So x^(-1) = x^(p^n-2)
+        p = fqp.field_modulus
+        power = :math.pow(p, fqp.degree) - 2 |> trunc()
+        pow(fqp, power)
+      end
+    end
+
+    def divide(fqp1 = %__MODULE__{}, fqp2 = %__MODULE__{}) do
+      multiply(fqp1, inv(fqp2))
+    end
+
+    def one(field_modulus, degree) when degree >= 1 do
+      coeffs = [1 | List.duplicate(0, degree - 1)]
+      new_fqp(coeffs, List.duplicate(0, degree), field_modulus)
+    end
+
+    def one(_field_modulus, degree) when degree < 1 do
+      raise ArgumentError, "FQP.one/2 called with invalid degree: #{degree}. Degree must be >= 1."
+    end
+
+    def zero(field_modulus, degree) when degree >= 1 do
+      coeffs = List.duplicate(0, degree)
+      new_fqp(coeffs, List.duplicate(0, degree), field_modulus)
+    end
+
+    def zero(_field_modulus, degree) when degree < 1 do
+      raise ArgumentError, "FQP.zero/2 called with invalid degree: #{degree}. Degree must be >= 1."
+    end
+  end
 
   # --- Optimized FQ12 ---
   defmodule FQ12 do
-    alias ExEcc.Fields.OptimizedFieldElements.FQP
+    alias ExEcc.Fields.OptimizedFieldElements.FQP, as: FQ2
 
-    @type t_fq12 :: FQP.t_fqp()
-    defstruct [:coeffs, :modulus_coeffs, :degree, :field_modulus, :mc_tuples]
+    defstruct coeffs: [], field_modulus: nil
 
-    def new_fq12(coeffs_list, fq12_modulus_coeffs, mc_tuples_for_fq12, field_modulus)
-        # Should be length 12 for FQP representation
-        when is_list(coeffs_list) and length(coeffs_list) == 12 and
-               is_list(fq12_modulus_coeffs) and
-               is_list(mc_tuples_for_fq12) and
-               is_integer(field_modulus) do
-      %FQP{}
-      |> FQP.new_fqp(coeffs_list, fq12_modulus_coeffs, field_modulus)
-      |> Map.put(:__struct__, __MODULE__)
-      |> Map.put(:mc_tuples, mc_tuples_for_fq12)
-      # Explicitly degree 12
-      |> Map.put(:degree, 12)
+    @type t_fq12 :: %__MODULE__{
+            coeffs: list(FQ2.t_fqp()),
+            field_modulus: integer
+          }
+
+    def new(coeffs, field_modulus) when is_list(coeffs) and is_integer(field_modulus) do
+      if length(coeffs) != 12 do
+        raise "FQ12.new: Expected 12 coefficients, got #{length(coeffs)}"
+      end
+
+      %__MODULE__{
+        coeffs: Enum.map(coeffs, &FQ2.new(&1, field_modulus)),
+        field_modulus: field_modulus
+      }
     end
 
-    # sgn0 for FQ12 would also be inherited from FQP by default.
-    # Python FQ12.sgn0 is `super().sgn0` which calls FQP.sgn0.
+    def add(fq12_1 = %__MODULE__{}, fq12_2 = %__MODULE__{}) do
+      if fq12_1.field_modulus != fq12_2.field_modulus do
+        raise "Cannot add FQ12 elements from different fields"
+      end
+
+      new_coeffs =
+        Enum.zip_with(fq12_1.coeffs, fq12_2.coeffs, fn x, y ->
+          FQ2.add(x, y)
+        end)
+
+      %__MODULE__{coeffs: new_coeffs, field_modulus: fq12_1.field_modulus}
+    end
+
+    def multiply(fq12_1 = %__MODULE__{}, fq12_2 = %__MODULE__{}) do
+      if fq12_1.field_modulus != fq12_2.field_modulus do
+        raise "Cannot multiply FQ12 elements from different fields"
+      end
+
+      # Implement FQ12 multiplication using Karatsuba algorithm
+      # This is a simplified version - you may need to optimize it further
+      new_coeffs =
+        for i <- 0..11 do
+          sum =
+            for j <- 0..11 do
+              k = rem(i - j, 12)
+              FQ2.multiply(
+                Enum.at(fq12_1.coeffs, j),
+                Enum.at(fq12_2.coeffs, k)
+              )
+            end
+            |> Enum.reduce(&FQ2.add/2)
+
+          sum
+        end
+
+      %__MODULE__{coeffs: new_coeffs, field_modulus: fq12_1.field_modulus}
+    end
+
+    def divide(fq12_1 = %__MODULE__{}, fq12_2 = %__MODULE__{}) do
+      if fq12_1.field_modulus != fq12_2.field_modulus do
+        raise "Cannot divide FQ12 elements from different fields"
+      end
+
+      multiply(fq12_1, inv(fq12_2))
+    end
+
+    def inv(fq12 = %__MODULE__{}) do
+      # For FQ12, we need to compute the multiplicative inverse
+      # This is a simplified version - in practice, you'd want to use extended GCD
+      pow(fq12, fq12.field_modulus - 2)
+    end
+
+    def pow(fq12 = %__MODULE__{}, exponent) when is_integer(exponent) do
+      cond do
+        exponent == 0 ->
+          one(fq12.field_modulus)
+
+        exponent == 1 ->
+          fq12
+
+        rem(exponent, 2) == 0 ->
+          half_pow = pow(fq12, Kernel.div(exponent, 2))
+          multiply(half_pow, half_pow)
+
+        true ->
+          half_pow = pow(fq12, Kernel.div(exponent, 2))
+          multiply(multiply(half_pow, half_pow), fq12)
+      end
+    end
+
+    def negate(fq12 = %__MODULE__{}) do
+      new_coeffs =
+        Enum.map(fq12.coeffs, fn x ->
+          FQ2.neg(x)
+        end)
+
+      %__MODULE__{coeffs: new_coeffs, field_modulus: fq12.field_modulus}
+    end
+
+    def one(field_modulus) when is_integer(field_modulus) do
+      %__MODULE__{
+        coeffs: [FQ2.new([1, 0]) | List.duplicate(FQ2.new([0, 0]), 11)],
+        field_modulus: field_modulus
+      }
+    end
+
+    def zero(field_modulus) when is_integer(field_modulus) do
+      %__MODULE__{
+        coeffs: List.duplicate(FQ2.new([0, 0]), 12),
+        field_modulus: field_modulus
+      }
+    end
+
+    def equal?(fq12_1 = %__MODULE__{}, fq12_2 = %__MODULE__{}) do
+      fq12_1.field_modulus == fq12_2.field_modulus and
+        Enum.all?(Enum.zip(fq12_1.coeffs, fq12_2.coeffs), fn {x, y} ->
+          FQ2.equal?(x, y)
+        end)
+    end
   end
 
-  # defmodule FQ12
+  # --- Optimized FQ2 ---
+  defmodule FQ2 do
+    alias ExEcc.Fields.OptimizedFieldElements
+
+    defstruct coeffs: [], field_modulus: nil
+
+    @type t_fq2 :: %__MODULE__{
+      coeffs: list(integer),
+      field_modulus: integer
+    }
+
+    def new(coeffs) when is_list(coeffs) and length(coeffs) == 2 do
+      new(coeffs, OptimizedFieldElements.field_modulus())
+    end
+
+    def new(coeffs, field_modulus) when is_list(coeffs) and length(coeffs) == 2 and is_integer(field_modulus) do
+      %__MODULE__{
+        coeffs: Enum.map(coeffs, &rem(&1, field_modulus)),
+        field_modulus: field_modulus
+      }
+    end
+
+    def add(fq2_1 = %__MODULE__{}, fq2_2) do
+      fq2_2 = ensure_fq2(fq2_2, fq2_1.field_modulus)
+      new_coeffs = Enum.zip_with(fq2_1.coeffs, fq2_2.coeffs, fn a, b ->
+        rem(a + b, fq2_1.field_modulus)
+      end)
+      %__MODULE__{coeffs: new_coeffs, field_modulus: fq2_1.field_modulus}
+    end
+
+    def sub(fq2_1 = %__MODULE__{}, fq2_2) do
+      fq2_2 = ensure_fq2(fq2_2, fq2_1.field_modulus)
+      new_coeffs = Enum.zip_with(fq2_1.coeffs, fq2_2.coeffs, fn a, b ->
+        rem(a - b, fq2_1.field_modulus)
+      end)
+      %__MODULE__{coeffs: new_coeffs, field_modulus: fq2_1.field_modulus}
+    end
+
+    def mul(fq2_1 = %__MODULE__{}, fq2_2) do
+      fq2_2 = ensure_fq2(fq2_2, fq2_1.field_modulus)
+      [a1, b1] = fq2_1.coeffs
+      [a2, b2] = fq2_2.coeffs
+      p = fq2_1.field_modulus
+
+      # (a1 + b1*i) * (a2 + b2*i) = (a1*a2 - b1*b2) + (a1*b2 + a2*b1)*i
+      a = rem(a1 * a2 - b1 * b2, p)
+      b = rem(a1 * b2 + a2 * b1, p)
+
+      %__MODULE__{coeffs: [a, b], field_modulus: p}
+    end
+
+    def neg(fq2 = %__MODULE__{}) do
+      new_coeffs = Enum.map(fq2.coeffs, &rem(-&1, fq2.field_modulus))
+      %__MODULE__{coeffs: new_coeffs, field_modulus: fq2.field_modulus}
+    end
+
+    def eq(fq2_1 = %__MODULE__{}, fq2_2) do
+      fq2_2 = ensure_fq2(fq2_2, fq2_1.field_modulus)
+      Enum.zip_with(fq2_1.coeffs, fq2_2.coeffs, &(&1 == &2)) |> Enum.all?()
+    end
+
+    def zero do
+      %__MODULE__{coeffs: [0, 0], field_modulus: OptimizedFieldElements.field_modulus()}
+    end
+
+    def zero(field_modulus) do
+      %__MODULE__{coeffs: [0, 0], field_modulus: field_modulus}
+    end
+
+    def one do
+      %__MODULE__{coeffs: [1, 0], field_modulus: OptimizedFieldElements.field_modulus()}
+    end
+
+    def one(field_modulus) do
+      %__MODULE__{coeffs: [1, 0], field_modulus: field_modulus}
+    end
+
+    defp ensure_fq2(val, field_modulus) when is_integer(val) do
+      new([val, 0], field_modulus)
+    end
+
+    defp ensure_fq2(fq2 = %__MODULE__{}, field_modulus) do
+      if fq2.field_modulus != field_modulus do
+        raise "Cannot operate on FQ2 elements from different fields"
+      end
+      fq2
+    end
+
+    defp ensure_fq2(other, _field_modulus) do
+      raise "Type error: Expected an integer or FQ2 element, got: #{inspect(other)}"
+    end
+  end
 end

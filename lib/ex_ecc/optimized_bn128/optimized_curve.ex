@@ -2,8 +2,7 @@ defmodule ExEcc.OptimizedBN128.OptimizedCurve do
   alias ExEcc.Fields.OptimizedBN128FQ, as: FQ
   alias ExEcc.Fields.OptimizedBN128FQ2, as: FQ2
   alias ExEcc.Fields.OptimizedBN128FQ12, as: FQ12
-  # In py_ecc, FQP for bn128 is FQ2.
-  alias ExEcc.Fields.OptimizedBN128FQ2, as: FQP
+  alias ExEcc.Fields.OptimizedFieldElements.FQP
 
   @field_modulus ExEcc.Fields.FieldProperties.field_properties()["bn128"].field_modulus
   @curve_order 218_882_428_718_392_752_222_464_057_452_572_750_885_483_644_004_160_343_436_982_041_865_758_084_956_17
@@ -18,7 +17,7 @@ defmodule ExEcc.OptimizedBN128.OptimizedCurve do
 
   @b FQ.new(3)
   # FQ2.new({{3,0}}) for struct-based FQ2
-  @b2 FQ2.div(FQ2.new([3, 0]), FQ2.new([9, 1]))
+  @b2 FQ2.divide(FQ2.new([3, 0]), FQ2.new([9, 1]))
   # Ensure FQ.zero() if it's a struct
   @b12 FQ12.new(List.to_tuple([3 | List.duplicate(FQ.zero(), 11)]))
 
@@ -50,8 +49,8 @@ defmodule ExEcc.OptimizedBN128.OptimizedCurve do
     # The first element of the point tuple (x-coordinate) determines the field type
     case elem(pt, 0) do
       %FQ{} -> FQ
-      %FQ2{} -> FQ2
-      %FQ12{} -> FQ12
+      %FQP{degree: 2} -> FQ2
+      %FQP{degree: 12} -> FQ12
       # Or raise an error for unknown type
       _ -> nil
     end
@@ -75,9 +74,9 @@ defmodule ExEcc.OptimizedBN128.OptimizedCurve do
       field_module = x.__struct__
       # y**2 * z - x**3 == b_val * z**3
       lhs =
-        field_module.sub(field_module.mul(field_module.mul(y, y), z), field_module.mul(x, x, x))
+        field_module.subtract(field_module.multiply(field_module.multiply(y, y), z), field_module.multiply(x, x, x))
 
-      rhs = field_module.mul(b_val, field_module.mul(z, z, z))
+      rhs = field_module.multiply(b_val, field_module.multiply(z, z, z))
       field_module.eq(lhs, rhs)
     end
   end
@@ -94,30 +93,30 @@ defmodule ExEcc.OptimizedBN128.OptimizedCurve do
     {x, y, z} = pt
     field_module = x.__struct__
 
-    w_val = field_module.mul(field_module.new(3), field_module.mul(x, x))
-    s_val = field_module.mul(y, z)
+    w_val = field_module.multiply(field_module.new(3), field_module.multiply(x, x))
+    s_val = field_module.multiply(y, z)
     # B in Python
-    b_val_internal = field_module.mul(x, field_module.mul(y, s_val))
+    b_val_internal = field_module.multiply(x, field_module.multiply(y, s_val))
 
     h_val =
-      field_module.sub(
-        field_module.mul(w_val, w_val),
-        field_module.mul(field_module.new(8), b_val_internal)
+      field_module.subtract(
+        field_module.multiply(w_val, w_val),
+        field_module.multiply(field_module.new(8), b_val_internal)
       )
 
-    s_squared = field_module.mul(s_val, s_val)
-    newx = field_module.mul(field_module.new(2), field_module.mul(h_val, s_val))
+    s_squared = field_module.multiply(s_val, s_val)
+    newx = field_module.multiply(field_module.new(2), field_module.multiply(h_val, s_val))
 
     newy =
-      field_module.sub(
-        field_module.mul(
+      field_module.subtract(
+        field_module.multiply(
           w_val,
-          field_module.sub(field_module.mul(field_module.new(4), b_val_internal), h_val)
+          field_module.subtract(field_module.multiply(field_module.new(4), b_val_internal), h_val)
         ),
-        field_module.mul(field_module.new(8), field_module.mul(y, field_module.mul(y, s_squared)))
+        field_module.multiply(field_module.new(8), field_module.multiply(y, field_module.multiply(y, s_squared)))
       )
 
-    newz = field_module.mul(field_module.new(8), field_module.mul(s_val, s_squared))
+    newz = field_module.multiply(field_module.new(8), field_module.multiply(s_val, s_squared))
     {newx, newy, newz}
   end
 
@@ -133,10 +132,10 @@ defmodule ExEcc.OptimizedBN128.OptimizedCurve do
         if field_module.eq(z2, zero), do: p1, else: p2
 
       true ->
-        u1 = field_module.mul(y2, z1)
-        u2 = field_module.mul(y1, z2)
-        v1 = field_module.mul(x2, z1)
-        v2 = field_module.mul(x1, z2)
+        u1 = field_module.multiply(y2, z1)
+        u2 = field_module.multiply(y1, z2)
+        v1 = field_module.multiply(x2, z1)
+        v2 = field_module.multiply(x1, z2)
 
         cond do
           field_module.eq(v1, v2) and field_module.eq(u1, u2) ->
@@ -146,33 +145,33 @@ defmodule ExEcc.OptimizedBN128.OptimizedCurve do
             {one, one, zero}
 
           true ->
-            u_val = field_module.sub(u1, u2)
-            v_val = field_module.sub(v1, v2)
-            v_squared = field_module.mul(v_val, v_val)
-            v_squared_times_v2 = field_module.mul(v_squared, v2)
-            v_cubed = field_module.mul(v_val, v_squared)
+            u_val = field_module.subtract(u1, u2)
+            v_val = field_module.subtract(v1, v2)
+            v_squared = field_module.multiply(v_val, v_val)
+            v_squared_times_v2 = field_module.multiply(v_squared, v2)
+            v_cubed = field_module.multiply(v_val, v_squared)
             # W in Python
-            w_val = field_module.mul(z1, z2)
+            w_val = field_module.multiply(z1, z2)
 
             a_val =
-              field_module.sub(
-                field_module.sub(
-                  field_module.mul(field_module.mul(u_val, u_val), w_val),
+              field_module.subtract(
+                field_module.subtract(
+                  field_module.multiply(field_module.multiply(u_val, u_val), w_val),
                   v_cubed
                 ),
-                field_module.mul(field_module.new(2), v_squared_times_v2)
+                field_module.multiply(field_module.new(2), v_squared_times_v2)
               )
 
             # A in Python
-            newx = field_module.mul(v_val, a_val)
+            newx = field_module.multiply(v_val, a_val)
 
             newy =
-              field_module.sub(
-                field_module.mul(u_val, field_module.sub(v_squared_times_v2, a_val)),
-                field_module.mul(v_cubed, u2)
+              field_module.subtract(
+                field_module.multiply(u_val, field_module.subtract(v_squared_times_v2, a_val)),
+                field_module.multiply(v_cubed, u2)
               )
 
-            newz = field_module.mul(v_cubed, w_val)
+            newz = field_module.multiply(v_cubed, w_val)
             {newx, newy, newz}
         end
     end
@@ -200,99 +199,35 @@ defmodule ExEcc.OptimizedBN128.OptimizedCurve do
     {x1, y1, z1} = p1
     {x2, y2, z2} = p2
     field_module = x1.__struct__
-    # (x1/z1 == x2/z2 and y1/z1 == y2/z2) <=> (x1*z2 == x2*z1 and y1*z2 == y2*z1)
-    c1 = field_module.eq(field_module.mul(x1, z2), field_module.mul(x2, z1))
-    c2 = field_module.eq(field_module.mul(y1, z2), field_module.mul(y2, z1))
-    c1 and c2
-  end
 
-  def normalize(pt) do
-    {x, y, z} = pt
-    field_module = x.__struct__
-    # Calculate inverse of z once
-    inv_z = field_module.inv(z)
-    {field_module.mul(x, inv_z), field_module.mul(y, inv_z)}
-  end
+    cond do
+      field_module.eq(z1, field_module.zero()) and field_module.eq(z2, field_module.zero()) ->
+        true
 
-  # FQ12([0, 1] + [0] * 10) -> FQ12 element where c1=1, others=0
-  @w FQ12.new(List.to_tuple([FQ.zero(), FQ.one() | List.duplicate(FQ.zero(), 10)]))
+      field_module.eq(z1, field_module.zero()) or field_module.eq(z2, field_module.zero()) ->
+        false
+
+      true ->
+        field_module.eq(field_module.multiply(x1, z2), field_module.multiply(x2, z1)) and
+          field_module.eq(field_module.multiply(y1, z2), field_module.multiply(y2, z1))
+    end
+  end
 
   def neg(pt) do
     {x, y, z} = pt
-    field_module = y.__struct__
-    {x, field_module.neg(y), z}
+    field_module = x.__struct__
+    {x, field_module.negate(y), z}
   end
 
-  # pt is an Optimized_Point3D[FQP] which is Optimized_Point3D[FQ2] for BN128
-  def twist(pt) do
-    # _x, _y, _z are FQ2 elements. FQ2.new([c0, c1]) or FQ2.new({{c0, c1}})
-    {_x, _y, _z} = pt
+  def negate(pt), do: neg(pt)
 
-    # _x.coeffs[0] maps to FQ2.c0(_x), _x.coeffs[1] maps to FQ2.c1(_x) if using record/map
-    # If FQ2 is {coeff0, coeff1}, then elem(_x, 0) and elem(_x, 1)
-    # Assuming FQ2.new/1 takes a list [c0, c1] and stores them as a tuple {c0,c1}
-    # or a struct with fields that can be accessed.
-    # If FQ2 struct is %FQ2{coeffs: {c0,c1}}, then _x.coeffs would be pattern matched.
-    # For now, assuming FQ2 struct has `c0` and `c1` fields or elem(fq2_struct, 0/1) works.
-    # Let's assume FQ2.coeffs(fq2_element) returns {c0, c1} or similar access method.
-    # For simplicity, if FQ2 is {c0_val, c1_val}:
-    x_c0 = elem(_x, 0)
-    x_c1 = elem(_x, 1)
-    y_c0 = elem(_y, 0)
-    y_c1 = elem(_y, 1)
-    z_c0 = elem(_z, 0)
-    z_c1 = elem(_z, 1)
-
-    # xcoeffs = [_x.coeffs[0] - _x.coeffs[1] * 9, _x.coeffs[1]]
-    xcoeffs_0 = FQ.sub(x_c0, FQ.mul(x_c1, FQ.new(9)))
-    xcoeffs_1 = x_c1
-
-    # ycoeffs = [_y.coeffs[0] - _y.coeffs[1] * 9, _y.coeffs[1]]
-    ycoeffs_0 = FQ.sub(y_c0, FQ.mul(y_c1, FQ.new(9)))
-    ycoeffs_1 = y_c1
-
-    # zcoeffs = [_z.coeffs[0] - _z.coeffs[1] * 9, _z.coeffs[1]]
-    zcoeffs_0 = FQ.sub(z_c0, FQ.mul(z_c1, FQ.new(9)))
-    zcoeffs_1 = z_c1
-
-    # nx = FQ12([xcoeffs[0]] + [0] * 5 + [xcoeffs[1]] + [0] * 5)
-    nx_coeffs =
-      [xcoeffs_0 | List.duplicate(FQ.zero(), 5)] ++ [xcoeffs_1 | List.duplicate(FQ.zero(), 5)]
-
-    ny_coeffs =
-      [ycoeffs_0 | List.duplicate(FQ.zero(), 5)] ++ [ycoeffs_1 | List.duplicate(FQ.zero(), 5)]
-
-    nz_coeffs =
-      [zcoeffs_0 | List.duplicate(FQ.zero(), 5)] ++ [zcoeffs_1 | List.duplicate(FQ.zero(), 5)]
-
-    nx = FQ12.new(List.to_tuple(nx_coeffs))
-    ny = FQ12.new(List.to_tuple(ny_coeffs))
-    nz = FQ12.new(List.to_tuple(nz_coeffs))
-
-    # return (nx * w**2, ny * w**3, nz)
-    w_squared = FQ12.mul(@w, @w)
-    w_cubed = FQ12.mul(w_squared, @w)
-
-    {FQ12.mul(nx, w_squared), FQ12.mul(ny, w_cubed), nz}
-  end
-
-  # Check that the twist creates a point that is on the curve
-  # This needs to be a test, not a module body check in Elixir.
-  # @g12 twist(@g2)
-  # if not is_on_curve(@g12, @b12) do
-  #   raise ValueError, "Twist creates a point not on curve"
-  # end
-
-  # Accessors for module attributes
-  def g1(), do: @g1
-  def g2(), do: @g2
-  def z1(), do: @z1
-  def z2(), do: @z2
-  def b(), do: @b
-  def b2(), do: @b2
-  def b12(), do: @b12
-  def curve_order(), do: @curve_order
-  def field_modulus(), do: @field_modulus
-  # def g12(), do: @g12 # This would require twist(@g2) to be evaluable at compile time.
-  # G12 should be calculated in tests or runtime if needed as a constant.
+  def g1, do: @g1
+  def g2, do: @g2
+  def z1, do: @z1
+  def z2, do: @z2
+  def b, do: @b
+  def b2, do: @b2
+  def b12, do: @b12
+  def field_modulus, do: @field_modulus
+  def curve_order, do: @curve_order
 end

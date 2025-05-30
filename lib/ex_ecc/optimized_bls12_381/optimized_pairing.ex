@@ -1,8 +1,9 @@
 defmodule ExEcc.OptimizedBLS12381.OptimizedPairing do
   alias ExEcc.Fields.OptimizedBLS12381FQ, as: FQ
-  # alias ExEcc.Fields.OptimizedBLS12381FQ2, as: FQ2 # FQ2 is unused
+  alias ExEcc.Fields.OptimizedBLS12381FQ2, as: FQ2
   alias ExEcc.Fields.OptimizedBLS12381FQ12, as: FQ12
   alias ExEcc.OptimizedBLS12381.OptimizedCurve, as: Curve
+  alias ExEcc.Fields.OptimizedFieldElements.FQP, as: FQP
 
   @field_modulus ExEcc.Fields.FieldProperties.field_properties()["bls12_381"].field_modulus
 
@@ -80,6 +81,21 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedPairing do
   #   raise ValueError, "Pseudo binary encoding is incorrect"
   # end
 
+  @exptable [
+    FQ12.pow(FQ12.new([FQ2.new([1, 0])] ++ List.duplicate(FQ2.zero(), 11)), @field_modulus),
+    FQ12.pow(FQ12.new([FQ2.zero(), FQ2.new([1, 0])] ++ List.duplicate(FQ2.zero(), 10)), @field_modulus),
+    FQ12.pow(FQ12.new([FQ2.zero(), FQ2.zero(), FQ2.new([1, 0])] ++ List.duplicate(FQ2.zero(), 9)), @field_modulus),
+    FQ12.pow(FQ12.new([FQ2.zero(), FQ2.zero(), FQ2.zero(), FQ2.new([1, 0])] ++ List.duplicate(FQ2.zero(), 8)), @field_modulus),
+    FQ12.pow(FQ12.new([FQ2.zero(), FQ2.zero(), FQ2.zero(), FQ2.zero(), FQ2.new([1, 0])] ++ List.duplicate(FQ2.zero(), 7)), @field_modulus),
+    FQ12.pow(FQ12.new([FQ2.zero(), FQ2.zero(), FQ2.zero(), FQ2.zero(), FQ2.zero(), FQ2.new([1, 0])] ++ List.duplicate(FQ2.zero(), 6)), @field_modulus),
+    FQ12.pow(FQ12.new([FQ2.zero(), FQ2.zero(), FQ2.zero(), FQ2.zero(), FQ2.zero(), FQ2.zero(), FQ2.new([1, 0])] ++ List.duplicate(FQ2.zero(), 5)), @field_modulus),
+    FQ12.pow(FQ12.new([FQ2.zero(), FQ2.zero(), FQ2.zero(), FQ2.zero(), FQ2.zero(), FQ2.zero(), FQ2.zero(), FQ2.new([1, 0])] ++ List.duplicate(FQ2.zero(), 4)), @field_modulus),
+    FQ12.pow(FQ12.new([FQ2.zero(), FQ2.zero(), FQ2.zero(), FQ2.zero(), FQ2.zero(), FQ2.zero(), FQ2.zero(), FQ2.zero(), FQ2.new([1, 0])] ++ List.duplicate(FQ2.zero(), 3)), @field_modulus),
+    FQ12.pow(FQ12.new([FQ2.zero(), FQ2.zero(), FQ2.zero(), FQ2.zero(), FQ2.zero(), FQ2.zero(), FQ2.zero(), FQ2.zero(), FQ2.zero(), FQ2.new([1, 0])] ++ List.duplicate(FQ2.zero(), 2)), @field_modulus),
+    FQ12.pow(FQ12.new([FQ2.zero(), FQ2.zero(), FQ2.zero(), FQ2.zero(), FQ2.zero(), FQ2.zero(), FQ2.zero(), FQ2.zero(), FQ2.zero(), FQ2.zero(), FQ2.new([1, 0]), FQ2.zero()]), @field_modulus),
+    FQ12.pow(FQ12.new([FQ2.zero(), FQ2.zero(), FQ2.zero(), FQ2.zero(), FQ2.zero(), FQ2.zero(), FQ2.zero(), FQ2.zero(), FQ2.zero(), FQ2.zero(), FQ2.zero(), FQ2.new([1, 0])]), @field_modulus)
+  ]
+
   def normalize1(p) do
     {x, y} = Curve.normalize(p)
     {x, y, FQ.one()}
@@ -150,7 +166,6 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedPairing do
       cast_p = cast_point_to_fq12(p_fq)
       # The original python code uses Q (an FQ2 point) for R and twist_Q,
       # but operations like double(R) are for FQ2 points, and twist(R) produces FQ12.
-      # linefunc expects FQ12 points.
       # This needs careful review of types and operations.
 
       # Initializing r_fq12 as the twisted version of q_fq2 for calculations within the loop
@@ -242,59 +257,13 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedPairing do
     # TODO: Verify the correct Frobenius map for FQ12 under BLS12-381.
     # This is likely x.frobenius_map(1)
     # For now, assuming it's a complex operation and placeholder
-    # Placeholder, likely incorrect for FQ12
-    FQ12.pow(x, @field_modulus)
+    FQP.frobenius(x, 1)
   end
 
   def final_exponentiate(p_fq12) do
-    # (p^((p^12 - 1) // n)) -> exponent is (field_modulus^12 - 1) // curve_order
-    # This is a standard final exponentiation step for pairings.
-    # It involves several exponentiations and Frobenius maps.
-    # The structure is (easy part) * (hard part)
-    # easy part: p^(p^6 - 1) * p^(p^2 - 1)
-    # hard part: involves more complex exponentiation by specific scalars (derived from BLS parameter x)
-
-    # x = ate_loop_count = 15132376222941642752 (parameter x for BLS12-381)
-    # Exponent: (field_modulus^12 - 1) / curve_order
-
-    # This is a very complex operation. For now, returning the input.
-    # The actual implementation involves several steps:
-    # 1. f_1 = p.conjugate() * p.inverse() # p^(p^6 - 1)
-    # 2. f_2 = f_1.frobenius_map(2) * f_1 # p^((p^6 - 1)*(p^2 + 1))
-    # ... and then the hard part involving exponentiation by x, x^2, x^3 etc.
-    # and more Frobenius maps.
-
-    # Simplified for now, will require a full implementation of FQ12 exponentiation and Frobenius maps.
-    # pow(p, (field_modulus**12 - 1) // curve_order)
-
-    # Placeholder: p ^ ((field_modulus^12 - 1) / Curve.curve_order()) # Requires BigInt math and FQ12 pow
-
-    # The exponent is (p^4 - p^2 + 1) / r  * (lambda_0 + lambda_1*p + lambda_2*p^2 + ...)
-    # For BLS12-381, the final exponent is (p^12 - 1) / r.
-    # This can be decomposed into ((p^6-1)(p^2+1))^ ( (p^4-p^2+1)/r )
-    # Exponent e = (@field_modulus ** 12 - 1) div Curve.curve_order()
-
-    # Based on py_ecc code: result = p ** ((field_modulus**12 - 1) // curve_order)
-    # However, FQ12.pow is not that simple. It involves complex steps.
-
-    # The exponent: e = (@field_modulus**12 - 1) // Curve.curve_order()
-    # This will be a very large number.
-
-    # py_ecc reference: final_exponentiate_bls12_381.py
-    # f1 = p.conjugate() * p.inverse() # p^(p^6-1)
-    # f2 = f1.frobenius_map(2) * f1 # f2 = p^((p^6-1)*(p^2+1))
-    # ans = f2.cyclotomic_exp(ate_loop_count) # Hard part
-    # return ans
-
-    # For now, just return the input as a placeholder
-    # TODO: Implement the full final exponentiation for BLS12-381
-    # p^(p^6-1)
-    f1 = FQ12.mul(FQ12.conjugate(p_fq12), FQ12.inv(p_fq12))
-    # f2 = p^((p^6-1)*(p^2+1))
-    f2 = FQ12.mul(FQ12.frobenius_map(f1, 2), f1)
-    # cyclotomic_exp is a specific exponentiation for cyclotomic subgroups.
-    # FQ12.pow(f2, @ate_loop_count) # This is a simplified placeholder for cyclotomic_exp
-    # For now, we return f2 as cyclotomic_exp is non-trivial
-    f2
+    cofactor = div(:math.pow(@field_modulus, 4) - :math.pow(@field_modulus, 2) + 1, Curve.curve_order())
+    p2 = FQ12.mul(exp_by_p(exp_by_p(p_fq12)), p_fq12)
+    p3 = FQ12.div(exp_by_p(exp_by_p(exp_by_p(exp_by_p(exp_by_p(exp_by_p(p2)))))), p2)
+    FQ12.pow(p3, cofactor)
   end
 end
