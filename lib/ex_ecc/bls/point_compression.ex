@@ -119,7 +119,7 @@ defmodule ExEcc.Bls.PointCompression do
     # # Check if check_val_fq2 is in EIGHTH_ROOTS_OF_UNITY[::2] (every second element)
     # # This means comparing FQ2 elements.
     # matching_root_index = Enum.find_index(0..3, fn i ->
-    #   OptFQ.FQ2.equal?(check_val_fq2, Enum.at(eighth_roots, i * 2))
+    #   OptFQ.FQ2.eq(check_val_fq2, Enum.at(eighth_roots, i * 2))
     # end)
 
     # if is_integer(matching_root_index) do

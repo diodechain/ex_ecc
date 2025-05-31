@@ -3,7 +3,7 @@ defmodule ExEcc.Fields.FQ do
   defstruct n: 0, field_modulus: nil
 
   def new(fq \\ %__MODULE__{}, val) do
-    if not Map.has_key?(fq, :field_modulus) do
+    if not FieldMath.field_modulus(fq) do
       raise "Field Modulus hasn't been specified"
     end
 
@@ -87,12 +87,9 @@ defmodule ExEcc.Fields.FQ do
 
   def eq(fq1, other) do
     case other do
-      %{n: n} ->
-        fq1.n == n
-
-      n when is_integer(n) ->
-        fq1.n == n
-        raise "Expected an int or FQ object, but got #{inspect(other)}"
+      %{n: n} -> fq1.n == n
+      n when is_integer(n) -> fq1.n == n
+      _ -> raise "Expected an int or FQ object, but got #{inspect(other)}"
     end
   end
 
@@ -116,12 +113,9 @@ defmodule ExEcc.Fields.FQ do
   def lt(fq, other) do
     on =
       case other do
-        %{n: n} ->
-          fq.n == n
-
-        n when is_integer(n) ->
-          fq.n == n
-          raise "Expected an int or FQ object, but got #{inspect(other)}"
+        %{n: n} -> fq.n < n
+        n when is_integer(n) -> fq.n < n
+        _ -> raise "Expected an int or FQ object, but got #{inspect(other)}"
       end
 
     fq.n < on
@@ -163,8 +157,8 @@ defmodule ExEcc.Fields.FQP do
 
   defstruct coeffs: [], modulus_coeffs: [], degree: 0, field_modulus: nil
 
-  def new(fqp \\ %__MODULE__{}, coeffs, modulus_coeffs, field_modulus) do
-    if not Map.has_key?(fqp, :field_modulus) do
+  def new(fqp \\ %__MODULE__{}, coeffs, modulus_coeffs) do
+    if not FieldMath.field_modulus(fqp) do
       raise "Field Modulus hasn't been specified"
     end
 
@@ -216,43 +210,50 @@ defmodule ExEcc.Fields.FQP do
 
       FieldMath.isinstance(other, FQP) ->
         b =
-          for i <- 0..(FieldMath.degree(fqp) * 2 - 1),
-              do: FieldMath.corresponding_fq_class(fqp).new(0)
-
-        b = Map.new(b, Enum.with_index(b, fn x, i -> {i, x} end))
+          List.duplicate(
+            FieldMath.corresponding_fq_class(fqp).new(0),
+            FieldMath.degree(fqp) * 2 - 1
+          )
 
         b =
-          for i <- 0..(FieldMath.degree(fqp) - 1),
-              j <- 0..(FieldMath.degree(fqp) - 1),
-              do:
-                {i, j}
-                |> Enum.reduce(b, fn {i, j}, acc ->
+          for(
+            i <- 0..(FieldMath.degree(fqp) - 1),
+            j <- 0..(FieldMath.degree(fqp) - 1),
+            do: {i, j}
+          )
+          |> Enum.reduce(b, fn {i, j}, b ->
+            Map.put(
+              b,
+              i + j,
+              FieldMath.add(
+                Map.get(b, i + j),
+                FieldMath.mul(FieldMath.coeffs(fqp)[i], FieldMath.coeffs(other)[j])
+              )
+            )
+          end)
+
+        b =
+          reduce_while(b, fn b ->
+            if length(b) > FieldMath.degree(fqp) do
+              {exp, top} = {length(b) - FieldMath.degree(fqp) - 1, List.pop_at(b, 0)}
+
+              b =
+                Enum.reduce(0..(FieldMath.degree(fqp) - 1), b, fn i, b ->
                   Map.put(
-                    acc,
-                    i + j,
-                    FieldMath.add(
-                      Map.get(acc, i + j),
-                      FieldMath.mul(FieldMath.coeffs(fqp)[i], FieldMath.coeffs(other)[j])
+                    b,
+                    exp + i,
+                    FieldMath.sub(
+                      Map.get(b, exp + i),
+                      FieldMath.mul(top, FieldMath.modulus_coeffs(fqp)[i])
                     )
                   )
                 end)
 
-        b =
-          while b, length(b) > FieldMath.degree(fqp) do
-            {exp, top} = {length(b) - FieldMath.degree(fqp) - 1, List.pop_at(b, 0)}
-
-            b =
-              Enum.reduce(0..(FieldMath.degree(fqp) - 1), b, fn i, b ->
-                Map.put(
-                  b,
-                  exp + i,
-                  FieldMath.sub(
-                    Map.get(b, exp + i),
-                    FieldMath.mul(top, FieldMath.modulus_coeffs(fqp)[i])
-                  )
-                )
-              end)
-          end
+              {:cont, b}
+            else
+              {:halt, b}
+            end
+          end)
 
         FieldMath.type(fqp).new(b)
 
@@ -301,7 +302,7 @@ defmodule ExEcc.Fields.FQP do
       Tuple.to_list(FieldMath.modulus_coeffs(fqp)) ++ [1]
     }
 
-    {lm, low, hm, high} =
+    {lm, low, _hm, _high} =
       while Utils.deg(low) do
         r = Utils.poly_rounded_div(high, low)
         r = r ++ List.duplicate(0, FieldMath.degree(fqp) + 1 - length(r))
@@ -333,7 +334,7 @@ defmodule ExEcc.Fields.FQP do
 
         {nm, new} =
           for(i <- 0..FieldMath.degree(fqp), j <- 0..(FieldMath.degree(fqp) - i), do: {i, j})
-          |> Enum.reduce({nm, new}, fn {i, j}, acc ->
+          |> Enum.reduce({nm, new}, fn {i, j}, {nm, new} ->
             nm =
               Map.put(
                 nm,
@@ -351,10 +352,10 @@ defmodule ExEcc.Fields.FQP do
             {nm, new}
           end)
 
-        {lm, low, hm, high} = {nm, new, lm, low}
+        {_lm, _low, _hm, _high} = {nm, new, lm, low}
       end
 
-    FieldMath.type(fqp).new(Enum.take(lm, fqp.degree) / FieldMath.int(low[0]))
+    FieldMath.type(fqp).new(Enum.take(lm, FieldMath.degree(fqp)) / FieldMath.int(low[0]))
   end
 
   def repr(fqp) do
@@ -401,7 +402,7 @@ defmodule ExEcc.Fields.FQ2 do
   def parent(), do: FQP
 
   def new(fqp \\ %__MODULE__{}, coeffs) do
-    if not Map.has_key?(fqp, :fq2_modulus_coeffs) do
+    if not FieldMath.fq2_modulus_coeffs(fqp) do
       raise "FQ2 Modulus Coeffs haven't been specified"
     end
 
@@ -424,7 +425,7 @@ defmodule ExEcc.Fields.FQ12 do
   def parent(), do: FQP
 
   def new(fqp \\ %__MODULE__{}, coeffs) do
-    if not Map.has_key?(fqp, :fq12_modulus_coeffs) do
+    if not FieldMath.fq12_modulus_coeffs(fqp) do
       raise "FQ12 Modulus Coeffs haven't been specified"
     end
 

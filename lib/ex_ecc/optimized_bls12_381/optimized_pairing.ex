@@ -12,11 +12,11 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedPairing do
   @curve_order 524_358_751_751_261_904_794_477_405_081_859_658_376_905_525_005_276_378_226_036_586_999_385_811_845_13
 
   # Original @b2 FQ2.new({4, 4}) -> FQP.new_fqp([FQ.new(4, @fm), FQ.new(4, @fm)], @fq2_coeffs, @fm)
-  @b2 FQ2.new_fqp([4, 4], @fq2_modulus_coeffs, @field_modulus)
+  @b2 FQ2.new([4, 4], @fq2_modulus_coeffs, @field_modulus)
 
   # Original @b12 FQ12.new(Tuple.pad({4}, 12, 0))
   # This means coeffs are [4, 0, 0, ..., 0]
-  @b12 FQ12.new_fq12([4 | List.duplicate(0, 11)], @field_modulus)
+  @b12 FQ12.new([4 | List.duplicate(0, 11)], @field_modulus)
 
   @g1_x FQ.new(
           36_854_167_537_133_870_167_810_883_151_830_777_579_616_207_957_825_464_098_945_783_786_886_075_923_783_763_188_360_549_476_763_458_215_481_041_854_645_07,
@@ -70,7 +70,7 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedPairing do
     {_x, _y, z} = pt
     FieldMath = elem_FieldMath(z)
     # Compare with FQP.zero if z is FQP
-    FieldMath.equal?(z, FieldMath.zero(z.field_modulus, z.degree))
+    FieldMath.eq(z, FieldMath.zero(z.field_modulus, z.degree))
   end
 
   # b_val is an FQ struct
@@ -88,7 +88,7 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedPairing do
       # Ensure b_val is an FQ struct for mul; if it's integer, convert
       b_fq = FQ.ensure_fq(b_val, @field_modulus)
       rhs = FQ.mul(b_fq, FQ.mul(FQ.mul(z, z), z))
-      FQ.equal?(lhs, rhs)
+      FQ.eq(lhs, rhs)
     end
   end
 
@@ -172,11 +172,11 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedPairing do
 
     cond do
       # p1 is inf
-      FieldMath.equal?(z1, zero) ->
+      FieldMath.eq(z1, zero) ->
         p2
 
       # p2 is inf
-      FieldMath.equal?(z2, zero) ->
+      FieldMath.eq(z2, zero) ->
         p1
 
       true ->
@@ -186,11 +186,11 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedPairing do
         v2 = FieldMath.mul(x1, z2)
 
         cond do
-          FieldMath.equal?(v1, v2) and FieldMath.equal?(u1, u2) ->
+          FieldMath.eq(v1, v2) and FieldMath.eq(u1, u2) ->
             double(p1)
 
           # Point at infinity
-          FieldMath.equal?(v1, v2) ->
+          FieldMath.eq(v1, v2) ->
             {one, one, zero}
 
           true ->
@@ -256,8 +256,8 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedPairing do
     # Assuming homogeneous coordinates
     FieldMath = elem_FieldMath(x1)
 
-    FieldMath.equal?(FieldMath.mul(x1, z2), FieldMath.mul(x2, z1)) and
-      FieldMath.equal?(FieldMath.mul(y1, z2), FieldMath.mul(y2, z1))
+    FieldMath.eq(FieldMath.mul(x1, z2), FieldMath.mul(x2, z1)) and
+      FieldMath.eq(FieldMath.mul(y1, z2), FieldMath.mul(y2, z1))
   end
 
   # Point {x,y,z} with FQ or FQP elements

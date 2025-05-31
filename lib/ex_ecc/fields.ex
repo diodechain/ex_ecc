@@ -1,53 +1,113 @@
 defmodule ExEcc.Fields do
-  alias ExEcc.Fields.FieldElements, as: FQ
-  alias ExEcc.Fields.FieldElements.FQP
-  alias ExEcc.Fields.OptimizedFieldElements, as: OptimizedFQ
-  alias ExEcc.Fields.OptimizedFieldElements.FQP, as: OptimizedFQP
+  alias ExEcc.FieldMath
+  alias ExEcc.Fields.{FQ, FQP, FQ2, FQ12}
+  alias ExEcc.Fields.{OptimizedFQ, OptimizedFQP, OptimizedFQ2, OptimizedFQ12}
   alias ExEcc.Fields.FieldProperties
 
-  # BLS12-381 curve fields
-  defmodule BLS12381 do
-    @field_modulus FieldProperties.field_properties()["bls12_381"].field_modulus
-    @fq2_modulus_coeffs FieldProperties.field_properties()["bls12_381"].fq2_modulus_coeffs
-    @fq12_modulus_coeffs FieldProperties.field_properties()["bls12_381"].fq12_modulus_coeffs
-
-    def fq(n) do
-      FQ.new(n, @field_modulus)
-    end
-
-    def fqp(coeffs, modulus_coeffs \\ @fq2_modulus_coeffs) do
-      FQP.new_fqp(coeffs, modulus_coeffs, @field_modulus)
-    end
-
-    def fq2(coeffs) do
-      FQP.new_fqp(coeffs, @fq2_modulus_coeffs, @field_modulus)
-    end
-
-    def fq12(coeffs) do
-      FQP.new_fqp(coeffs, @fq12_modulus_coeffs, @field_modulus)
-    end
+  #
+  # bn128 curve fields
+  #
+  defmodule Bn128FQ do
+    use FieldMath, parent: FQ
+    def field_modulus, do: FieldProperties.field_properties()["bn128"]["field_modulus"]
   end
 
-  # Optimized BLS12-381 curve fields
-  defmodule OptimizedBLS12381 do
-    @field_modulus FieldProperties.field_properties()["bls12_381"].field_modulus
-    @fq2_modulus_coeffs FieldProperties.field_properties()["bls12_381"].fq2_modulus_coeffs
-    @fq12_modulus_coeffs FieldProperties.field_properties()["bls12_381"].fq12_modulus_coeffs
+  defmodule Bn128FQP do
+    use FieldMath, parent: FQP
+    def field_modulus, do: FieldProperties.field_properties()["bn128"]["field_modulus"]
+  end
 
-    def fq(n) do
-      OptimizedFQ.new(n, @field_modulus)
-    end
+  defmodule Bn128FQ2 do
+    use FieldMath, parent: [FQ2, Bn128FQP]
+    def field_modulus, do: FieldProperties.field_properties()["bn128"]["field_modulus"]
+    def fq2_modulus_coeffs, do: FieldProperties.field_properties()["bn128"]["fq2_modulus_coeffs"]
+  end
 
-    def fqp(coeffs, modulus_coeffs \\ @fq2_modulus_coeffs) do
-      OptimizedFQP.new_fqp(coeffs, modulus_coeffs, @field_modulus)
-    end
+  defmodule Bn128FQ12 do
+    use FieldMath, parent: [FQ12, Bn128FQP]
+    def field_modulus, do: FieldProperties.field_properties()["bn128"]["field_modulus"]
 
-    def fq2(coeffs) do
-      OptimizedFQP.new_fqp(coeffs, @fq2_modulus_coeffs, @field_modulus)
-    end
+    def fq12_modulus_coeffs,
+      do: FieldProperties.field_properties()["bn128"]["fq12_modulus_coeffs"]
+  end
 
-    def fq12(coeffs) do
-      OptimizedFQP.new_fqp(coeffs, @fq12_modulus_coeffs, @field_modulus)
-    end
+  #
+  # bls12_381 curve fields
+  #
+  defmodule Bls12381FQ do
+    use FieldMath, parent: FQ
+    def field_modulus, do: FieldProperties.field_properties()["bls12_381"]["field_modulus"]
+  end
+
+  defmodule Bls12381FQP do
+    use FieldMath, parent: FQP
+    def field_modulus, do: FieldProperties.field_properties()["bls12_381"]["field_modulus"]
+  end
+
+  defmodule Bls12381FQ2 do
+    use FieldMath, parent: [FQ2, Bls12381FQP]
+    def field_modulus, do: FieldProperties.field_properties()["bls12_381"]["field_modulus"]
+
+    def fq2_modulus_coeffs,
+      do: FieldProperties.field_properties()["bls12_381"]["fq2_modulus_coeffs"]
+  end
+
+  defmodule Bls12381FQ12 do
+    use FieldMath, parent: [FQ12, Bls12381FQP]
+    def field_modulus, do: FieldProperties.field_properties()["bls12_381"]["field_modulus"]
+
+    def fq12_modulus_coeffs,
+      do: FieldProperties.field_properties()["bls12_381"]["fq12_modulus_coeffs"]
+  end
+
+  #
+  # optimized_bn128 curve fields
+  #
+  defmodule OptimizedBN128FQ do
+    use FieldMath, parent: OptimizedFQ
+    def field_modulus, do: FieldProperties.field_properties()["bn128"]["field_modulus"]
+  end
+
+  defmodule OptimizedBN128FQP do
+    use FieldMath, parent: OptimizedFQP
+    def field_modulus, do: FieldProperties.field_properties()["bn128"]["field_modulus"]
+  end
+
+  defmodule OptimizedBN128FQ2 do
+    use FieldMath, parent: [OptimizedFQ2, OptimizedBN128FQP]
+    def field_modulus, do: FieldProperties.field_properties()["bn128"]["field_modulus"]
+    def fq2_modulus_coeffs, do: FieldProperties.field_properties()["bn128"]["fq2_modulus_coeffs"]
+  end
+
+  defmodule OptimizedBN128FQ12 do
+    use FieldMath, parent: [OptimizedFQ12, OptimizedBN128FQP]
+    def field_modulus, do: FieldProperties.field_properties()["bn128"]["field_modulus"]
+
+    def fq12_modulus_coeffs,
+      do: FieldProperties.field_properties()["bn128"]["fq12_modulus_coeffs"]
+  end
+
+  #
+  # optimized_bls12_381 curve fields
+  #
+  defmodule OptimizedBls12381FQ do
+    use FieldMath, parent: OptimizedFQ
+    def field_modulus, do: FieldProperties.field_properties()["bls12_381"]["field_modulus"]
+  end
+
+  defmodule OptimizedBls12381FQ2 do
+    use FieldMath, parent: [OptimizedFQ2, OptimizedBls12381FQP]
+    def field_modulus, do: FieldProperties.field_properties()["bls12_381"]["field_modulus"]
+
+    def fq2_modulus_coeffs,
+      do: FieldProperties.field_properties()["bls12_381"]["fq2_modulus_coeffs"]
+  end
+
+  defmodule OptimizedBls12381FQ12 do
+    use FieldMath, parent: [OptimizedFQ12, OptimizedBls12381FQP]
+    def field_modulus, do: FieldProperties.field_properties()["bls12_381"]["field_modulus"]
+
+    def fq12_modulus_coeffs,
+      do: FieldProperties.field_properties()["bls12_381"]["fq12_modulus_coeffs"]
   end
 end

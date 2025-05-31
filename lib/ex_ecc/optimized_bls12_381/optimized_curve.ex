@@ -74,7 +74,7 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedCurve do
     {_x, _y, z} = pt
     FieldMath = elem_FieldMath(z)
     # Compare with FQP.zero if z is FQP
-    FieldMath.equal?(z, FieldMath.zero(z.field_modulus, z.degree))
+    FieldMath.eq(z, FieldMath.zero(z.field_modulus, z.degree))
   end
 
   # b_val is an FQ struct
@@ -92,7 +92,7 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedCurve do
       # Ensure b_val is an FQ struct for mul; if it's integer, convert
       b_fq = FQ.ensure_fq(b_val, @field_modulus)
       rhs = FQ.multiply(b_fq, FQ.multiply(FQ.multiply(z, z), z))
-      FQ.equal?(lhs, rhs)
+      FQ.eq(lhs, rhs)
     end
   end
 
@@ -174,11 +174,11 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedCurve do
 
     cond do
       # p1 is inf
-      FieldMath.equal?(z1, zero) ->
+      FieldMath.eq(z1, zero) ->
         p2
 
       # p2 is inf
-      FieldMath.equal?(z2, zero) ->
+      FieldMath.eq(z2, zero) ->
         p1
 
       true ->
@@ -188,11 +188,11 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedCurve do
         v2 = FieldMath.mul(x1, z2)
 
         cond do
-          FieldMath.equal?(v1, v2) and FieldMath.equal?(u1, u2) ->
+          FieldMath.eq(v1, v2) and FieldMath.eq(u1, u2) ->
             double(p1)
 
           # Point at infinity
-          FieldMath.equal?(v1, v2) ->
+          FieldMath.eq(v1, v2) ->
             {one, one, zero}
 
           true ->
@@ -258,8 +258,8 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedCurve do
     # Assuming homogeneous coordinates
     FieldMath = elem_FieldMath(x1)
 
-    FieldMath.equal?(FieldMath.mul(x1, z2), FieldMath.mul(x2, z1)) and
-      FieldMath.equal?(FieldMath.mul(y1, z2), FieldMath.mul(y2, z1))
+    FieldMath.eq(FieldMath.mul(x1, z2), FieldMath.mul(x2, z1)) and
+      FieldMath.eq(FieldMath.mul(y1, z2), FieldMath.mul(y2, z1))
   end
 
   # Point {x,y,z} with FQ or FQP elements

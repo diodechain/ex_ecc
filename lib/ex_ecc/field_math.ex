@@ -1,16 +1,32 @@
 defmodule ExEcc.FieldMath do
+  defmacro __using__(opts) do
+    parent = opts[:parent]
+
+    quote do
+      alias ExEcc.FieldMath
+
+      defstruct []
+      def parent(), do: unquote(parent)
+
+      def new(fq \\ %__MODULE__{}, val) do
+        parent = FieldMath.resolve(parent(), :new, 2)
+        parent.new(fq, val)
+      end
+    end
+  end
+
   def add(a, b), do: call(:add, a, b)
   def mul(a, b), do: call(:mul, a, b)
   def sub(a, b), do: call(:sub, a, b)
   def div(a, b), do: call(:div, a, b)
   def pow(a, b), do: call(:pow, a, b)
   def inv(a), do: call(:inv, a)
-  def conjugate(a), do: call(:conjugate, a)
-  def frobenius(a, b), do: call(:frobenius, a, b)
-  def equal?(a, b), do: call(:equal?, a, b)
-  def not_equal?(a, b), do: call(:not_equal?, a, b)
-  def less_than?(a, b), do: call(:less_than?, a, b)
+  def eq(a, b), do: call(:eq, a, b)
+  def neq(a, b), do: call(:neq, a, b)
+  def lt(a, b), do: call(:lt, a, b)
 
+  def fq2_modulus_coeffs(a), do: get(:fq2_modulus_coeffs, a)
+  def fq12_modulus_coeffs(a), do: get(:fq12_modulus_coeffs, a)
   def field_modulus(a), do: get(:field_modulus, a)
   def coeffs(a), do: get(:coeffs, a)
   def modulus_coeffs(a), do: get(:modulus_coeffs, a)
@@ -42,10 +58,8 @@ defmodule ExEcc.FieldMath do
     )
   end
 
-  def type(a) do
-    %type{} = a
-    type
-  end
+  def type(%type{}), do: type(type)
+  def type(type) when is_atom(type), do: type
 
   def isinstance(a, :int), do: is_integer(a)
 
@@ -64,22 +78,33 @@ defmodule ExEcc.FieldMath do
   end
 
   defp get(atom, a) do
-    %type{} = a
+    type = type(a)
 
     cond do
-      Map.has_key?(a, atom) -> Map.get(a, atom)
-      function_exported?(type, atom, 0) -> type.atom()
-      true -> apply(a.parent(), atom, [])
+      is_map(a) and Map.has_key?(a, atom) ->
+        Map.get(a, atom)
+
+      function_exported?(type, atom, 0) ->
+        apply(type, atom, [])
+
+      true ->
+        Enum.find_value(List.wrap(a.parent()), fn p ->
+          function_exported?(p, atom, 0) && apply(p, atom, [])
+        end)
     end
   end
 
-  defp resolve(%type{}, op, params), do: resolve(type, op, params)
+  def resolve([type | rest], op, params) do
+    resolve(type, op, params) || resolve(rest, op, params)
+  end
 
-  defp resolve(type, op, params) do
-    if function_exported?(type, op, length(params)) do
+  def resolve(type, op, params) when is_atom(type) do
+    if function_exported?(type(type), op, params) do
       type
     else
-      resolve(type.parent(), op, params)
+      if parent = get(:parent, type) do
+        resolve(parent, op, params)
+      end
     end
   end
 end

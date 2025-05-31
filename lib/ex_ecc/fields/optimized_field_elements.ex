@@ -3,7 +3,7 @@ defmodule ExEcc.Fields.OptimizedFQ do
   defstruct n: 0, field_modulus: nil
 
   def new(fq \\ %__MODULE__{}, val) do
-    if not Map.has_key?(fq, :field_modulus) do
+    if not FieldMath.field_modulus(fq) do
       raise "Field Modulus hasn't been specified"
     end
 
@@ -162,13 +162,12 @@ defmodule ExEcc.Fields.OptimizedFQP do
   """
 
   alias ExEcc.Utils
-  alias ExEcc.Fields.OptimizedFQ
   import While
 
   defstruct coeffs: [], modulus_coeffs: [], degree: 0, field_modulus: nil, mc_tuples: []
 
   def new(fqp \\ %__MODULE__{}, coeffs, modulus_coeffs \\ []) do
-    if not Map.has_key?(fqp, :field_modulus) do
+    if not FieldMath.field_modulus(fqp) do
       raise "Field Modulus hasn't been specified"
     end
 
@@ -301,26 +300,30 @@ defmodule ExEcc.Fields.OptimizedFQP do
       fqp.modulus_coeffs ++ [1]
     }
 
-    {lm, low, hm, high} =
-      while Utils.deg(low) do
-        r = Utils.poly_rounded_div(high, low)
-        r = r ++ List.duplicate(0, fqp.degree + 1 - length(r))
-        nm = Enum.map(hm, & &1)
-        new = Enum.map(high, & &1)
+    {lm, low, _hm, _high} =
+      reduce_while({lm, low, hm, high}, fn {lm, low, hm, high} ->
+        if Utils.deg(low) do
+          r = Utils.poly_rounded_div(high, low)
+          r = r ++ List.duplicate(0, fqp.degree + 1 - length(r))
+          nm = Enum.map(hm, & &1)
+          new = Enum.map(high, & &1)
 
-        {nm, new} =
-          for(i <- 0..fqp.degree, j <- 0..(fqp.degree - i), do: {i, j})
-          |> Enum.reduce({nm, new}, fn {i, j}, {nm, new} ->
-            nm = List.update_at(nm, i + j, fn val -> val - lm[i] * r[j] end)
-            new = List.update_at(new, i + j, fn val -> val - low[i] * r[j] end)
-            {nm, new}
-          end)
+          {nm, _new} =
+            for(i <- 0..fqp.degree, j <- 0..(fqp.degree - i), do: {i, j})
+            |> Enum.reduce({nm, new}, fn {i, j}, {nm, new} ->
+              nm = List.update_at(nm, i + j, fn val -> val - lm[i] * r[j] end)
+              new = List.update_at(new, i + j, fn val -> val - low[i] * r[j] end)
+              {nm, new}
+            end)
 
-        {nm, new} = Enum.map(nm, &rem(&1, fqp.field_modulus))
-        {new, _} = Enum.map(new, &rem(&1, fqp.field_modulus))
+          {nm, new} = Enum.map(nm, &rem(&1, fqp.field_modulus))
+          {new, _} = Enum.map(new, &rem(&1, fqp.field_modulus))
 
-        {nm, new, lm, low}
-      end
+          {:cont, {nm, new, lm, low}}
+        else
+          {:halt, {lm, low, hm, high}}
+        end
+      end)
 
     FieldMath.type(fqp).new(Enum.take(lm, fqp.degree)) |> FieldMath.div(List.first(low))
   end
@@ -356,7 +359,7 @@ defmodule ExEcc.Fields.OptimizedFQP do
 
   # Optimized sgn0 implementation
   def sgn0(fqp) do
-    {sign, zero} =
+    {sign, _zero} =
       Enum.reduce(fqp.coeffs, {0, 1}, fn x_i, {sign, zero} ->
         sign_i = rem(x_i, 2)
         zero_i = x_i == 0
@@ -373,6 +376,7 @@ defmodule ExEcc.Fields.OptimizedFQ2 do
   """
 
   alias ExEcc.Fields.OptimizedFQP
+  alias ExEcc.FieldMath
 
   defstruct degree: 2,
             modulus_coeffs: nil,
@@ -382,7 +386,7 @@ defmodule ExEcc.Fields.OptimizedFQ2 do
   def parent(), do: OptimizedFQP
 
   def new(fqp \\ %__MODULE__{}, coeffs) do
-    if not Map.has_key?(fqp, :fq2_modulus_coeffs) do
+    if not FieldMath.fq2_modulus_coeffs(fqp) do
       raise "FQ2 Modulus Coeffs haven't been specified"
     end
 
@@ -405,6 +409,7 @@ defmodule ExEcc.Fields.OptimizedFQ12 do
   """
 
   alias ExEcc.Fields.OptimizedFQP
+  alias ExEcc.FieldMath
 
   defstruct degree: 12,
             modulus_coeffs: nil,
@@ -414,7 +419,7 @@ defmodule ExEcc.Fields.OptimizedFQ12 do
   def parent(), do: OptimizedFQP
 
   def new(fqp \\ %__MODULE__{}, coeffs) do
-    if not Map.has_key?(fqp, :fq12_modulus_coeffs) do
+    if not FieldMath.fq12_modulus_coeffs(fqp) do
       raise "FQ12 Modulus Coeffs haven't been specified"
     end
 

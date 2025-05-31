@@ -1,6 +1,5 @@
 defmodule ExEcc.Bn128.Bn128Curve do
-  alias ExEcc.Fields.FieldElements, as: FQ
-  alias ExEcc.Fields.FQP
+  alias ExEcc.Fields.{FQ, FQP}
   alias ExEcc.Fields.FieldProperties
 
   @curve_order 218_882_428_718_392_752_222_464_057_452_572_750_885_483_644_004_160_343_436_982_041_865_758_084_956_17
@@ -126,7 +125,7 @@ defmodule ExEcc.Bn128.Bn128Curve do
             FQ.zero(x.field_modulus)
         end
 
-      if elem_module.equal?(two_y, zero_typed) do
+      if elem_module.eq(two_y, zero_typed) do
         nil
       else
         m = elem_module.div(three_x_squared, two_y)

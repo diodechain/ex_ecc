@@ -85,7 +85,7 @@ defmodule ExEcc.Bls12_381.Bls12381Curve do
             do: FQ.new(@b, @field_modulus),
             else: FQ2.new([@b2, 0], @field_modulus)
 
-        FieldMath.equal?(y_squared, FieldMath.add(x_cubed, b_val))
+        FieldMath.eq(y_squared, FieldMath.add(x_cubed, b_val))
     end
   end
 
@@ -97,8 +97,8 @@ defmodule ExEcc.Bls12_381.Bls12381Curve do
       {x, y} = pt ->
         FieldMath = elem_module(x)
 
-        FieldMath.equal?(x, FieldMath.zero(@field_modulus)) and
-          FieldMath.equal?(y, FieldMath.zero(@field_modulus))
+        FieldMath.eq(x, FieldMath.zero(@field_modulus)) and
+          FieldMath.eq(y, FieldMath.zero(@field_modulus))
     end
   end
 
@@ -210,7 +210,7 @@ defmodule ExEcc.Bls12_381.Bls12381Curve do
     end
   end
 
-  def equal?(p1, p2), do: eq(p1, p2)
+  def eq(p1, p2), do: eq(p1, p2)
 
   defp elem_module(elem) do
     case elem do

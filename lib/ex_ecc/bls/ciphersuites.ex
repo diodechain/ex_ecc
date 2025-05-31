@@ -121,7 +121,7 @@ defmodule ExEcc.Bls.Ciphersuites.Base do
         #   # term2 = ExEcc.OptimizedBls12381.pairing(msg_hash_point, neg_pubkey_g1_point, final_exponentiate: false)
         #   # product = ExEcc.Fields.OptimizedFieldElements.FQ12.mul(term1, term2) # Assuming FQ12 is the pairing result type
         #   # final_exp_result = ExEcc.OptimizedBls12381.final_exponentiate(product)
-        #   # ExEcc.Fields.OptimizedFieldElements.FQ12.equal?(final_exp_result, ExEcc.Fields.OptimizedFieldElements.FQ12.one(ExEcc.OptimizedBls12381.field_modulus()))
+        #   # ExEcc.Fields.OptimizedFieldElements.FQ12.eq(final_exp_result, ExEcc.Fields.OptimizedFieldElements.FQ12.one(ExEcc.OptimizedBls12381.field_modulus()))
         #   :not_implemented_core_verify_pairing_check
         # rescue
         #   _e in [ExEcc.Bls.Ciphersuites.ValidationError, ArgumentError, MatchError] -> false
@@ -163,7 +163,7 @@ defmodule ExEcc.Bls.Ciphersuites.Base do
         #   #    acc_fq12 ->
         #   #      sig_pairing_term = ExEcc.OptimizedBls12381.pairing(signature_point, ExEcc.OptimizedBls12381.neg(ExEcc.OptimizedBls12381.g1()), final_exponentiate: false)
         #   #      total_product = ExEcc.Fields.OptimizedFieldElements.FQ12.mul(acc_fq12, sig_pairing_term)
-        #   #      ExEcc.Fields.OptimizedFieldElements.FQ12.equal?(ExEcc.OptimizedBls12381.final_exponentiate(total_product), ExEcc.Fields.OptimizedFieldElements.FQ12.one(ExEcc.OptimizedBls12381.field_modulus()))
+        #   #      ExEcc.Fields.OptimizedFieldElements.FQ12.eq(ExEcc.OptimizedBls12381.final_exponentiate(total_product), ExEcc.Fields.OptimizedFieldElements.FQ12.one(ExEcc.OptimizedBls12381.field_modulus()))
         #   # end
         #   :not_implemented_core_agg_verify_pairing_check
         # rescue
