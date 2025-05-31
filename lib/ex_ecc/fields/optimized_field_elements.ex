@@ -20,20 +20,11 @@ defmodule ExEcc.Fields.OptimizedFieldElements do
   # --- Optimized FQ ---
   defstruct n: 0, field_modulus: nil
 
-  @type t_fq :: %__MODULE__{n: integer, field_modulus: integer}
-
-  # Alias new_fq as new for test compatibility
-  def new(val, field_modulus), do: new(val, field_modulus)
-
-  def new(val, field_modulus) when is_integer(val) and is_integer(field_modulus) do
-    %__MODULE__{n: rem(val, field_modulus), field_modulus: field_modulus}
-  end
-
-  def new(fq_element = %__MODULE__{}, field_modulus) when is_integer(field_modulus) do
-    if fq_element.field_modulus == field_modulus do
-      fq_element
-    else
-      %__MODULE__{n: rem(fq_element.n, field_modulus), field_modulus: field_modulus}
+  def new(fq \\ %__MODULE__{}, val) do
+    case fq do
+      %{n: n} -> %{fq | n: n}
+      n when is_integer(n) -> %{fq | n: n}
+      _ -> raise "Invalid FQ element: #{inspect(fq)}"
     end
   end
 
