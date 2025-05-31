@@ -22,7 +22,7 @@ defmodule ExEcc.MixProject do
   defp deps do
     [
       {:ex_doc, "~> 0.30", only: :dev, runtime: false},
-      {:whiles, "~> 0.1.0"}
+      {:while, "~> 0.2"}
     ]
   end
 end

@@ -16,7 +16,7 @@ defmodule ExEcc.Bls.HashToCurve do
   Follows BLS12381G2_XMD:SHA-256_SSWU_RO_ ciphersuite.
   https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-09#section-8.8.2
   """
-  # @spec hash_to_g2(binary, binary) :: ExEcc.Bls.Typing.g2_uncompressed()
+  #
   def hash_to_g2(_message, _dst) do
     # {u0, u1} = hash_to_field_fq2(message, 2, dst) # Assuming hash_function is SHA256 implicitly
     # q0 = map_to_curve_g2(u0)
@@ -33,7 +33,7 @@ defmodule ExEcc.Bls.HashToCurve do
   Returns a tuple of `count` FQ2 elements.
   Implicitly uses SHA256.
   """
-  # @spec hash_to_field_fq2(binary, integer, binary) :: {ExEcc.Fields.OptimizedFieldElements.FQ2.t_fq2(), ...}
+  #
   def hash_to_field_fq2(message, count, dst) do
     # Extension degree of FQ2
     m = 2
@@ -61,7 +61,7 @@ defmodule ExEcc.Bls.HashToCurve do
   @doc """
   Map To Curve for G2 (using SWU map and 3-Isogeny).
   """
-  # @spec map_to_curve_g2(ExEcc.Fields.OptimizedFieldElements.FQ2.t_fq2()) :: ExEcc.Bls.Typing.g2_uncompressed()
+  #
   def map_to_curve_g2(_u_fq2) do
     # {x, y, z} = ExEcc.OptimizedBls12381.optimized_swu_g2(u_fq2)
     # ExEcc.OptimizedBls12381.iso_map_g2(x, y, z)
@@ -71,7 +71,7 @@ defmodule ExEcc.Bls.HashToCurve do
   @doc """
   Clear Cofactor for G2 points.
   """
-  # @spec clear_cofactor_g2(ExEcc.Bls.Typing.g2_uncompressed()) :: ExEcc.Bls.Typing.g2_uncompressed()
+  #
   def clear_cofactor_g2(_p) do
     # ExEcc.OptimizedBls12381.multiply_clear_cofactor_g2(p)
     :not_implemented_yet_clear_g2
@@ -84,7 +84,7 @@ defmodule ExEcc.Bls.HashToCurve do
   Follows BLS12381G1_XMD:SHA-256_SSWU_RO_ ciphersuite.
   https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-09#section-8.8.1
   """
-  # @spec hash_to_g1(binary, binary) :: ExEcc.Bls.Typing.g1_uncompressed()
+  #
   def hash_to_g1(_message, _dst) do
     # {u0, u1} = hash_to_field_fq(message, 2, dst) # Assuming SHA256
     # q0 = map_to_curve_g1(u0)
@@ -100,7 +100,7 @@ defmodule ExEcc.Bls.HashToCurve do
   Returns a tuple of `count` FQ elements.
   Implicitly uses SHA256.
   """
-  # @spec hash_to_field_fq(binary, integer, binary) :: {ExEcc.Fields.OptimizedFieldElements.FQ.t_fq(), ...}
+  #
   def hash_to_field_fq(message, count, dst) do
     # Extension degree of FQ
     m = 1
@@ -123,7 +123,7 @@ defmodule ExEcc.Bls.HashToCurve do
   @doc """
   Map To Curve for G1 (using SWU map and 11-Isogeny).
   """
-  # @spec map_to_curve_g1(ExEcc.Fields.OptimizedFieldElements.FQ.t_fq()) :: ExEcc.Bls.Typing.g1_uncompressed()
+  #
   def map_to_curve_g1(_u_fq) do
     # {x, y, z} = ExEcc.OptimizedBls12381.optimized_swu_g1(u_fq)
     # ExEcc.OptimizedBls12381.iso_map_g1(x, y, z)
@@ -133,7 +133,7 @@ defmodule ExEcc.Bls.HashToCurve do
   @doc """
   Clear Cofactor for G1 points.
   """
-  # @spec clear_cofactor_g1(ExEcc.Bls.Typing.g1_uncompressed()) :: ExEcc.Bls.Typing.g1_uncompressed()
+  #
   def clear_cofactor_g1(_p) do
     # ExEcc.OptimizedBls12381.multiply_clear_cofactor_g1(p)
     :not_implemented_yet_clear_g1

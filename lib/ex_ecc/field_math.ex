@@ -15,7 +15,7 @@ defmodule ExEcc.FieldMath do
   def coeffs(a), do: get(:coeffs, a)
   def modulus_coeffs(a), do: get(:modulus_coeffs, a)
   def degree(a), do: get(:degree, a)
-  def super(a), do: get(:super, a)
+  def parent(a), do: get(:parent, a)
   def corresponding_fq_class(a), do: get(:corresponding_fq_class, a)
 
   defp call(op, a, b) do
@@ -36,7 +36,7 @@ defmodule ExEcc.FieldMath do
       props,
       %{
         __struct__: String.to_atom(name),
-        super: base_class
+        parent: base_class
       },
       fn {key, value}, acc -> Map.put(acc, key, value) end
     )
@@ -50,14 +50,14 @@ defmodule ExEcc.FieldMath do
   def isinstance(a, :int), do: is_integer(a)
 
   def isinstance(a, other_type) when is_atom(other_type) do
-    type(a) == other_type || isinstance(super(a), other_type)
+    type(a) == other_type || isinstance(parent(a), other_type)
   end
 
   def isinstance(a, [other_type | rest]) do
     isinstance(a, other_type) || isinstance(a, rest)
   end
 
-  def isinstance(a, []), do: false
+  def isinstance(_a, []), do: false
 
   def isinstance(a, :int_types_or_FQ) do
     isinstance(a, [:int, FQ])
@@ -69,7 +69,7 @@ defmodule ExEcc.FieldMath do
     cond do
       Map.has_key?(a, atom) -> Map.get(a, atom)
       function_exported?(type, atom, 0) -> type.atom()
-      true -> apply(a.super(), atom, [])
+      true -> apply(a.parent(), atom, [])
     end
   end
 
@@ -79,7 +79,7 @@ defmodule ExEcc.FieldMath do
     if function_exported?(type, op, length(params)) do
       type
     else
-      resolve(type.super(), op, params)
+      resolve(type.parent(), op, params)
     end
   end
 end

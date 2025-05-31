@@ -6,7 +6,7 @@ defmodule ExEcc.Bls.Hash do
 
   https://tools.ietf.org/html/rfc5869
   """
-  @spec hkdf_extract(binary, binary) :: binary
+
   def hkdf_extract(salt, ikm) when is_binary(salt) and is_binary(ikm) do
     :crypto.mac(:hmac, :sha256, salt, ikm)
   end
@@ -16,7 +16,7 @@ defmodule ExEcc.Bls.Hash do
 
   https://tools.ietf.org/html/rfc5869
   """
-  @spec hkdf_expand(binary, binary, integer) :: binary
+
   def hkdf_expand(prk, info, length)
       when is_binary(prk) and is_binary(info) and is_integer(length) and length >= 0 do
     # :sha256 digest size
@@ -43,7 +43,7 @@ defmodule ExEcc.Bls.Hash do
   Big-endian byte order.
   https://tools.ietf.org/html/rfc8017#section-4.1
   """
-  @spec i2osp(integer, integer) :: binary
+
   def i2osp(x, xlen) when is_integer(x) and x >= 0 and is_integer(xlen) and xlen >= 0 do
     <<x::big-integer-size(xlen * 8)>>
   end
@@ -53,7 +53,7 @@ defmodule ExEcc.Bls.Hash do
   Big-endian byte order.
   https://tools.ietf.org/html/rfc8017#section-4.2
   """
-  @spec os2ip(binary) :: integer
+
   def os2ip(x) when is_binary(x) do
     byte_size = byte_size(x)
     <<int_val::big-integer-size(byte_size * 8)>> = x
@@ -63,7 +63,7 @@ defmodule ExEcc.Bls.Hash do
   @doc """
   SHA-256 hash of a binary string.
   """
-  @spec sha256(binary) :: binary
+
   def sha256(x) when is_binary(x) do
     :crypto.hash(:sha256, x)
   end
@@ -71,7 +71,7 @@ defmodule ExEcc.Bls.Hash do
   @doc """
   XOR two binary strings. They must be of the same length.
   """
-  @spec xor(binary, binary) :: binary
+
   def xor(a, b) when is_binary(a) and is_binary(b) and byte_size(a) == byte_size(b) do
     :binary.bin_to_list(a)
     |> Enum.zip(:binary.bin_to_list(b))
@@ -94,7 +94,7 @@ defmodule ExEcc.Bls.Hash do
   Uses SHA-256 as the hash function.
   https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-11#section-5.3.1
   """
-  @spec expand_message_xmd(binary, binary, integer) :: binary
+
   def expand_message_xmd(msg, dst, len_in_bytes) do
     # Using :sha256, so b_in_bytes = 32, r_in_bytes = 64 (block size)
     # :crypto.hash_info(:sha256).digest_size

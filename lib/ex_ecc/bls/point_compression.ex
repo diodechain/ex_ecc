@@ -18,7 +18,7 @@ defmodule ExEcc.Bls.PointCompression do
   @doc """
   Gets the flags from a point.
   """
-  @spec get_flags(integer) :: {boolean, boolean, boolean}
+
   def get_flags(z) when is_integer(z) do
     c_flag = Bitwise.band(Bitwise.bsr(z, 383), 1) == 1
     i_flag = Bitwise.band(Bitwise.bsr(z, 382), 1) == 1
@@ -29,7 +29,7 @@ defmodule ExEcc.Bls.PointCompression do
   @doc """
   Checks if a compressed point (z1 or z1,z2) represents the point at infinity.
   """
-  @spec is_point_at_infinity(integer, integer | nil) :: boolean
+
   def is_point_at_infinity(z1, z2 \\ nil) do
     # rem(z1, Constants.pow_2_381()) == 0 and (is_nil(z2) or z2 == 0)
     # Actual check from py_ecc: (z1 % POW_2_381 == 0) and (z2 is None or z2 == 0)
@@ -43,7 +43,7 @@ defmodule ExEcc.Bls.PointCompression do
 
   # --- G1 Compression/Decompression ---
 
-  # @spec compress_g1(ExEcc.Bls.Typing.g1_uncompressed()) :: ExEcc.Bls.Typing.g1_compressed()
+  #
   def compress_g1(_pt) do
     # q = ExEcc.OptimizedBls12381.field_modulus()
     # if ExEcc.OptimizedBls12381.is_inf(pt) do
@@ -59,7 +59,7 @@ defmodule ExEcc.Bls.PointCompression do
     :not_implemented_compress_g1
   end
 
-  # @spec decompress_g1(ExEcc.Bls.Typing.g1_compressed()) :: ExEcc.Bls.Typing.g1_uncompressed()
+  #
   def decompress_g1(_z_compressed) do
     # z = z_compressed # If G1Compressed is just an integer alias
     # {c_flag, b_flag, a_flag} = get_flags(z)
@@ -107,7 +107,7 @@ defmodule ExEcc.Bls.PointCompression do
   Modular square root in FQ2. Favors higher imaginary or real part for tie-breaking.
   This requires FQ2 arithmetic (pow, division, negation, comparison of coeffs).
   """
-  # @spec modular_squareroot_in_fq2(ExEcc.Fields.OptimizedFieldElements.FQ2.t_fq2()) :: ExEcc.Fields.OptimizedFieldElements.FQ2.t_fq2() | nil
+  #
   def modular_squareroot_in_fq2(_value_fq2) do
     # eighth_roots = Constants.eighth_roots_of_unity() # List of FQ2 elements
     # fq2_order_val = Constants.fq2_order()
@@ -139,7 +139,7 @@ defmodule ExEcc.Bls.PointCompression do
     :not_implemented_modular_sqrt_fq2
   end
 
-  # @spec compress_g2(ExEcc.Bls.Typing.g2_uncompressed()) :: ExEcc.Bls.Typing.g2_compressed()
+  #
   def compress_g2(_pt) do
     # q_val = ExEcc.OptimizedBls12381.field_modulus()
     # b2_val = ExEcc.OptimizedBls12381.b2() # FQ2 element
@@ -166,7 +166,7 @@ defmodule ExEcc.Bls.PointCompression do
     :not_implemented_compress_g2
   end
 
-  # @spec decompress_g2(ExEcc.Bls.Typing.g2_compressed()) :: ExEcc.Bls.Typing.g2_uncompressed()
+  #
   def decompress_g2(_p_compressed) do
     # {z1, z2} = p_compressed # If G2Compressed is a tuple {int, int}
     # {c_flag1, b_flag1, a_flag1} = get_flags(z1)
