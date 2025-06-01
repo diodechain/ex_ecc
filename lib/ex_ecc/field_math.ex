@@ -5,12 +5,19 @@ defmodule ExEcc.FieldMath do
     quote do
       alias ExEcc.FieldMath
 
-      defstruct []
+      defstruct n: nil
       def parent(), do: unquote(parent)
 
       def new(fq \\ %__MODULE__{}, val) do
         parent = FieldMath.resolve(parent(), :new, 2)
-        parent.new(fq, val)
+
+        try do
+          parent.new(fq, val)
+        rescue
+          error ->
+            IO.inspect(error, label: "error")
+            reraise error, __STACKTRACE__
+        end
       end
     end
   end
@@ -60,6 +67,9 @@ defmodule ExEcc.FieldMath do
 
   def type(%type{}), do: type(type)
   def type(type) when is_atom(type), do: type
+  def type(int) when is_integer(int), do: :int
+
+  def isinstance(nil, _), do: false
 
   def isinstance(a, :int), do: is_integer(a)
 
@@ -77,34 +87,60 @@ defmodule ExEcc.FieldMath do
     isinstance(a, [:int, FQ])
   end
 
+  defp get(atom, nil) do
+    raise "No value found for #{atom}"
+  end
+
   defp get(atom, a) do
+    IO.inspect(a, label: "get(#{atom}, a)")
     type = type(a)
+    IO.inspect(type, label: "type")
 
     cond do
-      is_map(a) and Map.has_key?(a, atom) ->
+      is_map(a) and IO.inspect(Map.has_key?(a, atom), label: "Map.has_key?(a, atom)") ->
         Map.get(a, atom)
 
-      function_exported?(type, atom, 0) ->
+      IO.inspect(function?(type, atom, 0), label: "function?(type, atom, 0)") ->
+        IO.inspect({type, atom, []}, label: "type, atom, []")
+        IO.inspect(apply(type, atom, []), label: "apply(type, atom, [])")
         apply(type, atom, [])
 
-      true ->
-        Enum.find_value(List.wrap(a.parent()), fn p ->
-          function_exported?(p, atom, 0) && apply(p, atom, [])
+      is_map(a) and IO.inspect(Map.has_key?(a, :parent), label: "Map.has_key?(a, :parent)") ->
+        IO.inspect(a.parent, label: "a.parent")
+
+        Enum.find_value(List.wrap(a.parent), fn p ->
+          function?(p, atom, 0) && apply(p, atom, [])
         end)
+        |> IO.inspect(label: "result")
+
+      function?(type, :parent, 0) ->
+        Enum.find_value(List.wrap(type.parent()), fn p ->
+          function?(p, atom, 0) && apply(p, atom, [])
+        end)
+
+      true ->
+        nil
     end
   end
 
-  def resolve([type | rest], op, params) do
-    resolve(type, op, params) || resolve(rest, op, params)
+  def resolve([type | rest], op, param_count) do
+    resolve(type, op, param_count) || resolve(rest, op, param_count)
   end
 
-  def resolve(type, op, params) when is_atom(type) do
-    if function_exported?(type(type), op, params) do
+  def resolve(type, op, param_count) do
+    if function?(type, op, param_count) do
       type
     else
-      if parent = get(:parent, type) do
-        resolve(parent, op, params)
+      parent = get(:parent, type)
+
+      if parent != nil do
+        resolve(parent, op, param_count)
       end
     end
+  end
+
+  defp function?(type, op, param_count) do
+    type = type(type)
+    Code.ensure_compiled?(type) and function_exported?(type, op, param_count)
   end
 end

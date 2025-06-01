@@ -1,9 +1,12 @@
 defmodule ExEcc.Fields.FQ do
   alias ExEcc.Utils
+  alias ExEcc.FieldMath
   defstruct n: 0, field_modulus: nil
 
   def new(fq \\ %__MODULE__{}, val) do
-    if not FieldMath.field_modulus(fq) do
+    IO.inspect(fq, label: "fq")
+
+    if FieldMath.field_modulus(fq) == nil do
       raise "Field Modulus hasn't been specified"
     end
 

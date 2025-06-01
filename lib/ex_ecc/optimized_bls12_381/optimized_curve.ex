@@ -20,6 +20,7 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedCurve do
   alias ExEcc.Fields.FieldProperties
 
   @field_modulus FieldProperties.field_properties()["bls12_381"].field_modulus
+  def field_modulus, do: @field_modulus
   @fq2_modulus_coeffs FieldProperties.field_properties()["bls12_381"].fq2_modulus_coeffs
   @fq12_modulus_coeffs FieldProperties.field_properties()["bls12_381"].fq12_modulus_coeffs
 
