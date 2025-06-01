@@ -1,9 +1,9 @@
-defmodule ExEcc.Bls.Ciphersuites.Base do
+defmodule ExEcc.BLS.Ciphersuites.Base do
   # This module defines the base behaviour for BLS ciphersuites.
-  # alias ExEcc.Bls.G2Primitives # Unused alias
-  # alias ExEcc.Bls.Hash # For hkdf_*, i2osp, os2ip
-  # alias ExEcc.Bls.HashToCurve # For hash_to_g2
-  # alias ExEcc.OptimizedBls12381 # For G1, Z1, Z2, add, curve_order, final_exponentiate, multiply, neg, pairing
+  # alias ExEcc.BLS.G2Primitives # Unused alias
+  # alias ExEcc.BLS.Hash # For hkdf_*, i2osp, os2ip
+  # alias ExEcc.BLS.HashToCurve # For hash_to_g2
+  # alias ExEcc.OptimizedBLS12381 # For G1, Z1, Z2, add, curve_order, final_exponentiate, multiply, neg, pairing
   # alias ExEcc.Fields.OptimizedFieldElements # For FQ12.one()
 
   # Placeholder types for eth_typing equivalents
@@ -40,7 +40,7 @@ defmodule ExEcc.Bls.Ciphersuites.Base do
 
       # Import common validation helpers or define them here
       defp _is_valid_privkey(privkey) do
-        # curve_order_val = ExEcc.OptimizedBls12381.curve_order()
+        # curve_order_val = ExEcc.OptimizedBLS12381.curve_order()
         # is_integer(privkey) and privkey > 0 and privkey < curve_order_val
         :not_implemented_yet_valid_privkey
       end
@@ -60,19 +60,19 @@ defmodule ExEcc.Bls.Ciphersuites.Base do
       # --- Default Implementations (can be overridden by specific ciphersuites) ---
       def sk_to_pk(privkey) do
         # unless _is_valid_privkey(privkey), do: {:error, %ValidationError{message: "Invalid private key"}}
-        # pubkey_point = ExEcc.OptimizedBls12381.multiply(ExEcc.OptimizedBls12381.g1(), privkey)
+        # pubkey_point = ExEcc.OptimizedBLS12381.multiply(ExEcc.OptimizedBLS12381.g1(), privkey)
         # {:ok, G2Primitives.g1_to_pubkey(pubkey_point)}
         :not_implemented_yet_sk_to_pk
       end
 
       def key_gen(ikm, key_info \\ <<"">>) do
         # salt_prefix = "BLS-SIG-KEYGEN-SALT-"
-        # L = :math.ceil((1.5 * :math.ceil(:math.log2(ExEcc.OptimizedBls12381.curve_order()))) / 8) |> round()
+        # L = :math.ceil((1.5 * :math.ceil(:math.log2(ExEcc.OptimizedBLS12381.curve_order()))) / 8) |> round()
         # Loop for SK != 0:
         #   salt = :crypto.hash(@xmd_hash_function_default, salt_prefix <> previous_salt_hash_if_any)
-        #   prk = ExEcc.Bls.Hash.hkdf_extract(salt, ikm <> <<0>>)
-        #   okm = ExEcc.Bls.Hash.hkdf_expand(prk, key_info <> ExEcc.Bls.Hash.i2osp(L, 2), L)
-        #   sk = rem(ExEcc.Bls.Hash.os2ip(okm), ExEcc.OptimizedBls12381.curve_order())
+        #   prk = ExEcc.BLS.Hash.hkdf_extract(salt, ikm <> <<0>>)
+        #   okm = ExEcc.BLS.Hash.hkdf_expand(prk, key_info <> ExEcc.BLS.Hash.i2osp(L, 2), L)
+        #   sk = rem(ExEcc.BLS.Hash.os2ip(okm), ExEcc.OptimizedBLS12381.curve_order())
         # {:ok, sk}
         :not_implemented_yet_key_gen
       end
@@ -81,12 +81,12 @@ defmodule ExEcc.Bls.Ciphersuites.Base do
         # try do
         #   pubkey_point = G2Primitives.pubkey_to_g1(pk)
         #   cond do
-        #     ExEcc.OptimizedBls12381.is_inf(pubkey_point) -> false
-        #     not ExEcc.Bls.G2Primitives.subgroup_check(pubkey_point) -> false
+        #     ExEcc.OptimizedBLS12381.is_inf(pubkey_point) -> false
+        #     not ExEcc.BLS.G2Primitives.subgroup_check(pubkey_point) -> false
         #     true -> true
         #   end
         # rescue
-        #   _e in [ExEcc.Bls.Ciphersuites.ValidationError, ArgumentError, MatchError] -> false
+        #   _e in [ExEcc.BLS.Ciphersuites.ValidationError, ArgumentError, MatchError] -> false
         # end
         :not_implemented_yet_key_validate
       end
@@ -97,8 +97,8 @@ defmodule ExEcc.Bls.Ciphersuites.Base do
         # unless _is_valid_privkey(sk), do: {:error, %ValidationError{message: "Invalid secret key"}}
         # unless _is_valid_message(message), do: {:error, %ValidationError{message: "Invalid message"}}
 
-        # message_point = ExEcc.Bls.HashToCurve.hash_to_g2(message, dst_for_suite) # Assumes SHA256
-        # signature_point = ExEcc.OptimizedBls12381.multiply(message_point, sk)
+        # message_point = ExEcc.BLS.HashToCurve.hash_to_g2(message, dst_for_suite) # Assumes SHA256
+        # signature_point = ExEcc.OptimizedBLS12381.multiply(message_point, sk)
         # {:ok, G2Primitives.g2_to_signature(signature_point)}
         :not_implemented_yet_core_sign
       end
@@ -112,19 +112,19 @@ defmodule ExEcc.Bls.Ciphersuites.Base do
         #   unless key_validate(pk), do: raise ValidationError, message: "Invalid public key (failed validation)"
 
         #   signature_point = G2Primitives.signature_to_g2(signature)
-        #   unless ExEcc.Bls.G2Primitives.subgroup_check(signature_point), do: false
+        #   unless ExEcc.BLS.G2Primitives.subgroup_check(signature_point), do: false
 
-        #   # term1 = ExEcc.OptimizedBls12381.pairing(signature_point, ExEcc.OptimizedBls12381.g1(), final_exponentiate: false)
-        #   # msg_hash_point = ExEcc.Bls.HashToCurve.hash_to_g2(message, dst_for_suite)
+        #   # term1 = ExEcc.OptimizedBLS12381.pairing(signature_point, ExEcc.OptimizedBLS12381.g1(), final_exponentiate: false)
+        #   # msg_hash_point = ExEcc.BLS.HashToCurve.hash_to_g2(message, dst_for_suite)
         #   # pubkey_g1_point = G2Primitives.pubkey_to_g1(pk)
-        #   # neg_pubkey_g1_point = ExEcc.OptimizedBls12381.neg(pubkey_g1_point)
-        #   # term2 = ExEcc.OptimizedBls12381.pairing(msg_hash_point, neg_pubkey_g1_point, final_exponentiate: false)
+        #   # neg_pubkey_g1_point = ExEcc.OptimizedBLS12381.neg(pubkey_g1_point)
+        #   # term2 = ExEcc.OptimizedBLS12381.pairing(msg_hash_point, neg_pubkey_g1_point, final_exponentiate: false)
         #   # product = ExEcc.Fields.OptimizedFieldElements.FQ12.mul(term1, term2) # Assuming FQ12 is the pairing result type
-        #   # final_exp_result = ExEcc.OptimizedBls12381.final_exponentiate(product)
-        #   # ExEcc.Fields.OptimizedFieldElements.FQ12.eq(final_exp_result, ExEcc.Fields.OptimizedFieldElements.FQ12.one(ExEcc.OptimizedBls12381.field_modulus()))
+        #   # final_exp_result = ExEcc.OptimizedBLS12381.final_exponentiate(product)
+        #   # ExEcc.Fields.OptimizedFieldElements.FQ12.eq(final_exp_result, ExEcc.Fields.OptimizedFieldElements.FQ12.one(ExEcc.OptimizedBLS12381.field_modulus()))
         #   :not_implemented_core_verify_pairing_check
         # rescue
-        #   _e in [ExEcc.Bls.Ciphersuites.ValidationError, ArgumentError, MatchError] -> false
+        #   _e in [ExEcc.BLS.Ciphersuites.ValidationError, ArgumentError, MatchError] -> false
         # end
         :not_implemented_yet_core_verify
       end
@@ -133,9 +133,9 @@ defmodule ExEcc.Bls.Ciphersuites.Base do
         # if Enum.empty?(signatures), do: {:error, %ValidationError{message: "Insufficient number of signatures. (n < 1)"}}
         # for sig <- signatures, unless _is_valid_signature(sig), do: {:error, %ValidationError{message: "Invalid signature in list"}}
 
-        # aggregate_point = Enum.reduce(signatures, ExEcc.OptimizedBls12381.z2(), fn sig_bytes, acc_point ->
+        # aggregate_point = Enum.reduce(signatures, ExEcc.OptimizedBLS12381.z2(), fn sig_bytes, acc_point ->
         #   sig_point = G2Primitives.signature_to_g2(sig_bytes)
-        #   ExEcc.OptimizedBls12381.add(acc_point, sig_point)
+        #   ExEcc.OptimizedBLS12381.add(acc_point, sig_point)
         # end)
         # {:ok, G2Primitives.g2_to_signature(aggregate_point)}
         :not_implemented_yet_aggregate
@@ -147,23 +147,23 @@ defmodule ExEcc.Bls.Ciphersuites.Base do
         #   # Validations for pks, messages, signature lengths, etc.
         #   # ...
         #   # signature_point = G2Primitives.signature_to_g2(signature)
-        #   # unless ExEcc.Bls.G2Primitives.subgroup_check(signature_point), do: false
+        #   # unless ExEcc.BLS.G2Primitives.subgroup_check(signature_point), do: false
 
-        #   # aggregate_pairing_val = ExEcc.Fields.OptimizedFieldElements.FQ12.one(ExEcc.OptimizedBls12381.field_modulus())
+        #   # aggregate_pairing_val = ExEcc.Fields.OptimizedFieldElements.FQ12.one(ExEcc.OptimizedBLS12381.field_modulus())
         #   # Enum.zip(pks, messages)
         #   # |> Enum.reduce_while(aggregate_pairing_val, fn {pk_bytes, msg_bytes}, acc_fq12 ->
         #   #   unless key_validate(pk_bytes), do: {:halt, {:error, :invalid_pk}}
         #   #   pubkey_g1_point = G2Primitives.pubkey_to_g1(pk_bytes)
-        #   #   msg_g2_point = ExEcc.Bls.HashToCurve.hash_to_g2(msg_bytes, dst_for_suite)
-        #   #   current_pairing = ExEcc.OptimizedBls12381.pairing(msg_g2_point, pubkey_g1_point, final_exponentiate: false)
+        #   #   msg_g2_point = ExEcc.BLS.HashToCurve.hash_to_g2(msg_bytes, dst_for_suite)
+        #   #   current_pairing = ExEcc.OptimizedBLS12381.pairing(msg_g2_point, pubkey_g1_point, final_exponentiate: false)
         #   #   {:cont, ExEcc.Fields.OptimizedFieldElements.FQ12.mul(acc_fq12, current_pairing)}
         #   # end)
         #   # |> case do
         #   #    {:error, :invalid_pk} -> false
         #   #    acc_fq12 ->
-        #   #      sig_pairing_term = ExEcc.OptimizedBls12381.pairing(signature_point, ExEcc.OptimizedBls12381.neg(ExEcc.OptimizedBls12381.g1()), final_exponentiate: false)
+        #   #      sig_pairing_term = ExEcc.OptimizedBLS12381.pairing(signature_point, ExEcc.OptimizedBLS12381.neg(ExEcc.OptimizedBLS12381.g1()), final_exponentiate: false)
         #   #      total_product = ExEcc.Fields.OptimizedFieldElements.FQ12.mul(acc_fq12, sig_pairing_term)
-        #   #      ExEcc.Fields.OptimizedFieldElements.FQ12.eq(ExEcc.OptimizedBls12381.final_exponentiate(total_product), ExEcc.Fields.OptimizedFieldElements.FQ12.one(ExEcc.OptimizedBls12381.field_modulus()))
+        #   #      ExEcc.Fields.OptimizedFieldElements.FQ12.eq(ExEcc.OptimizedBLS12381.final_exponentiate(total_product), ExEcc.Fields.OptimizedFieldElements.FQ12.one(ExEcc.OptimizedBLS12381.field_modulus()))
         #   # end
         #   :not_implemented_core_agg_verify_pairing_check
         # rescue
@@ -196,11 +196,11 @@ end
 
 # --- Concrete Ciphersuite Implementations ---
 
-defmodule ExEcc.Bls.Ciphersuites.G2Basic do
-  use ExEcc.Bls.Ciphersuites.Base
+defmodule ExEcc.BLS.Ciphersuites.G2Basic do
+  use ExEcc.BLS.Ciphersuites.Base
 
   # Implements the behaviour
-  @behaviour ExEcc.Bls.Ciphersuites.Base
+  @behaviour ExEcc.BLS.Ciphersuites.Base
 
   @dst <<"BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_">>
   # @xmd_hash_function :sha256 (inherited)
@@ -222,13 +222,13 @@ defmodule ExEcc.Bls.Ciphersuites.G2Basic do
   end
 end
 
-defmodule ExEcc.Bls.Ciphersuites.G2MessageAugmentation do
+defmodule ExEcc.BLS.Ciphersuites.G2MessageAugmentation do
   @moduledoc """
   Implementation of the G2 message augmentation ciphersuite.
   """
 
-  use ExEcc.Bls.Ciphersuites.Base
-  @behaviour ExEcc.Bls.Ciphersuites.Base
+  use ExEcc.BLS.Ciphersuites.Base
+  @behaviour ExEcc.BLS.Ciphersuites.Base
 
   @dst <<"BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_AUG_">>
 
@@ -261,14 +261,14 @@ defmodule ExEcc.Bls.Ciphersuites.G2MessageAugmentation do
   end
 end
 
-defmodule ExEcc.Bls.Ciphersuites.G2ProofOfPossession do
+defmodule ExEcc.BLS.Ciphersuites.G2ProofOfPossession do
   @moduledoc """
   Implementation of the G2 proof of possession ciphersuite.
   """
 
-  use ExEcc.Bls.Ciphersuites.Base
+  use ExEcc.BLS.Ciphersuites.Base
   # Explicitly define behaviour
-  @behaviour ExEcc.Bls.Ciphersuites.Base
+  @behaviour ExEcc.BLS.Ciphersuites.Base
 
   @dst <<"BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_">>
   # Tag for PoP

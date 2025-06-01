@@ -1,238 +1,75 @@
-defmodule ExEcc.Bls12_381.Bls12381Curve do
-  alias ExEcc.Fields.OptimizedFieldElements, as: FQ
-  alias ExEcc.Fields.OptimizedBls12381FQ2, as: FQ2
-  alias ExEcc.Fields.FQ12
+defmodule ExEcc.BLS12_381.BLS12381Curve do
+  alias ExEcc.Fields.BLS12381FQ, as: FQ
+  alias ExEcc.Fields.BLS12381FQ2, as: FQ2
+  alias ExEcc.Fields.BLS12381FQ12, as: FQ12
+  alias ExEcc.Fields.BLS12381FQP, as: FQP
 
-  @field_modulus 0x1A0111EA397FE69A4B1BA7B6434BACD764774B84F38512BF6730D2A0F6B0F6241EABFFFEB153FFFFB9FEFFFFFFFFAAAB
-  @curve_order 0x73EDA753299D7D483339D80809A1D80553BDA402FFFE5BFEFFFFFFFF00000001
+  @field_modulus ExEcc.Fields.FieldProperties.field_properties()["bls12_381"].field_modulus
+  @curve_order 524_358_751_751_261_904_794_477_405_081_859_658_376_905_525_005_276_378_226_036_586_999_385_811_845_13
 
-  @b 4
-  @b2 4
+  # TODO: Port primality and factor checks if large number math is available
+  # if :math.pow(2, @curve_order) |> round() |> rem(@curve_order) != 2 do
+  #   raise ValueError, "Curve order is not prime"
+  # end
+  # if rem(:math.pow(@field_modulus, 12) - 1, @curve_order) != 0 do
+  #   raise ValueError, "Curve order is not a factor of field_modulus**12 - 1"
+  # end
 
-  @g1_x 0x17F1D3A73197D7942695638C4FA9AC0FC3688C4F9774B905A14E3A3F171BAC586C55E83FF97A1AEFFB3AF00ADB22C6BB
-  @g1_y 0x08B3F481E3AAA0F1A09E30ED741D8AE4FCF5E095D5D00AF600DB18CB2C04B3EDD03CC744A2888AE40CAA232946C5E7E1
-  @g2_x1 0x024AA2B2F08F0A91260805272DC51051C6E47AD4FA403B02B4510B647AE3D1770BAC0326A805BBEFD48056C8C121BDB8
-  @g2_x2 0x13E02B6052719F607DACD3A088274F65596BD0D09920B61AB5DA61BBDC7F5049334CF11213945D57E5AC7D055D042B7E
-  @g2_y1 0x0CE5D527727D6E118CC9CDC6DA2E351AADFD9BAA8CBDD3A76D429A695160D12C923AC9CC3BACA289E193548608B82801
-  @g2_y2 0x0606C4A02EA734CC32ACD2B02BC28B99CB3E287E85A763AF267492AB572E99AB3F370D275CEC1DA1AAA9075FF05F79BE
+  # Curve is y**2 = x**3 + 4
+  @b FQ.new(4)
+  # Twisted curve over FQ**2
+  @b2 FQ2.new([4, 4])
+  # Extension curve over FQ**12; same b value as over FQ
+  @b12 FQ12.new(List.to_tuple([4 | List.duplicate(0, 11)]))
 
+  # Generator for curve over FQ
+  @g1 {
+    FQ.new(
+      368_541_675_371_338_701_678_108_831_518_307_775_796_162_079_578_254_640_989_457_837_868_860_759_237_837_631_883_605_494_767_634_582_154_810_418_546_4507
+    ),
+    FQ.new(
+      133_950_654_494_447_647_302_047_137_994_192_122_158_493_387_593_834_962_042_654_373_641_651_142_395_633_350_647_272_465_535_336_653_499_239_175_644_1569
+    )
+  }
+
+  # Generator for twisted curve over FQ2
+  @g2 {
+    FQ2.new([
+      352_701_069_587_466_618_187_139_116_011_060_144_890_029_952_792_775_240_219_908_644_239_793_785_735_715_026_873_347_600_343_865_175_952_761_926_303_160,
+      305_914_434_424_421_370_997_125_981_475_378_163_698_647_032_547_664_755_865_937_320_629_163_532_476_895_843_243_350_956_310_434_701_783_788_576_336_5758
+    ]),
+    FQ2.new([
+      198_515_060_228_729_193_556_805_452_117_717_163_830_086_897_821_565_573_085_937_866_506_634_472_637_382_371_842_386_910_426_333_398_464_149_434_034_7905,
+      927_553_665_492_332_455_747_201_965_776_037_880_757_740_193_453_592_970_025_027_978_793_976_877_002_675_564_980_949_289_727_957_565_575_433_344_219_582
+    ])
+  }
+
+  # Point at infinity over FQ
+  @z1 nil
+  # Point at infinity for twisted curve over FQ2
+  @z2 nil
+
+  # Accessor functions for module attributes
+  def g1, do: @g1
+  def g2, do: @g2
+  def z1, do: @z1
+  def z2, do: @z2
+  def b, do: @b
+  def b2, do: @b2
+  def b12, do: @b12
   def field_modulus, do: @field_modulus
   def curve_order, do: @curve_order
 
-  def b, do: @b
-
-  def b2, do: @b2
-
-  def g1_x, do: @g1_x
-
-  def g1_y, do: @g1_y
-
-  def g2_x1, do: @g2_x1
-
-  def g2_x2, do: @g2_x2
-
-  def g2_y1, do: @g2_y1
-
-  def g2_y2, do: @g2_y2
-
-  @doc """
-  Returns the G1 generator point for BLS12-381 curve.
-  """
-  def g1 do
-    {FQ.new(@g1_x, @field_modulus), FQ.new(@g1_y, @field_modulus)}
-  end
-
-  @doc """
-  Returns the G2 generator point for BLS12-381 curve.
-  """
-  def g2 do
-    {
-      FQ2.new([@g2_x1, @g2_x2], @field_modulus),
-      FQ2.new([@g2_y1, @g2_y2], @field_modulus)
-    }
-  end
-
-  @doc """
-  Returns the zero point (point at infinity) for G1.
-  """
-  def z1 do
-    {FQ.zero(@field_modulus), FQ.zero(@field_modulus)}
-  end
-
-  @doc """
-  Returns the zero point (point at infinity) for G2.
-  """
-  def z2 do
-    {
-      FQ2.zero(@field_modulus),
-      FQ2.zero(@field_modulus)
-    }
-  end
-
-  def is_on_curve(pt) do
-    cond do
-      is_inf(pt) ->
-        true
-
-      true ->
-        {x, y} = pt
-        FieldMath = elem_module(x)
-        y_squared = FieldMath.mul(y, y)
-        x_cubed = FieldMath.mul(FieldMath.mul(x, x), x)
-
-        b_val =
-          if FieldMath == FQ,
-            do: FQ.new(@b, @field_modulus),
-            else: FQ2.new([@b2, 0], @field_modulus)
-
-        FieldMath.eq(y_squared, FieldMath.add(x_cubed, b_val))
-    end
-  end
-
   def is_inf(pt) do
-    cond do
-      is_nil(pt) ->
-        true
-
-      {x, y} = pt ->
-        FieldMath = elem_module(x)
-
-        FieldMath.eq(x, FieldMath.zero(@field_modulus)) and
-          FieldMath.eq(y, FieldMath.zero(@field_modulus))
-    end
+    pt == nil
   end
 
-  def double(pt) do
-    cond do
-      is_inf(pt) ->
-        pt
-
-      true ->
-        {x, y} = pt
-        FieldMath = elem_module(x)
-
-        fq_2 =
-          if FieldMath == FQ,
-            do: FQ.new(2, @field_modulus),
-            else: FQ2.new([2, 0], @field_modulus)
-
-        fq_3 =
-          if FieldMath == FQ,
-            do: FQ.new(3, @field_modulus),
-            else: FQ2.new([3, 0], @field_modulus)
-
-        three_x_squared = FieldMath.mul(fq_3, FieldMath.mul(x, x))
-        two_y = FieldMath.mul(fq_2, y)
-        m = FieldMath.divide(three_x_squared, two_y)
-
-        new_x = FieldMath.sub(FieldMath.mul(m, m), FieldMath.mul(fq_2, x))
-        new_y = FieldMath.sub(FieldMath.mul(m, FieldMath.sub(x, new_x)), y)
-        {new_x, new_y}
-    end
-  end
-
-  def add(p1, p2) do
-    cond do
-      is_inf(p1) ->
-        p2
-
-      is_inf(p2) ->
-        p1
-
-      true ->
-        {x1, y1} = p1
-        {x2, y2} = p2
-        FieldMath = elem_module(x1)
-
-        cond do
-          FieldMath.eq(x1, x2) and FieldMath.eq(y1, y2) ->
-            double(p1)
-
-          FieldMath.eq(x1, x2) ->
-            if FieldMath == FQ, do: z1(), else: z2()
-
-          true ->
-            m_num = FieldMath.sub(y2, y1)
-            m_den = FieldMath.sub(x2, x1)
-            m = FieldMath.divide(m_num, m_den)
-
-            new_x = FieldMath.sub(FieldMath.sub(FieldMath.mul(m, m), x1), x2)
-            new_y = FieldMath.sub(FieldMath.mul(m, FieldMath.sub(x1, new_x)), y1)
-            {new_x, new_y}
-        end
-    end
-  end
-
-  def multiply(pt, n) when is_integer(n) do
-    cond do
-      n == 0 ->
-        z1()
-
-      n == 1 ->
-        pt
-
-      n < 0 ->
-        multiply(neg(pt), -n)
-
-      rem(n, 2) == 0 ->
-        multiply(double(pt), div(n, 2))
-
-      true ->
-        add(multiply(double(pt), div(n, 2)), pt)
-    end
-  end
-
-  def neg(pt) do
-    if is_inf(pt) do
-      pt
+  def is_on_curve(pt, b) do
+    if is_inf(pt) or pt == nil do
+      true
     else
       {x, y} = pt
-      FieldMath = elem_module(y)
-      {x, FieldMath.neg(y)}
+      y ** 2 - x ** 3 == b
     end
   end
-
-  def negate(pt), do: neg(pt)
-
-  def eq(p1, p2) do
-    cond do
-      is_inf(p1) and is_inf(p2) ->
-        true
-
-      is_inf(p1) or is_inf(p2) ->
-        false
-
-      true ->
-        {x1, y1} = p1
-        {x2, y2} = p2
-        FieldMath = elem_module(x1)
-        FieldMath.eq(x1, x2) and FieldMath.eq(y1, y2)
-    end
-  end
-
-  def eq(p1, p2), do: eq(p1, p2)
-
-  defp elem_module(elem) do
-    case elem do
-      %FQ{} -> FQ
-      %FQ2{} -> FQ2
-      # Map FQP to FQ2 since FQ2 is built on FQP
-      %{__struct__: FQP} -> FQ2
-      _ -> raise "Invalid element type: #{inspect(elem)}"
-    end
-  end
-
-  @doc """
-  Twists a G2 point (FQ2) into FQ12.
-  """
-  def twist({x, y}) do
-    # For BLS12-381, the twist is (x * w^2, y * w^3)
-    # where w is the 12th root of unity
-    # We need to convert the FQ2 point to FQ12
-    x_fq12 = FQ12.new([x.coeffs[0], x.coeffs[1], 0, 0, 0, 0], @field_modulus)
-    y_fq12 = FQ12.new([y.coeffs[0], y.coeffs[1], 0, 0, 0, 0], @field_modulus)
-    {x_fq12, y_fq12}
-  end
-
-  def twist(nil), do: nil
 end

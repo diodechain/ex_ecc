@@ -4,11 +4,11 @@ defmodule ExECC.BLS12381 do
   This module provides aliases and exports for the BLS12-381 curve operations.
   """
 
-  alias ExEcc.Bls12381.Curve, as: Curve
-  alias ExEcc.Bls12381.Pairing, as: Pairing
-  alias ExEcc.Fields.Bls12381FQ, as: FQ
-  alias ExEcc.Fields.Bls12381FQ2, as: FQ2
-  alias ExEcc.Fields.Bls12381FQ12, as: FQ12
+  alias ExEcc.BLS12381.Curve, as: Curve
+  alias ExEcc.BLS12381.Pairing, as: Pairing
+  alias ExEcc.Fields.BLS12381FQ, as: FQ
+  alias ExEcc.Fields.BLS12381FQ2, as: FQ2
+  alias ExEcc.Fields.BLS12381FQ12, as: FQ12
 
   # Re-export commonly used functions
   defdelegate add(p1, p2), to: Curve

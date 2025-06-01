@@ -1,8 +1,8 @@
-defmodule ExEcc.Bn128.Pairing do
-  alias ExEcc.Fields.Bn128FQ, as: FQ
-  alias ExEcc.Fields.Bn128FQ2, as: FQ2
-  alias ExEcc.Fields.Bn128FQ12, as: FQ12
-  alias ExEcc.Bn128.Curve, as: Curve
+defmodule ExEcc.BN128.Pairing do
+  alias ExEcc.Fields.BN128FQ, as: FQ
+  alias ExEcc.Fields.BN128FQ2, as: FQ2
+  alias ExEcc.Fields.BN128FQ12, as: FQ12
+  alias ExEcc.BN128.Curve, as: Curve
 
   # field_modulus will be accessed via FQ.field_modulus() or similar
   @ate_loop_count 29_793_968_203_157_093_288

@@ -1,5 +1,5 @@
-defmodule ExEcc.OptimizedBls12381.Constants do
-  alias ExEcc.Fields.OptimizedBls12381FQ2, as: FQ2
+defmodule ExEcc.OptimizedBLS12381.Constants do
+  alias ExEcc.Fields.OptimizedBLS12381FQ2, as: FQ2
   @field_modulus ExEcc.OptimizedBLS12381.OptimizedCurve.field_modulus()
 
   @g2_cofactor 305_502_333_931_268_344_200_999_753_193_121_504_214_466_019_254_188_142_667_664_032_982_267_604_182_971_884_026_507_427_359_259_977_847_832_272_839_041_616_661_285_803_823_378_372_096_355_777_062_779_109

@@ -1,8 +1,8 @@
-defmodule ExEcc.Bls.Constants do
+defmodule ExEcc.BLS.Constants do
   # We'll need to define or alias FQ2 and field_modulus (q) once the BLS12-381 specific modules are created.
   # For now, these are placeholders for where those values would come from.
-  # Example: alias ExEcc.Bls12381.OptimizedFields.FQ2
-  # Example: q = ExEcc.Bls12381.Parameters.field_modulus()
+  # Example: alias ExEcc.BLS12381.OptimizedFields.FQ2
+  # Example: q = ExEcc.BLS12381.Parameters.field_modulus()
 
   # Placeholder for the actual field modulus for BLS12-381
   # This should be retrieved from a central definition, e.g., ExEcc.Fields.FieldProperties or a curve-specific module.

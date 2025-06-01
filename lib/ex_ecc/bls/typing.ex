@@ -1,4 +1,4 @@
-defmodule ExEcc.Bls.Typing do
+defmodule ExEcc.BLS.Typing do
   # Import global ExEcc types if they exist and are relevant
   # alias ExEcc.Typing, as: GlobalTyping
   # Import field element types if needed
@@ -10,7 +10,7 @@ defmodule ExEcc.Bls.Typing do
   # G1Uncompressed = Optimized_Point3D[optimized_bls12_381_FQ]
   # Assuming Optimized_Point3D is like {Field, Field, Field} | nil
   # And optimized_bls12_381_FQ is an integer (representing the FQ element in optimized form)
-  # This would be defined in a more specific module like ExEcc.Bls12381.Typing or similar
+  # This would be defined in a more specific module like ExEcc.BLS12381.Typing or similar
   # For now, a general representation:
   @type g1_uncompressed :: {integer, integer, integer} | nil
 

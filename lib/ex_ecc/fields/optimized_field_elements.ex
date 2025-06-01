@@ -1,5 +1,7 @@
 defmodule ExEcc.Fields.OptimizedFQ do
   alias ExEcc.Utils
+  alias ExEcc.FieldMath
+
   defstruct n: 0, field_modulus: nil
 
   def new(fq \\ %__MODULE__{}, val) do

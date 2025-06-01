@@ -1,6 +1,6 @@
-defmodule ExEcc.OptimizedBls12381.ClearCofactor do
-  alias ExEcc.OptimizedBls12381.Constants, as: Const
-  alias ExEcc.OptimizedBls12381.Curve, as: OptimizedCurve
+defmodule ExEcc.OptimizedBLS12381.ClearCofactor do
+  alias ExEcc.OptimizedBLS12381.Constants, as: Const
+  alias ExEcc.OptimizedBLS12381.Curve, as: OptimizedCurve
   # Assuming Optimized_Field and Optimized_Point3D types will be handled by existing aliases
   # or defined in a common typing module if necessary.
 

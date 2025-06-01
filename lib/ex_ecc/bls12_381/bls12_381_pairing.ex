@@ -1,7 +1,7 @@
-defmodule ExEcc.Bls12_381.Bls12381Pairing do
+defmodule ExEcc.BLS12_381.BLS12381Pairing do
   alias ExEcc.Fields.OptimizedFieldElements, as: FQ
   alias ExEcc.Fields.FQ12
-  alias ExEcc.Bls12_381.Bls12381Curve, as: Curve
+  alias ExEcc.BLS12_381.BLS12381Curve, as: Curve
 
   # field_modulus = field_properties["bls12_381"]["field_modulus"]
   # This will be taken from the FQ module if needed, or assumed to be part of FQ12 operations.

@@ -1,15 +1,15 @@
-defmodule ExEcc.Bls.PointCompression do
-  alias ExEcc.Bls.Constants
-  # alias ExEcc.Bls.Typing # G1Compressed, G1Uncompressed, G2Compressed, G2Uncompressed
+defmodule ExEcc.BLS.PointCompression do
+  alias ExEcc.BLS.Constants
+  # alias ExEcc.BLS.Typing # G1Compressed, G1Uncompressed, G2Compressed, G2Uncompressed
   # alias ExEcc.Fields.OptimizedFieldElements, as: OptFQ # FQ, FQ2 structs and operations
-  # alias ExEcc.OptimizedBls12381 # Z1, Z2, b, b2, field_modulus (q), is_inf, is_on_curve, normalize
+  # alias ExEcc.OptimizedBLS12381 # Z1, Z2, b, b2, field_modulus (q), is_inf, is_on_curve, normalize
 
   # Placeholder for field_modulus (q)
-  # q = ExEcc.OptimizedBls12381.field_modulus()
-  # b_g1 = ExEcc.OptimizedBls12381.b() # Curve parameter for G1
-  # b_g2 = ExEcc.OptimizedBls12381.b2() # Curve parameter for G2 (an FQ2 element)
-  # z1_point = ExEcc.OptimizedBls12381.z1() # Point at infinity for G1
-  # z2_point = ExEcc.OptimizedBls12381.z2() # Point at infinity for G2
+  # q = ExEcc.OptimizedBLS12381.field_modulus()
+  # b_g1 = ExEcc.OptimizedBLS12381.b() # Curve parameter for G1
+  # b_g2 = ExEcc.OptimizedBLS12381.b2() # Curve parameter for G2 (an FQ2 element)
+  # z1_point = ExEcc.OptimizedBLS12381.z1() # Point at infinity for G1
+  # z2_point = ExEcc.OptimizedBLS12381.z2() # Point at infinity for G2
 
   # For optimized FQ/FQ2 elements, we assume they are integers or tuples of integers.
   # FQ.n would be the integer itself.
@@ -45,17 +45,17 @@ defmodule ExEcc.Bls.PointCompression do
 
   #
   def compress_g1(_pt) do
-    # q = ExEcc.OptimizedBls12381.field_modulus()
-    # if ExEcc.OptimizedBls12381.is_inf(pt) do
+    # q = ExEcc.OptimizedBLS12381.field_modulus()
+    # if ExEcc.OptimizedBLS12381.is_inf(pt) do
     #   Constants.pow_2_383() + Constants.pow_2_382()
     # else
-    #   {x_fq, y_fq} = ExEcc.OptimizedBls12381.normalize(pt) # Assuming normalize returns FQ structs/maps
+    #   {x_fq, y_fq} = ExEcc.OptimizedBLS12381.normalize(pt) # Assuming normalize returns FQ structs/maps
     #   x_n = x_fq.n # Assuming FQ struct has .n field for integer value
     #   y_n = y_fq.n
     #   a_flag = div(y_n * 2, q) # Integer division
     #   x_n + a_flag * Constants.pow_2_381() + Constants.pow_2_383()
     # end
-    # |> ExEcc.Bls.Typing.g1_compressed() # If G1Compressed is a struct/tagged tuple
+    # |> ExEcc.BLS.Typing.g1_compressed() # If G1Compressed is a struct/tagged tuple
     :not_implemented_compress_g1
   end
 
@@ -63,8 +63,8 @@ defmodule ExEcc.Bls.PointCompression do
   def decompress_g1(_z_compressed) do
     # z = z_compressed # If G1Compressed is just an integer alias
     # {c_flag, b_flag, a_flag} = get_flags(z)
-    # q_val = ExEcc.OptimizedBls12381.field_modulus()
-    # b_val_fq = ExEcc.OptimizedBls12381.b() # This should be an FQ struct
+    # q_val = ExEcc.OptimizedBLS12381.field_modulus()
+    # b_val_fq = ExEcc.OptimizedBLS12381.b() # This should be an FQ struct
     # b_val_n = b_val_fq.n
 
     # unless c_flag, do: raise ArgumentError, "c_flag should be 1"
@@ -72,7 +72,7 @@ defmodule ExEcc.Bls.PointCompression do
 
     # if is_inf_pt_flag do
     #   if a_flag, do: raise ArgumentError, "a point at infinity should have a_flag == 0"
-    #   ExEcc.OptimizedBls12381.z1() # Return point at infinity for G1
+    #   ExEcc.OptimizedBLS12381.z1() # Return point at infinity for G1
     # else
     #   x_n = rem(z, Constants.pow_2_381())
     #   if x_n >= q_val, do: raise ArgumentError, "Point value should be less than field modulus. Got #{x_n}"
@@ -141,14 +141,14 @@ defmodule ExEcc.Bls.PointCompression do
 
   #
   def compress_g2(_pt) do
-    # q_val = ExEcc.OptimizedBls12381.field_modulus()
-    # b2_val = ExEcc.OptimizedBls12381.b2() # FQ2 element
-    # unless ExEcc.OptimizedBls12381.is_on_curve(pt, b2_val), do: raise ArgumentError, "Point not on twisted curve G2"
+    # q_val = ExEcc.OptimizedBLS12381.field_modulus()
+    # b2_val = ExEcc.OptimizedBLS12381.b2() # FQ2 element
+    # unless ExEcc.OptimizedBLS12381.is_on_curve(pt, b2_val), do: raise ArgumentError, "Point not on twisted curve G2"
 
-    # if ExEcc.OptimizedBls12381.is_inf(pt) do
+    # if ExEcc.OptimizedBLS12381.is_inf(pt) do
     #   {Constants.pow_2_383() + Constants.pow_2_382(), 0}
     # else
-    #   {x_fq2, y_fq2} = ExEcc.OptimizedBls12381.normalize(pt) # x_fq2, y_fq2 are FQ2 structs
+    #   {x_fq2, y_fq2} = ExEcc.OptimizedBLS12381.normalize(pt) # x_fq2, y_fq2 are FQ2 structs
 
     #   # Assuming FQ2 struct has .coeffs field like [real_part_int, imag_part_int]
     #   # For optimized elements, coeffs are integers.
@@ -162,7 +162,7 @@ defmodule ExEcc.Bls.PointCompression do
     #   z2 = x_re
     #   {round(z1), round(z2)} # Ensure integers if any FQ2 ops returned floats (unlikely with direct int coeffs)
     # end
-    # # |> ExEcc.Bls.Typing.g2_compressed() # If G2Compressed is a struct/tagged tuple
+    # # |> ExEcc.BLS.Typing.g2_compressed() # If G2Compressed is a struct/tagged tuple
     :not_implemented_compress_g2
   end
 
@@ -170,15 +170,15 @@ defmodule ExEcc.Bls.PointCompression do
   def decompress_g2(_p_compressed) do
     # {z1, z2} = p_compressed # If G2Compressed is a tuple {int, int}
     # {c_flag1, b_flag1, a_flag1} = get_flags(z1)
-    # q_val = ExEcc.OptimizedBls12381.field_modulus()
-    # b2_val_fq2 = ExEcc.OptimizedBls12381.b2()
+    # q_val = ExEcc.OptimizedBLS12381.field_modulus()
+    # b2_val_fq2 = ExEcc.OptimizedBLS12381.b2()
 
     # unless c_flag1, do: raise ArgumentError, "c_flag1 should be 1"
     # is_inf_pt_flag = b_flag1
 
     # if is_inf_pt_flag do
     #   if a_flag1, do: raise ArgumentError, "a point at infinity should have a_flag1 == 0"
-    #   ExEcc.OptimizedBls12381.z2() # Return point at infinity for G2
+    #   ExEcc.OptimizedBLS12381.z2() # Return point at infinity for G2
     # else
     #   x1_im_part = rem(z1, Constants.pow_2_381())
     #   if x1_im_part >= q_val, do: raise ArgumentError, "x1 (imag) value invalid"
@@ -211,7 +211,7 @@ defmodule ExEcc.Bls.PointCompression do
     #   # one_fq2 = OptFQ.FQ2.new_fq2([1,0], bls12381_fq2_mod_coeffs, bls12381_fq2_mc_tuples, q_val) # FQ2(1)
     #   # candidate_point = {x_fq2, y_final_fq2, one_fq2}
 
-    #   # unless ExEcc.OptimizedBls12381.is_on_curve(candidate_point, b2_val_fq2) do
+    #   # unless ExEcc.OptimizedBLS12381.is_on_curve(candidate_point, b2_val_fq2) do
     #   #   raise ArgumentError, "Decompressed point not on G2 curve"
     #   # end
     #   # candidate_point

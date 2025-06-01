@@ -1,11 +1,11 @@
-defmodule ExEcc.Bn128.Bn128Curve do
-  alias ExEcc.Fields.Bn128FQ, as: FQ
-  alias ExEcc.Fields.Bn128FQP, as: FQP
-  alias ExEcc.Fields.Bn128FQ2, as: FQ2
-  alias ExEcc.Fields.Bn128FQ12, as: FQ12
+defmodule ExEcc.BN128.BN128Curve do
+  alias ExEcc.Fields.BN128FQ, as: FQ
+  alias ExEcc.Fields.BN128FQP, as: FQP
+  alias ExEcc.Fields.BN128FQ2, as: FQ2
+  alias ExEcc.Fields.BN128FQ12, as: FQ12
   alias ExEcc.Fields.FieldProperties
 
-  @field_modulus FieldProperties.field_properties()["bn128"]["field_modulus"]
+  @field_modulus FieldProperties.field_properties()["bn128"].field_modulus
   def field_modulus, do: @field_modulus
 
   @curve_order 21_888_242_871_839_275_222_246_405_745_257_275_088_548_364_400_416_034_343_698_204_186_575_808_495_617
@@ -172,7 +172,7 @@ defmodule ExEcc.Bn128.Bn128Curve do
   def g12, do: twist(g2)
 
   defmodule CheckTwist do
-    if not is_on_curve(ExEcc.Bn128.Bn128Curve.g12(), ExEcc.Bn128.Bn128Curve.b12()) do
+    if not is_on_curve(ExEcc.BN128.BN128Curve.g12(), ExEcc.BN128.BN128Curve.b12()) do
       raise "Twist creates a point not on curve"
     end
   end

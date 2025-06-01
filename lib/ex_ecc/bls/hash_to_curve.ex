@@ -1,9 +1,9 @@
-defmodule ExEcc.Bls.HashToCurve do
-  alias ExEcc.Bls.Constants
-  alias ExEcc.Bls.Hash
-  # alias ExEcc.Bls.Typing # For G1Uncompressed, G2Uncompressed types
+defmodule ExEcc.BLS.HashToCurve do
+  alias ExEcc.BLS.Constants
+  alias ExEcc.BLS.Hash
+  # alias ExEcc.BLS.Typing # For G1Uncompressed, G2Uncompressed types
   # alias ExEcc.Fields.OptimizedFieldElements, as: OptFQ # For FQ, FQ2 types/structs
-  # alias ExEcc.OptimizedBls12381 # For curve operations like add, iso_map, swu, clear_cofactor, field_modulus
+  # alias ExEcc.OptimizedBLS12381 # For curve operations like add, iso_map, swu, clear_cofactor, field_modulus
 
   # The `hash_function` parameter in Python often implies a specific hash like hashlib.sha256.
   # In Elixir, we'll assume SHA-256 as it's common for BLS12-381 ciphersuites.
@@ -21,7 +21,7 @@ defmodule ExEcc.Bls.HashToCurve do
     # {u0, u1} = hash_to_field_fq2(message, 2, dst) # Assuming hash_function is SHA256 implicitly
     # q0 = map_to_curve_g2(u0)
     # q1 = map_to_curve_g2(u1)
-    # r = ExEcc.OptimizedBls12381.add(q0, q1)
+    # r = ExEcc.OptimizedBLS12381.add(q0, q1)
     # p = clear_cofactor_g2(r)
     # p
     :not_implemented_yet_g2
@@ -41,9 +41,9 @@ defmodule ExEcc.Bls.HashToCurve do
     # Assumes SHA256 from expand_message_xmd
     _pseudo_random_bytes = Hash.expand_message_xmd(message, dst, len_in_bytes)
 
-    # field_mod = ExEcc.OptimizedBls12381.field_modulus()
-    # modulus_coeffs_fq2 = ExEcc.OptimizedBls12381.Parameters.fq2_modulus_coeffs() # Or however it's defined
-    # mc_tuples_fq2 = ExEcc.OptimizedBls12381.Parameters.fq2_mc_tuples() # Or however it's defined
+    # field_mod = ExEcc.OptimizedBLS12381.field_modulus()
+    # modulus_coeffs_fq2 = ExEcc.OptimizedBLS12381.Parameters.fq2_modulus_coeffs() # Or however it's defined
+    # mc_tuples_fq2 = ExEcc.OptimizedBLS12381.Parameters.fq2_mc_tuples() # Or however it's defined
 
     # Enum.map(0..(count-1), fn i ->
     #   e_coeffs = Enum.map(0..(m-1), fn j ->
@@ -63,8 +63,8 @@ defmodule ExEcc.Bls.HashToCurve do
   """
   #
   def map_to_curve_g2(_u_fq2) do
-    # {x, y, z} = ExEcc.OptimizedBls12381.optimized_swu_g2(u_fq2)
-    # ExEcc.OptimizedBls12381.iso_map_g2(x, y, z)
+    # {x, y, z} = ExEcc.OptimizedBLS12381.optimized_swu_g2(u_fq2)
+    # ExEcc.OptimizedBLS12381.iso_map_g2(x, y, z)
     :not_implemented_yet_map_g2
   end
 
@@ -73,7 +73,7 @@ defmodule ExEcc.Bls.HashToCurve do
   """
   #
   def clear_cofactor_g2(_p) do
-    # ExEcc.OptimizedBls12381.multiply_clear_cofactor_g2(p)
+    # ExEcc.OptimizedBLS12381.multiply_clear_cofactor_g2(p)
     :not_implemented_yet_clear_g2
   end
 
@@ -89,7 +89,7 @@ defmodule ExEcc.Bls.HashToCurve do
     # {u0, u1} = hash_to_field_fq(message, 2, dst) # Assuming SHA256
     # q0 = map_to_curve_g1(u0)
     # q1 = map_to_curve_g1(u1)
-    # r = ExEcc.OptimizedBls12381.add(q0, q1)
+    # r = ExEcc.OptimizedBLS12381.add(q0, q1)
     # p = clear_cofactor_g1(r)
     # p
     :not_implemented_yet_g1
@@ -107,7 +107,7 @@ defmodule ExEcc.Bls.HashToCurve do
     len_in_bytes = count * m * Constants.hash_to_field_l()
     _pseudo_random_bytes = Hash.expand_message_xmd(message, dst, len_in_bytes)
 
-    # field_mod = ExEcc.OptimizedBls12381.field_modulus()
+    # field_mod = ExEcc.OptimizedBLS12381.field_modulus()
 
     # Enum.map(0..(count-1), fn i ->
     #   elem_offset = Constants.hash_to_field_l() * (i * m) # m is 1, so just i
@@ -125,8 +125,8 @@ defmodule ExEcc.Bls.HashToCurve do
   """
   #
   def map_to_curve_g1(_u_fq) do
-    # {x, y, z} = ExEcc.OptimizedBls12381.optimized_swu_g1(u_fq)
-    # ExEcc.OptimizedBls12381.iso_map_g1(x, y, z)
+    # {x, y, z} = ExEcc.OptimizedBLS12381.optimized_swu_g1(u_fq)
+    # ExEcc.OptimizedBLS12381.iso_map_g1(x, y, z)
     :not_implemented_yet_map_g1
   end
 
@@ -135,7 +135,7 @@ defmodule ExEcc.Bls.HashToCurve do
   """
   #
   def clear_cofactor_g1(_p) do
-    # ExEcc.OptimizedBls12381.multiply_clear_cofactor_g1(p)
+    # ExEcc.OptimizedBLS12381.multiply_clear_cofactor_g1(p)
     :not_implemented_yet_clear_g1
   end
 end

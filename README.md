@@ -10,6 +10,8 @@ Same goes for the tests.
 
 - Original python files are in py_ecc/ and tests/ the new ported files are in lib/ and test/ correspondingly.
 
+- Type enforcement is generally not ported.
+
 - Elixir does not have class inheritance but py_ecc field maths is heavily based on that. So to keep the port mostly source similiar there is an Elixir specific FieldMath module that handles inheritance. And because `super` is an Elixir keyword with a different meaning instead all uses of python `super` instead use the elixir function `parent`
 
 - Initializers and constructors are created using a single `def new(fp \\ %__MODULE{}, arg1, arg2)`using a default argument to be both used as init and new.

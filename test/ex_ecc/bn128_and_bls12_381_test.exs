@@ -10,10 +10,10 @@ defmodule ExEcc.Bn128AndBls12381Test do
   # Import field elements
   alias ExEcc.Fields.OptimizedFieldElements, as: FQ
   alias ExEcc.Fields.OptimizedBN128FQ, as: BN128FQ
-  alias ExEcc.Fields.OptimizedBls12381FQ, as: BLS12381FQ
+  alias ExEcc.Fields.OptimizedBLS12381FQ, as: BLS12381FQ
   alias ExEcc.Fields.OptimizedFieldElements.FQ12
   alias ExEcc.Fields.OptimizedBN128FQ2, as: BN128FQ2
-  alias ExEcc.Fields.OptimizedBls12381FQ2, as: BLS12381FQ2
+  alias ExEcc.Fields.OptimizedBLS12381FQ2, as: BLS12381FQ2
 
   # Import field properties
   alias ExEcc.Fields.FieldProperties, as: FieldProps

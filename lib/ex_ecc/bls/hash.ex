@@ -1,4 +1,4 @@
-defmodule ExEcc.Bls.Hash do
+defmodule ExEcc.BLS.Hash do
   # Elixir's :crypto module provides HMAC and hash functions.
 
   @doc """
