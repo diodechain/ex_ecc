@@ -169,7 +169,7 @@ defmodule ExEcc.Fields.OptimizedFQP do
   alias __MODULE__, as: FQP
   import While
 
-  defstruct coeffs: [], modulus_coeffs: [], degree: 0, field_modulus: nil, mc_tuples: []
+  defstruct coeffs: {}, modulus_coeffs: {}, degree: 0, field_modulus: nil, mc_tuples: []
 
   def new(fqp, coeffs, modulus_coeffs \\ {}) do
     if FieldMath.field_modulus(fqp) == nil do
@@ -216,7 +216,7 @@ defmodule ExEcc.Fields.OptimizedFQP do
 
     FieldMath.type(fqp).new(
       for {x, y} <- Enum.zip(FieldMath.coeffs(fqp), FieldMath.coeffs(other)),
-          do: rem(x + y, FieldMath.field(fqp)_modulus)
+          do: rem(x + y, FieldMath.field_modulus(fqp))
     )
   end
 
@@ -227,7 +227,7 @@ defmodule ExEcc.Fields.OptimizedFQP do
 
     FieldMath.type(fqp).new(
       for {x, y} <- Enum.zip(FieldMath.coeffs(fqp), FieldMath.coeffs(other)),
-          do: rem(x - y, FieldMath.field(fqp)_modulus)
+          do: rem(x - y, FieldMath.field_modulus(fqp))
     )
   end
 
@@ -236,11 +236,11 @@ defmodule ExEcc.Fields.OptimizedFQP do
 
     cond do
       is_integer(other) ->
-          for c <- Tuple.to_list(FieldMath.coeffs(fqp)) do
-            rem(c * other, FieldMath.field_modulus(fqp))
-          end
-          |> List.to_tuple()
-          |> FieldMath.type(fqp).new()
+        for c <- Tuple.to_list(FieldMath.coeffs(fqp)) do
+          rem(c * other, FieldMath.field_modulus(fqp))
+        end
+        |> List.to_tuple()
+        |> FieldMath.type(fqp).new()
 
       FieldMath.isinstance(other, FQP) ->
         b = List.duplicate(0, FieldMath.degree(fqp) * 2 - 1)
@@ -261,12 +261,14 @@ defmodule ExEcc.Fields.OptimizedFQP do
             {exp, top} = {length(b) - FieldMath.degree(fqp) - 1, List.last(b)}
             b = List.delete_at(b, -1)
 
-            Enum.reduce(FieldMath.mc_tuples(fqp), b, fn {i, c}, acc ->
-              List.update_at(acc, exp + i, fn val -> val - top * c end)
+            Enum.reduce(FieldMath.mc_tuples(fqp), b, fn {i, c}, b ->
+              List.update_at(b, exp + i, fn val -> val - top * c end)
             end)
           end
 
-        FieldMath.type(fqp).new(Enum.map(b, &rem(&1, FieldMath.field_modulus(fqp))))
+        Enum.map(b, &rem(&1, FieldMath.field_modulus(fqp)))
+        |> List.to_tuple()
+        |> FieldMath.type(fqp).new()
 
       true ->
         raise "Expected an int or FQP object, but got object of type #{FieldMath.type(other)}"
@@ -278,7 +280,11 @@ defmodule ExEcc.Fields.OptimizedFQP do
       is_integer(other) ->
         FieldMath.type(fqp).new(
           for c <- FieldMath.coeffs(fqp),
-              do: rem(c * Utils.prime_field_inv(other, FieldMath.field(fqp)_modulus), FieldMath.field(fqp)_modulus)
+              do:
+                rem(
+                  c * Utils.prime_field_inv(other, FieldMath.field_modulus(fqp)),
+                  FieldMath.field_modulus(fqp)
+                )
         )
 
       FieldMath.isinstance(other, FQP) ->
@@ -292,7 +298,8 @@ defmodule ExEcc.Fields.OptimizedFQP do
   def pow(fqp, other) do
     cond do
       other == 0 ->
-        FieldMath.type(fqp).new([1] ++ List.duplicate(0, FieldMath.degree(fqp) - 1))
+        List.to_tuple([1] ++ List.duplicate(0, FieldMath.degree(fqp) - 1))
+        |> FieldMath.type(fqp).new()
 
       other == 1 ->
         FieldMath.type(fqp).new(FieldMath.coeffs(fqp))
@@ -313,7 +320,7 @@ defmodule ExEcc.Fields.OptimizedFQP do
 
     {low, high} = {
       FieldMath.coeffs(fqp) ++ [0],
-      FieldMath.modulus(fqp)_coeffs ++ [1]
+      FieldMath.modulus_coeffs(fqp) ++ [1]
     }
 
     {lm, low, _hm, _high} =
@@ -332,8 +339,8 @@ defmodule ExEcc.Fields.OptimizedFQP do
               {nm, new}
             end)
 
-          {nm, new} = Enum.map(nm, &rem(&1, FieldMath.field(fqp)_modulus))
-          {new, _} = Enum.map(new, &rem(&1, FieldMath.field(fqp)_modulus))
+          {nm, new} = Enum.map(nm, &rem(&1, FieldMath.field_modulus(fqp)))
+          {new, _} = Enum.map(new, &rem(&1, FieldMath.field_modulus(fqp)))
 
           {:cont, {nm, new, lm, low}}
         else
@@ -341,7 +348,8 @@ defmodule ExEcc.Fields.OptimizedFQP do
         end
       end)
 
-    FieldMath.type(fqp).new(Enum.take(lm, FieldMath.degree(fqp))) |> FieldMath.div(List.first(low))
+    FieldMath.type(fqp).new(Enum.take(lm, FieldMath.degree(fqp)))
+    |> FieldMath.div(List.first(low))
   end
 
   def repr(fqp) do

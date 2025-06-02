@@ -158,9 +158,9 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedPairing do
       {x, y, z} = pt
 
       {
-        FQ12.new([x.n] ++ List.duplicate(0, 11)),
-        FQ12.new([y.n] ++ List.duplicate(0, 11)),
-        FQ12.new([z.n] ++ List.duplicate(0, 11))
+        FQ12.new(List.to_tuple([x.n] ++ List.duplicate(0, 11))),
+        FQ12.new(List.to_tuple([y.n] ++ List.duplicate(0, 11))),
+        FQ12.new(List.to_tuple([z.n] ++ List.duplicate(0, 11)))
       }
     end
   end
@@ -229,7 +229,8 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedPairing do
 
   # Precompute exponentiation table
   @exptable Enum.map(0..11, fn i ->
-              FQ12.new(List.to_tuple(List.duplicate(0, i) ++ [1] ++ List.duplicate(0, 11 - i)))
+              List.to_tuple(List.duplicate(0, i) ++ [1] ++ List.duplicate(0, 11 - i))
+              |> FQ12.new()
               |> FieldMath.pow(@field_modulus)
             end)
 

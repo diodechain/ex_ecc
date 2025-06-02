@@ -59,8 +59,8 @@ defmodule ExEcc.BLS12_381.BLS12381Pairing do
 
   def cast_point_to_fq12({x, y}) when is_struct(x, FQ) and is_struct(y, FQ) do
     # Create FQ12 elements with x.n and y.n as the first coefficients
-    x_fq12 = FQ12.new([x.n] ++ List.duplicate(0, 11), field_modulus())
-    y_fq12 = FQ12.new([y.n] ++ List.duplicate(0, 11), field_modulus())
+    x_fq12 = FQ12.new(List.to_tuple([x.n] ++ List.duplicate(0, 11)), field_modulus())
+    y_fq12 = FQ12.new(List.to_tuple([y.n] ++ List.duplicate(0, 11)), field_modulus())
     {x_fq12, y_fq12}
   end
 
@@ -94,14 +94,14 @@ defmodule ExEcc.BLS12_381.BLS12381Pairing do
   # Main miller loop
   def miller_loop(q_fq12, p_fq12) do
     if is_nil(q_fq12) or is_nil(p_fq12) do
-      FQ12.new([1] ++ List.duplicate(0, 11), field_modulus())
+      FQ12.new(List.to_tuple([1] ++ List.duplicate(0, 11)), field_modulus())
     else
       # R starts as Q
       # f starts as FQ12.one()
       {_final_r, final_f} =
         Enum.reduce(
           @log_ate_loop_count..0//-1,
-          {q_fq12, FQ12.new([1] ++ List.duplicate(0, 11), field_modulus())},
+          {q_fq12, FQ12.new(List.to_tuple([1] ++ List.duplicate(0, 11)), field_modulus())},
           fn i, {r_acc, f_acc} ->
             # f = f * f * linefunc(R, R, P)
             f_doubled = FQ12.mul(f_acc, f_acc)
@@ -137,7 +137,7 @@ defmodule ExEcc.BLS12_381.BLS12381Pairing do
     if is_nil(q_twisted_fq12) or is_nil(p_cast_fq12) do
       # If twist or cast results in nil (e.g. from point at infinity)
       # typically the pairing result is FQ12.one()
-      FQ12.new([1] ++ List.duplicate(0, 11), field_modulus())
+      FQ12.new(List.to_tuple([1] ++ List.duplicate(0, 11)), field_modulus())
     else
       miller_loop(q_twisted_fq12, p_cast_fq12)
     end

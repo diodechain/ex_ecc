@@ -89,9 +89,9 @@ defmodule ExEcc.Bn128AndBls12381Test do
         field_modulus = ExEcc.Bn128AndBls12381Test.get_field_modulus(unquote(mod))
         fq2_module = unquote(fq2_mod)
 
-        x = fq2_module.new([1, 0], field_modulus)
-        f = fq2_module.new([1, 2], field_modulus)
-        fpx = fq2_module.new([2, 2], field_modulus)
+        x = fq2_module.new({1, 0}, field_modulus)
+        f = fq2_module.new({1, 2}, field_modulus)
+        fpx = fq2_module.new({2, 2}, field_modulus)
         one = fq2_module.one(field_modulus)
 
         assert fq2_module.add(x, f) == fpx
@@ -117,7 +117,7 @@ defmodule ExEcc.Bn128AndBls12381Test do
 
         assert fq2_module.pow(x, field_modulus * field_modulus - 1) == one
 
-        neg_one = fq2_module.negate(fq2_module.new([1, 1], field_modulus))
+        neg_one = fq2_module.negate(fq2_module.new({1, 1}, field_modulus))
         {z1, z2} = neg_one.coeffs
         assert z1 > 0
         assert z2 > 0

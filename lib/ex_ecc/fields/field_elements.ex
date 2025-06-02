@@ -171,7 +171,9 @@ defmodule ExEcc.Fields.FQP do
 
     # Encoding all coefficients in the corresponding type FQ
     fqp_corresponding_fq_class =
-      FieldMath.type("FQP_corresponding_FQ_class", FQ, field_modulus: FieldMath.field(fqp)_modulus)
+      FieldMath.type("FQP_corresponding_FQ_class", FQ,
+        field_modulus: FieldMath.field_modulus(fqp)
+      )
 
     coeffs = Enum.map(coeffs, fn c -> fqp_corresponding_fq_class.new(c) end)
     # The coefficients of the modulus, without the leading [1]
@@ -192,7 +194,8 @@ defmodule ExEcc.Fields.FQP do
     end
 
     FieldMath.type(fqp).new(
-      for {x, y} <- Enum.zip(FieldMath.coeffs(fqp), FieldMath.coeffs(other)), do: FieldMath.add(x, y)
+      for {x, y} <- Enum.zip(FieldMath.coeffs(fqp), FieldMath.coeffs(other)),
+          do: FieldMath.add(x, y)
     )
   end
 
@@ -202,14 +205,19 @@ defmodule ExEcc.Fields.FQP do
     end
 
     FieldMath.type(fqp).new(
-      for {x, y} <- Enum.zip(FieldMath.coeffs(fqp), FieldMath.coeffs(other)), do: FieldMath.sub(x, y)
+      for {x, y} <- Enum.zip(FieldMath.coeffs(fqp), FieldMath.coeffs(other)),
+          do: FieldMath.sub(x, y)
     )
   end
 
   def mul(fqp, other) do
     cond do
       FieldMath.isinstance(other, :int_types_or_FQ) ->
-        FieldMath.type(fqp).new(for c <- FieldMath.coeffs(fqp), do: FieldMath.mul(c, other))
+        FieldMath.coeffs(fqp)
+        |> Tuple.to_list()
+        |> Enum.map(&FieldMath.mul(&1, other))
+        |> List.to_tuple()
+        |> FieldMath.type(fqp).new()
 
       FieldMath.isinstance(other, FQP) ->
         b =
@@ -235,7 +243,6 @@ defmodule ExEcc.Fields.FQP do
             )
           end)
 
-        b =
           reduce_while(b, fn b ->
             if length(b) > FieldMath.degree(fqp) do
               {exp, top} = {length(b) - FieldMath.degree(fqp) - 1, List.pop_at(b, 0)}
@@ -257,8 +264,9 @@ defmodule ExEcc.Fields.FQP do
               {:halt, b}
             end
           end)
-
-        FieldMath.type(fqp).new(b)
+          |> Map.values()
+          |> List.to_tuple()
+        |> FieldMath.type(fqp).new()
 
       true ->
         raise "Expected an int or FQ object or FQP object, but got object of type #{FieldMath.type(other)}"
@@ -268,7 +276,11 @@ defmodule ExEcc.Fields.FQP do
   def div(fqp, other) do
     cond do
       FieldMath.isinstance(other, :int_types_or_FQ) ->
-        FieldMath.type(fqp).new(for c <- FieldMath.coeffs(fqp), do: FieldMath.div(c, other))
+        FieldMath.coeffs(fqp)
+        |> Tuple.to_list()
+        |> Enum.map(&FieldMath.div(&1, other))
+        |> List.to_tuple()
+        |> FieldMath.type(fqp).new()
 
       FieldMath.isinstance(other, FQP) ->
         FieldMath.mul(fqp, FieldMath.inv(other))
@@ -281,7 +293,8 @@ defmodule ExEcc.Fields.FQP do
   def pow(fqp, other) do
     cond do
       other == 0 ->
-        FieldMath.type(fqp).new([1] ++ ([0] * (FieldMath.degree(fqp) - 1)))
+        List.to_tuple([1] ++ List.duplicate(0, FieldMath.degree(fqp) - 1))
+        |> FieldMath.type(fqp).new()
 
       other == 1 ->
         FieldMath.type(fqp).new(FieldMath.coeffs(fqp))

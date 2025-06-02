@@ -23,10 +23,10 @@ defmodule ExEcc.BN128.BN128Curve do
   @b FQ.new(3)
   def b, do: @b
   # Twisted curve over FQ**2
-  @b2 FieldMath.div(FQ2.new([3, 0]), FQ2.new([9, 1]))
+  @b2 FieldMath.div(FQ2.new({3, 0}), FQ2.new({9, 1}))
   def b2, do: @b2
   # Extension curve over FQ**12; same b value as over FQ
-  @b12 FQ12.new([3] ++ List.duplicate(0, 11))
+  @b12 FQ12.new(List.to_tuple([3] ++ List.duplicate(0, 11)))
   def b12, do: @b12
 
   # Generator for curve over FQ
@@ -34,14 +34,14 @@ defmodule ExEcc.BN128.BN128Curve do
   def g1, do: @g1
 
   @g2 {
-    FQ2.new([
+    FQ2.new({
       108_570_469_990_230_571_359_445_707_622_328_294_813_707_563_595_785_180_869_905_199_932_856_558_527_81,
       115_597_320_329_863_871_079_910_040_213_922_857_839_258_128_618_211_925_309_174_031_514_523_918_056_34
-    ]),
-    FQ2.new([
+    }),
+    FQ2.new({
       849_565_392_312_343_368_133_220_340_314_543_556_831_685_132_759_340_120_810_574_107_621_412_009_353_1,
       408_236_787_586_343_368_133_220_340_314_543_556_831_685_132_759_340_120_810_574_107_621_412_009_353_1
-    ])
+    })
   }
   def g2, do: @g2
 
@@ -140,7 +140,7 @@ defmodule ExEcc.BN128.BN128Curve do
     p1 == p2
   end
 
-  @w FQ12.new([0, 1] ++ List.duplicate(0, 10))
+  @w FQ12.new(List.to_tuple([0, 1] ++ List.duplicate(0, 10)))
   def w, do: @w
 
   def neg(pt) do
@@ -158,14 +158,26 @@ defmodule ExEcc.BN128.BN128Curve do
     else
       {x, y} = pt
       # Field isomorphism from Z[p] / x**2 to Z[p] / x**2 - 18*x + 82
-      xcoeffs = [x.coeffs[0] - x.coeffs[1] * 9, x.coeffs[1]]
-      ycoeffs = [y.coeffs[0] - y.coeffs[1] * 9, y.coeffs[1]]
+      xcoeffs = [FieldMath.coeffs(x, 0) - FieldMath.coeffs(x, 1) * 9, FieldMath.coeffs(x, 1)]
+      ycoeffs = [FieldMath.coeffs(y, 0) - FieldMath.coeffs(y, 1) * 9, FieldMath.coeffs(y, 1)]
       # Isomorphism into subfield of Z[p] / w**12 - 18 * w**6 + 82,
       # where w**6 = x
-      nx = FQ12.new([xcoeffs[0]] ++ List.duplicate(0, 5) ++ [xcoeffs[1]] ++ List.duplicate(0, 5))
-      ny = FQ12.new([ycoeffs[0]] ++ List.duplicate(0, 5) ++ [ycoeffs[1]] ++ List.duplicate(0, 5))
+      nx =
+        FQ12.new(
+          List.to_tuple(
+            [xcoeffs[0]] ++ List.duplicate(0, 5) ++ [xcoeffs[1]] ++ List.duplicate(0, 5)
+          )
+        )
+
+      ny =
+        FQ12.new(
+          List.to_tuple(
+            [ycoeffs[0]] ++ List.duplicate(0, 5) ++ [ycoeffs[1]] ++ List.duplicate(0, 5)
+          )
+        )
+
       # Divide x coord by w**2 and y coord by w**3
-      {nx * w ** 2, ny * w ** 3}
+      {FieldMath.mul(nx, FieldMath.pow(@w, 2)), FieldMath.mul(ny, FieldMath.pow(@w, 3))}
     end
   end
 
