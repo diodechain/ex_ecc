@@ -12,23 +12,28 @@ defmodule ExEcc.FieldMath do
                 coeffs: nil,
                 modulus_coeffs: nil,
                 degree: nil,
-                mc_tuples: nil
+                mc_tuples: nil,
+                corresponding_fq_class: nil
 
       def parent(), do: unquote(parent)
       def zero(), do: FieldMath.resolve(parent(), :zero, 1).zero(__MODULE__)
       def one(), do: FieldMath.resolve(parent(), :one, 1).one(__MODULE__)
 
       def new(fq \\ %__MODULE__{}, val) do
-        parent = FieldMath.resolve(parent(), :new, 2)
-
-        try do
-          parent.new(fq, val)
-        rescue
-          error ->
-            IO.inspect(error, label: "error")
-            reraise error, __STACKTRACE__
-        end
+        FieldMath.new(fq, val)
       end
+    end
+  end
+
+  def new(fq, val) do
+    parent = resolve(parent(fq), :new, 2)
+
+    try do
+      parent.new(fq, val)
+    rescue
+      error ->
+        IO.inspect(error, label: "error")
+        reraise error, __STACKTRACE__
     end
   end
 
@@ -74,7 +79,14 @@ defmodule ExEcc.FieldMath do
       props,
       %{
         __struct__: String.to_atom(name),
-        parent: base_class
+        parent: base_class,
+        n: nil,
+        field_modulus: nil,
+        fq12_modulus_coeffs: nil,
+        fq2_modulus_coeffs: nil,
+        coeffs: nil,
+        modulus_coeffs: nil,
+        degree: nil
       },
       fn {key, value}, acc -> Map.put(acc, key, value) end
     )

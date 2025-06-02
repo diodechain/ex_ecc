@@ -273,14 +273,14 @@ defmodule ExEcc.Fields.OptimizedFQP do
   def div(fqp, other) do
     cond do
       is_integer(other) ->
-        FieldMath.type(fqp).new(
-          for c <- FieldMath.coeffs(fqp),
-              do:
-                rem(
-                  c * Utils.prime_field_inv(other, FieldMath.field_modulus(fqp)),
-                  FieldMath.field_modulus(fqp)
-                )
-        )
+        for c <- FieldMath.coeffs_list(fqp) do
+          rem(
+            c * Utils.prime_field_inv(other, FieldMath.field_modulus(fqp)),
+            FieldMath.field_modulus(fqp)
+          )
+        end
+        |> List.to_tuple()
+        |> FieldMath.type(fqp).new()
 
       FieldMath.isinstance(other, FQP) ->
         FieldMath.mul(fqp, FieldMath.inv(other))
@@ -320,11 +320,18 @@ defmodule ExEcc.Fields.OptimizedFQP do
 
     {lm, low, _hm, _high} =
       reduce_while({lm, low, hm, high}, fn {lm, low, hm, high} ->
-        if Utils.deg(low) do
+        if Utils.deg(low) > 0 do
           r = Utils.poly_rounded_div(high, low)
           r = r ++ List.duplicate(0, FieldMath.degree(fqp) + 1 - length(r))
-          nm = Enum.map(hm, & &1)
-          new = Enum.map(high, & &1)
+          nm = hm
+          new = high
+          # assert len(lm) == len(hm) == len(low) == len(high) == self.degree + 1
+          ref = length(lm)
+
+          if ref != length(hm) or ref != length(low) or ref != length(high) or
+               ref != FieldMath.degree(fqp) + 1 do
+            raise "len(lm) != len(hm) != len(low) != len(high)"
+          end
 
           {nm, new} =
             for(i <- 0..FieldMath.degree(fqp), j <- 0..(FieldMath.degree(fqp) - i), do: {i, j})
@@ -345,7 +352,9 @@ defmodule ExEcc.Fields.OptimizedFQP do
         end
       end)
 
-    FieldMath.type(fqp).new(Enum.take(lm, FieldMath.degree(fqp)))
+    Enum.take(lm, FieldMath.degree(fqp))
+    |> List.to_tuple()
+    |> FieldMath.type(fqp).new()
     |> FieldMath.div(List.first(low))
   end
 

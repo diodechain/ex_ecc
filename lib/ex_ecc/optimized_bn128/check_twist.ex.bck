@@ -1,0 +1,7 @@
+defmodule ExEcc.OptimizedBN128.OptimizedCurve.CheckTwist do
+  alias ExEcc.OptimizedBN128.OptimizedCurve
+
+  if not OptimizedCurve.is_on_curve(OptimizedCurve.g12(), OptimizedCurve.b12()) do
+    raise "Twist creates a point not on curve"
+  end
+end

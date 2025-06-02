@@ -38,7 +38,7 @@ defmodule ExEcc.Utils do
     d = length(p) - 1
 
     reduce_while(d, fn d ->
-      if Enum.at(p, d) == 0 and d do
+      if Enum.at(p, d) == 0 and d > 0 do
         {:cont, d - 1}
       else
         {:halt, d}
@@ -52,7 +52,7 @@ defmodule ExEcc.Utils do
     temp = Enum.to_list(a)
     o = List.duplicate(0, length(a))
 
-    {o, temp} =
+    {o, _temp} =
       Enum.reduce((dega - degb)..0//-1, {o, temp}, fn i, {o, temp} ->
         o =
           List.update_at(o, i, fn val -> val + div(Enum.at(temp, degb + i), Enum.at(b, degb)) end)
@@ -65,7 +65,6 @@ defmodule ExEcc.Utils do
         {o, temp}
       end)
 
-    temp
-    |> Enum.take(deg(o) + 1)
+    Enum.take(o, deg(o) + 1)
   end
 end

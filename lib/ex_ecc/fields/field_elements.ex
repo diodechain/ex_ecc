@@ -154,16 +154,17 @@ defmodule ExEcc.Fields.FQP do
 
   alias ExEcc.Utils
   alias ExEcc.Fields.FQ
+  alias ExEcc.FieldMath
   import While
 
-  defstruct coeffs: [], modulus_coeffs: [], degree: 0, field_modulus: nil
+  defstruct coeffs: {}, modulus_coeffs: {}, degree: 0, field_modulus: nil
 
   def new(fqp \\ %__MODULE__{}, coeffs, modulus_coeffs) do
     if FieldMath.field_modulus(fqp) == nil do
       raise "Field Modulus hasn't been specified"
     end
 
-    if length(coeffs) != length(modulus_coeffs) do
+    if tuple_size(coeffs) != tuple_size(modulus_coeffs) do
       raise "coeffs and modulus_coeffs aren't of the same length"
     end
 
@@ -173,13 +174,21 @@ defmodule ExEcc.Fields.FQP do
         field_modulus: FieldMath.field_modulus(fqp)
       )
 
-    coeffs = Enum.map(coeffs, fn c -> fqp_corresponding_fq_class.new(c) end)
+    coeffs =
+      Tuple.to_list(coeffs)
+      |> Enum.map(fn c -> FieldMath.new(fqp_corresponding_fq_class, c) end)
+      |> List.to_tuple()
+
     # The coefficients of the modulus, without the leading [1]
-    modulus_coeffs = Enum.map(modulus_coeffs, fn c -> fqp_corresponding_fq_class.new(c) end)
+    modulus_coeffs =
+      Tuple.to_list(modulus_coeffs)
+      |> Enum.map(fn c -> FieldMath.new(fqp_corresponding_fq_class, c) end)
+      |> List.to_tuple()
+
     # The degree of the extension field
     %{
       fqp
-      | degree: length(modulus_coeffs),
+      | degree: tuple_size(modulus_coeffs),
         coeffs: coeffs,
         modulus_coeffs: modulus_coeffs,
         corresponding_fq_class: fqp_corresponding_fq_class
@@ -276,7 +285,7 @@ defmodule ExEcc.Fields.FQP do
         |> List.to_tuple()
         |> FieldMath.type(fqp).new()
 
-      FieldMath.isinstance(other, FQP) ->
+      FieldMath.isinstance(other, FieldMath.type(fqp)) ->
         FieldMath.mul(fqp, FieldMath.inv(other))
 
       true ->
@@ -403,6 +412,7 @@ defmodule ExEcc.Fields.FQ2 do
   The quadratic extension field
   """
   alias ExEcc.Fields.FQP
+  alias ExEcc.FieldMath
 
   defstruct degree: 2,
             modulus_coeffs: nil,
@@ -427,6 +437,7 @@ defmodule ExEcc.Fields.FQ12 do
   """
 
   alias ExEcc.Fields.FQP
+  alias ExEcc.FieldMath
 
   defstruct degree: 12,
             modulus_coeffs: nil,

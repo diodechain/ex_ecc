@@ -4,6 +4,7 @@ defmodule ExEcc.BN128.BN128Curve do
   alias ExEcc.Fields.BN128FQ2, as: FQ2
   alias ExEcc.Fields.BN128FQ12, as: FQ12
   alias ExEcc.Fields.FieldProperties
+  alias ExEcc.FieldMath
 
   @field_modulus FieldProperties.field_properties()["bn128"].field_modulus
   def field_modulus, do: @field_modulus
