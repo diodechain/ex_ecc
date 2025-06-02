@@ -5,8 +5,18 @@ defmodule ExEcc.FieldMath do
     quote do
       alias ExEcc.FieldMath
 
-      defstruct n: nil
+      defstruct n: nil,
+                field_modulus: nil,
+                fq12_modulus_coeffs: nil,
+                fq2_modulus_coeffs: nil,
+                coeffs: nil,
+                modulus_coeffs: nil,
+                degree: nil,
+                mc_tuples: nil
+
       def parent(), do: unquote(parent)
+      def zero(), do: FieldMath.resolve(parent(), :zero, 1).zero(__MODULE__)
+      def one(), do: FieldMath.resolve(parent(), :one, 1).one(__MODULE__)
 
       def new(fq \\ %__MODULE__{}, val) do
         parent = FieldMath.resolve(parent(), :new, 2)
@@ -36,10 +46,12 @@ defmodule ExEcc.FieldMath do
   def fq12_modulus_coeffs(a), do: get(:fq12_modulus_coeffs, a)
   def field_modulus(a), do: get(:field_modulus, a)
   def coeffs(a), do: get(:coeffs, a)
+  def coeffs(a, index), do: elem(get(:coeffs, a), index)
   def modulus_coeffs(a), do: get(:modulus_coeffs, a)
   def degree(a), do: get(:degree, a)
   def parent(a), do: get(:parent, a)
   def corresponding_fq_class(a), do: get(:corresponding_fq_class, a)
+  def mc_tuples(a), do: get(:mc_tuples, a)
 
   defp call(op, a, b) do
     apply(resolve(a, op, 2), op, [a, b])
@@ -71,20 +83,19 @@ defmodule ExEcc.FieldMath do
 
   def isinstance(nil, _), do: false
 
+  def isinstance(a, :int_types_or_FQ) do
+    Enum.any?([:int, FQ], fn t -> isinstance(a, t) end)
+  end
+
   def isinstance(a, :int), do: is_integer(a)
 
   def isinstance(a, other_type) when is_atom(other_type) do
-    type(a) == other_type || isinstance(parent(a), other_type)
-  end
+    IO.inspect({a, other_type}, label: "a, other_type")
+    IO.inspect(type(a), label: "type(a)")
+    IO.inspect(parent(a), label: "parent(a)")
 
-  def isinstance(a, [other_type | rest]) do
-    isinstance(a, other_type) || isinstance(a, rest)
-  end
-
-  def isinstance(_a, []), do: false
-
-  def isinstance(a, :int_types_or_FQ) do
-    isinstance(a, [:int, FQ])
+    type(a) == other_type ||
+      Enum.any?(List.wrap(parent(a)), fn p -> isinstance(p, other_type) end)
   end
 
   defp get(atom, nil) do
@@ -97,13 +108,18 @@ defmodule ExEcc.FieldMath do
     IO.inspect(type, label: "type")
 
     cond do
-      is_map(a) and IO.inspect(Map.has_key?(a, atom), label: "Map.has_key?(a, atom)") ->
-        Map.get(a, atom)
-
-      IO.inspect(function?(type, atom, 0), label: "function?(type, atom, 0)") ->
+      IO.inspect(function?(type, atom, 0), label: "function?(type, #{atom}, 0)") ->
         IO.inspect({type, atom, []}, label: "type, atom, []")
         IO.inspect(apply(type, atom, []), label: "apply(type, atom, [])")
         apply(type, atom, [])
+
+      is_map(a) and IO.inspect(Map.has_key?(a, atom), label: "Map.has_key?(a, atom)") ->
+        Map.get(a, atom)
+
+      function?(type, :parent, 0) ->
+        Enum.find_value(List.wrap(type.parent()), fn p ->
+          function?(p, atom, 0) && apply(p, atom, [])
+        end)
 
       is_map(a) and IO.inspect(Map.has_key?(a, :parent), label: "Map.has_key?(a, :parent)") ->
         IO.inspect(a.parent, label: "a.parent")
@@ -112,11 +128,6 @@ defmodule ExEcc.FieldMath do
           function?(p, atom, 0) && apply(p, atom, [])
         end)
         |> IO.inspect(label: "result")
-
-      function?(type, :parent, 0) ->
-        Enum.find_value(List.wrap(type.parent()), fn p ->
-          function?(p, atom, 0) && apply(p, atom, [])
-        end)
 
       true ->
         nil

@@ -6,11 +6,13 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedPairing do
   alias ExEcc.OptimizedBLS12381.OptimizedCurve, as: Curve
   alias ExEcc.FieldMath
 
-  @field_modulus FieldProperties.field_properties()["bls12_381"]["field_modulus"]
-  @curve_order 524_358_751_751_261_904_794_477_405_081_859_658_376_905_525_005_276_378_226_036_586_999_385_811_845_13
+  @field_modulus FieldProperties.field_properties()["bls12_381"].field_modulus
+  def field_modulus, do: @field_modulus
 
   @ate_loop_count 15_132_376_222_941_642_752
+  def ate_loop_count, do: @ate_loop_count
   @log_ate_loop_count 62
+  def log_ate_loop_count, do: @log_ate_loop_count
 
   @pseudo_binary_encoding [
     0,
@@ -78,6 +80,7 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedPairing do
     1,
     1
   ]
+  def pseudo_binary_encoding, do: @pseudo_binary_encoding
 
   # Verify pseudo binary encoding
   if Enum.sum(
@@ -89,7 +92,7 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedPairing do
 
   def normalize1(p) do
     {x, y} = Curve.normalize(p)
-    {x, y, FQ.one()}
+    {x, y, FieldMath.one(x)}
   end
 
   # Create a function representing the line between P1 and P2,
@@ -199,7 +202,7 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedPairing do
         f = FieldMath.div(f_num, f_den)
 
         if final_exponentiate do
-          FieldMath.pow(f, div(:math.pow(@field_modulus, 12) - 1, @curve_order))
+          FieldMath.pow(f, div(:math.pow(@field_modulus, 12) - 1, Curve.curve_order()))
         else
           f
         end
@@ -226,7 +229,7 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedPairing do
 
   # Precompute exponentiation table
   @exptable Enum.map(0..11, fn i ->
-              FQ12.new(List.duplicate(0, i) ++ [1] ++ List.duplicate(0, 11 - i))
+              FQ12.new(List.to_tuple(List.duplicate(0, i) ++ [1] ++ List.duplicate(0, 11 - i)))
               |> FieldMath.pow(@field_modulus)
             end)
 

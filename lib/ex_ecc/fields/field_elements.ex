@@ -125,7 +125,7 @@ defmodule ExEcc.Fields.FQ do
   end
 
   def one(cls) do
-    FieldMath.type(cls).new(1)
+    cls.new(1)
   end
 
   def zero(cls) do
@@ -161,7 +161,7 @@ defmodule ExEcc.Fields.FQP do
   defstruct coeffs: [], modulus_coeffs: [], degree: 0, field_modulus: nil
 
   def new(fqp \\ %__MODULE__{}, coeffs, modulus_coeffs) do
-    if not FieldMath.field_modulus(fqp) do
+    if FieldMath.field_modulus(fqp) == nil do
       raise "Field Modulus hasn't been specified"
     end
 
@@ -171,7 +171,7 @@ defmodule ExEcc.Fields.FQP do
 
     # Encoding all coefficients in the corresponding type FQ
     fqp_corresponding_fq_class =
-      FieldMath.type("FQP_corresponding_FQ_class", FQ, field_modulus: fqp.field_modulus)
+      FieldMath.type("FQP_corresponding_FQ_class", FQ, field_modulus: FieldMath.field(fqp)_modulus)
 
     coeffs = Enum.map(coeffs, fn c -> fqp_corresponding_fq_class.new(c) end)
     # The coefficients of the modulus, without the leading [1]
@@ -192,7 +192,7 @@ defmodule ExEcc.Fields.FQP do
     end
 
     FieldMath.type(fqp).new(
-      for {x, y} <- Enum.zip(fqp.coeffs, other.coeffs), do: FieldMath.add(x, y)
+      for {x, y} <- Enum.zip(FieldMath.coeffs(fqp), FieldMath.coeffs(other)), do: FieldMath.add(x, y)
     )
   end
 
@@ -202,7 +202,7 @@ defmodule ExEcc.Fields.FQP do
     end
 
     FieldMath.type(fqp).new(
-      for {x, y} <- Enum.zip(fqp.coeffs, other.coeffs), do: FieldMath.sub(x, y)
+      for {x, y} <- Enum.zip(FieldMath.coeffs(fqp), FieldMath.coeffs(other)), do: FieldMath.sub(x, y)
     )
   end
 
@@ -268,7 +268,7 @@ defmodule ExEcc.Fields.FQP do
   def div(fqp, other) do
     cond do
       FieldMath.isinstance(other, :int_types_or_FQ) ->
-        FieldMath.type(fqp).new(for c <- fqp.coeffs, do: FieldMath.div(c, other))
+        FieldMath.type(fqp).new(for c <- FieldMath.coeffs(fqp), do: FieldMath.div(c, other))
 
       FieldMath.isinstance(other, FQP) ->
         FieldMath.mul(fqp, FieldMath.inv(other))
@@ -281,10 +281,10 @@ defmodule ExEcc.Fields.FQP do
   def pow(fqp, other) do
     cond do
       other == 0 ->
-        FieldMath.type(fqp).new([1] ++ ([0] * (fqp.degree - 1)))
+        FieldMath.type(fqp).new([1] ++ ([0] * (FieldMath.degree(fqp) - 1)))
 
       other == 1 ->
-        FieldMath.type(fqp).new(fqp.coeffs)
+        FieldMath.type(fqp).new(FieldMath.coeffs(fqp))
 
       rem(other, 2) == 0 ->
         FieldMath.pow(FieldMath.mul(fqp, fqp), Kernel.div(other, 2))
@@ -296,8 +296,8 @@ defmodule ExEcc.Fields.FQP do
 
   def inv(fqp) do
     {lm, hm} = {
-      [1] ++ List.duplicate(0, fqp.degree),
-      List.duplicate(0, fqp.degree + 1)
+      [1] ++ List.duplicate(0, FieldMath.degree(fqp)),
+      List.duplicate(0, FieldMath.degree(fqp) + 1)
     }
 
     {low, high} = {
@@ -314,22 +314,22 @@ defmodule ExEcc.Fields.FQP do
 
         cond do
           length(lm) != FieldMath.degree(fqp) + 1 ->
-            raise "Length of lm is not #{fqp.degree + 1}"
+            raise "Length of lm is not #{FieldMath.degree(fqp) + 1}"
 
           length(hm) != FieldMath.degree(fqp) + 1 ->
-            raise "Length of hm is not #{fqp.degree + 1}"
+            raise "Length of hm is not #{FieldMath.degree(fqp) + 1}"
 
           length(nm) != FieldMath.degree(fqp) + 1 ->
-            raise "Length of nm is not #{fqp.degree + 1}"
+            raise "Length of nm is not #{FieldMath.degree(fqp) + 1}"
 
           length(low) != FieldMath.degree(fqp) + 1 ->
-            raise "Length of low is not #{fqp.degree + 1}"
+            raise "Length of low is not #{FieldMath.degree(fqp) + 1}"
 
           length(high) != FieldMath.degree(fqp) + 1 ->
-            raise "Length of high is not #{fqp.degree + 1}"
+            raise "Length of high is not #{FieldMath.degree(fqp) + 1}"
 
           length(new) != FieldMath.degree(fqp) + 1 ->
-            raise "Length of new is not #{fqp.degree + 1}"
+            raise "Length of new is not #{FieldMath.degree(fqp) + 1}"
 
           true ->
             :ok
@@ -362,7 +362,7 @@ defmodule ExEcc.Fields.FQP do
   end
 
   def repr(fqp) do
-    inspect(fqp.coeffs)
+    inspect(FieldMath.coeffs(fqp))
   end
 
   def eq(fqp, other) do
@@ -383,11 +383,11 @@ defmodule ExEcc.Fields.FQP do
   end
 
   def one(cls) do
-    cls.new([1] ++ List.duplicate(0, cls.degree - 1))
+    cls.new(List.to_tuple([1] ++ List.duplicate(0, FieldMath.degree(cls) - 1)))
   end
 
   def zero(cls) do
-    cls.new(List.duplicate(0, cls.degree))
+    cls.new(List.to_tuple(List.duplicate(0, FieldMath.degree(cls))))
   end
 end
 
@@ -403,13 +403,14 @@ defmodule ExEcc.Fields.FQ2 do
             fq2_modulus_coeffs: "FQ2_modulus_coeffs_type"
 
   def parent(), do: FQP
+  def degree(), do: 2
 
   def new(fqp \\ %__MODULE__{}, coeffs) do
-    if not FieldMath.fq2_modulus_coeffs(fqp) do
+    if FieldMath.fq2_modulus_coeffs(fqp) == nil do
       raise "FQ2 Modulus Coeffs haven't been specified"
     end
 
-    parent().new(coeffs, fqp.fq2_modulus_coeffs)
+    parent().new(fqp, coeffs, FieldMath.fq2_modulus_coeffs(fqp))
   end
 end
 
@@ -426,12 +427,13 @@ defmodule ExEcc.Fields.FQ12 do
             fq12_modulus_coeffs: "FQ12_modulus_coeffs_type"
 
   def parent(), do: FQP
+  def degree(), do: 12
 
   def new(fqp \\ %__MODULE__{}, coeffs) do
-    if not FieldMath.fq12_modulus_coeffs(fqp) do
+    if FieldMath.fq12_modulus_coeffs(fqp) == nil do
       raise "FQ12 Modulus Coeffs haven't been specified"
     end
 
-    parent().new(coeffs, fqp.fq12_modulus_coeffs)
+    parent().new(fqp, coeffs, FieldMath.fq12_modulus_coeffs(fqp))
   end
 end

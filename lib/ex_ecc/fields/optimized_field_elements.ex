@@ -1,11 +1,12 @@
 defmodule ExEcc.Fields.OptimizedFQ do
   alias ExEcc.Utils
   alias ExEcc.FieldMath
+  alias __MODULE__, as: FQ
 
   defstruct n: 0, field_modulus: nil
 
   def new(fq \\ %__MODULE__{}, val) do
-    if not FieldMath.field_modulus(fq) do
+    if FieldMath.field_modulus(fq) == nil do
       raise "Field Modulus hasn't been specified"
     end
 
@@ -129,7 +130,7 @@ defmodule ExEcc.Fields.OptimizedFQ do
   end
 
   def one(cls) do
-    FieldMath.type(cls).new(1)
+    cls.new(1)
   end
 
   def zero(cls) do
@@ -164,30 +165,35 @@ defmodule ExEcc.Fields.OptimizedFQP do
   """
 
   alias ExEcc.Utils
+  alias ExEcc.FieldMath
+  alias __MODULE__, as: FQP
   import While
 
   defstruct coeffs: [], modulus_coeffs: [], degree: 0, field_modulus: nil, mc_tuples: []
 
-  def new(fqp \\ %__MODULE__{}, coeffs, modulus_coeffs \\ []) do
-    if not FieldMath.field_modulus(fqp) do
+  def new(fqp, coeffs, modulus_coeffs \\ {}) do
+    if FieldMath.field_modulus(fqp) == nil do
       raise "Field Modulus hasn't been specified"
     end
 
-    if length(coeffs) != length(modulus_coeffs) do
-      raise "coeffs and modulus_coeffs aren't of the same length"
+    if tuple_size(coeffs) != tuple_size(modulus_coeffs) do
+      raise "coeffs (#{tuple_size(coeffs)}) and modulus_coeffs (#{tuple_size(modulus_coeffs)}) aren't of the same length"
     end
 
     # Not converting coeffs to FQ or explicitly making them integers
     # for performance reasons
     coeffs =
-      if is_integer(List.first(coeffs)) do
-        Enum.map(coeffs, fn c -> rem(c, fqp.field_modulus) end)
+      if FieldMath.isinstance(elem(coeffs, 0), :int) do
+        IO.inspect(coeffs, label: "coeffs")
+
+        Enum.map(Tuple.to_list(coeffs), fn c -> rem(c, FieldMath.field_modulus(fqp)) end)
+        |> List.to_tuple()
       else
         coeffs
       end
 
     # The coefficients of the modulus, without the leading [1]
-    modulus_coeffs = Enum.map(modulus_coeffs, fn c -> c end)
+    modulus_coeffs = Enum.map(Tuple.to_list(modulus_coeffs), fn c -> c end)
     # The degree of the extension field
     degree = length(modulus_coeffs)
 
@@ -198,7 +204,7 @@ defmodule ExEcc.Fields.OptimizedFQP do
       fqp
       | degree: degree,
         coeffs: coeffs,
-        modulus_coeffs: modulus_coeffs,
+        modulus_coeffs: List.to_tuple(modulus_coeffs),
         mc_tuples: mc_tuples
     }
   end
@@ -209,8 +215,8 @@ defmodule ExEcc.Fields.OptimizedFQP do
     end
 
     FieldMath.type(fqp).new(
-      for {x, y} <- Enum.zip(fqp.coeffs, other.coeffs),
-          do: rem(x + y, fqp.field_modulus)
+      for {x, y} <- Enum.zip(FieldMath.coeffs(fqp), FieldMath.coeffs(other)),
+          do: rem(x + y, FieldMath.field(fqp)_modulus)
     )
   end
 
@@ -220,39 +226,47 @@ defmodule ExEcc.Fields.OptimizedFQP do
     end
 
     FieldMath.type(fqp).new(
-      for {x, y} <- Enum.zip(fqp.coeffs, other.coeffs),
-          do: rem(x - y, fqp.field_modulus)
+      for {x, y} <- Enum.zip(FieldMath.coeffs(fqp), FieldMath.coeffs(other)),
+          do: rem(x - y, FieldMath.field(fqp)_modulus)
     )
   end
 
   def mul(fqp, other) do
+    IO.inspect(other, label: "other")
+
     cond do
       is_integer(other) ->
-        FieldMath.type(fqp).new(for c <- fqp.coeffs, do: rem(c * other, fqp.field_modulus))
+          for c <- Tuple.to_list(FieldMath.coeffs(fqp)) do
+            rem(c * other, FieldMath.field_modulus(fqp))
+          end
+          |> List.to_tuple()
+          |> FieldMath.type(fqp).new()
 
       FieldMath.isinstance(other, FQP) ->
-        b = List.duplicate(0, fqp.degree * 2 - 1)
+        b = List.duplicate(0, FieldMath.degree(fqp) * 2 - 1)
 
         # Optimized polynomial multiplication
         b =
-          Enum.reduce(0..(fqp.degree - 1), b, fn i, acc ->
-            Enum.reduce(0..(fqp.degree - 1), acc, fn j, acc ->
-              List.update_at(acc, i + j, fn val -> val + fqp.coeffs[i] * other.coeffs[j] end)
+          Enum.reduce(0..(FieldMath.degree(fqp) - 1), b, fn i, acc ->
+            Enum.reduce(0..(FieldMath.degree(fqp) - 1), acc, fn j, acc ->
+              List.update_at(acc, i + j, fn val ->
+                val + FieldMath.coeffs(fqp, i) * FieldMath.coeffs(other, j)
+              end)
             end)
           end)
 
         # Optimized reduction using precomputed mc_tuples
         b =
-          while b, length(b) > fqp.degree do
-            {exp, top} = {length(b) - fqp.degree - 1, List.last(b)}
+          while b, length(b) > FieldMath.degree(fqp) do
+            {exp, top} = {length(b) - FieldMath.degree(fqp) - 1, List.last(b)}
             b = List.delete_at(b, -1)
 
-            Enum.reduce(fqp.mc_tuples, b, fn {i, c}, acc ->
+            Enum.reduce(FieldMath.mc_tuples(fqp), b, fn {i, c}, acc ->
               List.update_at(acc, exp + i, fn val -> val - top * c end)
             end)
           end
 
-        FieldMath.type(fqp).new(Enum.map(b, &rem(&1, fqp.field_modulus)))
+        FieldMath.type(fqp).new(Enum.map(b, &rem(&1, FieldMath.field_modulus(fqp))))
 
       true ->
         raise "Expected an int or FQP object, but got object of type #{FieldMath.type(other)}"
@@ -263,8 +277,8 @@ defmodule ExEcc.Fields.OptimizedFQP do
     cond do
       is_integer(other) ->
         FieldMath.type(fqp).new(
-          for c <- fqp.coeffs,
-              do: rem(c * Utils.prime_field_inv(other, fqp.field_modulus), fqp.field_modulus)
+          for c <- FieldMath.coeffs(fqp),
+              do: rem(c * Utils.prime_field_inv(other, FieldMath.field(fqp)_modulus), FieldMath.field(fqp)_modulus)
         )
 
       FieldMath.isinstance(other, FQP) ->
@@ -278,10 +292,10 @@ defmodule ExEcc.Fields.OptimizedFQP do
   def pow(fqp, other) do
     cond do
       other == 0 ->
-        FieldMath.type(fqp).new([1] ++ List.duplicate(0, fqp.degree - 1))
+        FieldMath.type(fqp).new([1] ++ List.duplicate(0, FieldMath.degree(fqp) - 1))
 
       other == 1 ->
-        FieldMath.type(fqp).new(fqp.coeffs)
+        FieldMath.type(fqp).new(FieldMath.coeffs(fqp))
 
       rem(other, 2) == 0 ->
         FieldMath.pow(FieldMath.mul(fqp, fqp), Kernel.div(other, 2))
@@ -293,33 +307,33 @@ defmodule ExEcc.Fields.OptimizedFQP do
 
   def inv(fqp) do
     {lm, hm} = {
-      [1] ++ List.duplicate(0, fqp.degree),
-      List.duplicate(0, fqp.degree + 1)
+      [1] ++ List.duplicate(0, FieldMath.degree(fqp)),
+      List.duplicate(0, FieldMath.degree(fqp) + 1)
     }
 
     {low, high} = {
-      fqp.coeffs ++ [0],
-      fqp.modulus_coeffs ++ [1]
+      FieldMath.coeffs(fqp) ++ [0],
+      FieldMath.modulus(fqp)_coeffs ++ [1]
     }
 
     {lm, low, _hm, _high} =
       reduce_while({lm, low, hm, high}, fn {lm, low, hm, high} ->
         if Utils.deg(low) do
           r = Utils.poly_rounded_div(high, low)
-          r = r ++ List.duplicate(0, fqp.degree + 1 - length(r))
+          r = r ++ List.duplicate(0, FieldMath.degree(fqp) + 1 - length(r))
           nm = Enum.map(hm, & &1)
           new = Enum.map(high, & &1)
 
           {nm, _new} =
-            for(i <- 0..fqp.degree, j <- 0..(fqp.degree - i), do: {i, j})
+            for(i <- 0..FieldMath.degree(fqp), j <- 0..(FieldMath.degree(fqp) - i), do: {i, j})
             |> Enum.reduce({nm, new}, fn {i, j}, {nm, new} ->
               nm = List.update_at(nm, i + j, fn val -> val - lm[i] * r[j] end)
               new = List.update_at(new, i + j, fn val -> val - low[i] * r[j] end)
               {nm, new}
             end)
 
-          {nm, new} = Enum.map(nm, &rem(&1, fqp.field_modulus))
-          {new, _} = Enum.map(new, &rem(&1, fqp.field_modulus))
+          {nm, new} = Enum.map(nm, &rem(&1, FieldMath.field(fqp)_modulus))
+          {new, _} = Enum.map(new, &rem(&1, FieldMath.field(fqp)_modulus))
 
           {:cont, {nm, new, lm, low}}
         else
@@ -327,11 +341,11 @@ defmodule ExEcc.Fields.OptimizedFQP do
         end
       end)
 
-    FieldMath.type(fqp).new(Enum.take(lm, fqp.degree)) |> FieldMath.div(List.first(low))
+    FieldMath.type(fqp).new(Enum.take(lm, FieldMath.degree(fqp))) |> FieldMath.div(List.first(low))
   end
 
   def repr(fqp) do
-    inspect(fqp.coeffs)
+    inspect(FieldMath.coeffs(fqp))
   end
 
   def eq(fqp, other) do
@@ -339,7 +353,7 @@ defmodule ExEcc.Fields.OptimizedFQP do
       raise "Expected an FQP object, but got object of type #{FieldMath.type(other)}"
     end
 
-    Enum.zip(fqp.coeffs, other.coeffs)
+    Enum.zip(FieldMath.coeffs(fqp), FieldMath.coeffs(other))
     |> Enum.all?(fn {c1, c2} -> c1 == c2 end)
   end
 
@@ -348,21 +362,21 @@ defmodule ExEcc.Fields.OptimizedFQP do
   end
 
   def neg(fqp) do
-    FieldMath.type(fqp).new(Enum.map(fqp.coeffs, &(-&1)))
+    FieldMath.type(fqp).new(Enum.map(FieldMath.coeffs(fqp), &(-&1)))
   end
 
   def one(cls) do
-    cls.new([1] ++ List.duplicate(0, cls.degree - 1))
+    cls.new(List.to_tuple([1] ++ List.duplicate(0, FieldMath.degree(cls) - 1)))
   end
 
   def zero(cls) do
-    cls.new(List.duplicate(0, cls.degree))
+    cls.new(List.to_tuple(List.duplicate(0, FieldMath.degree(cls))))
   end
 
   # Optimized sgn0 implementation
   def sgn0(fqp) do
     {sign, _zero} =
-      Enum.reduce(fqp.coeffs, {0, 1}, fn x_i, {sign, zero} ->
+      Enum.reduce(FieldMath.coeffs(fqp), {0, 1}, fn x_i, {sign, zero} ->
         sign_i = rem(x_i, 2)
         zero_i = x_i == 0
         {sign || (zero && sign_i), zero && zero_i}
@@ -383,16 +397,23 @@ defmodule ExEcc.Fields.OptimizedFQ2 do
   defstruct degree: 2,
             modulus_coeffs: nil,
             field_modulus: nil,
-            fq2_modulus_coeffs: "FQ2_modulus_coeffs_type"
+            fq2_modulus_coeffs: "FQ2_modulus_coeffs_type",
+            mc_tuples: []
 
   def parent(), do: OptimizedFQP
+  def degree(), do: 2
 
   def new(fqp \\ %__MODULE__{}, coeffs) do
-    if not FieldMath.fq2_modulus_coeffs(fqp) do
+    if FieldMath.fq2_modulus_coeffs(fqp) == nil do
       raise "FQ2 Modulus Coeffs haven't been specified"
     end
 
-    parent().new(coeffs, fqp.fq2_modulus_coeffs)
+    mc_tuples =
+      Enum.with_index(Tuple.to_list(FieldMath.fq2_modulus_coeffs(fqp)))
+      |> Enum.filter(fn {c, _} -> c != 0 end)
+      |> Enum.map(fn {c, i} -> {i, c} end)
+
+    parent().new(%{fqp | mc_tuples: mc_tuples}, coeffs, FieldMath.fq2_modulus_coeffs(fqp))
   end
 
   # Optimized sgn0 implementation for m = 2
@@ -419,12 +440,13 @@ defmodule ExEcc.Fields.OptimizedFQ12 do
             fq12_modulus_coeffs: "FQ12_modulus_coeffs_type"
 
   def parent(), do: OptimizedFQP
+  def degree(), do: 12
 
   def new(fqp \\ %__MODULE__{}, coeffs) do
-    if not FieldMath.fq12_modulus_coeffs(fqp) do
+    if FieldMath.fq12_modulus_coeffs(fqp) == nil do
       raise "FQ12 Modulus Coeffs haven't been specified"
     end
 
-    parent().new(coeffs, fqp.fq12_modulus_coeffs)
+    parent().new(fqp, coeffs, FieldMath.fq12_modulus_coeffs(fqp))
   end
 end

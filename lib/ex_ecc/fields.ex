@@ -95,6 +95,11 @@ defmodule ExEcc.Fields do
     def field_modulus, do: FieldProperties.field_properties()["bls12_381"].field_modulus
   end
 
+  defmodule OptimizedBLS12381FQP do
+    use FieldMath, parent: OptimizedFQP
+    def field_modulus, do: FieldProperties.field_properties()["bls12_381"].field_modulus
+  end
+
   defmodule OptimizedBLS12381FQ2 do
     use FieldMath, parent: [OptimizedFQ2, OptimizedBLS12381FQP]
     def field_modulus, do: FieldProperties.field_properties()["bls12_381"].field_modulus

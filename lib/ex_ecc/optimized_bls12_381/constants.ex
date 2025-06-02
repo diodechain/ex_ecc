@@ -9,7 +9,7 @@ defmodule ExEcc.OptimizedBLS12381.Constants do
   def fq2_order, do: @fq2_order
 
   @eighth_roots_of_unity Enum.map(0..7, fn k ->
-                           FQ2.new([1, 1]) |> FieldMath.pow(@fq2_order * k, 8)
+                           FQ2.new({1, 1}) |> FieldMath.pow(@fq2_order * k, 8)
                          end)
                          |> List.to_tuple()
   def eighth_roots_of_unity, do: @eighth_roots_of_unity
