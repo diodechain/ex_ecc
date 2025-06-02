@@ -201,7 +201,7 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedPairing do
         f = FieldMath.div(f_num, f_den)
 
         if final_exponentiate do
-          FieldMath.pow(f, div(:math.pow(@field_modulus, 12) - 1, Curve.curve_order()))
+          FieldMath.pow(f, div(@field_modulus ** 12 - 1, Curve.curve_order()))
         else
           f
         end

@@ -49,6 +49,8 @@ defmodule ExEcc.FieldMath do
   def coeffs_list(a), do: Tuple.to_list(get(:coeffs, a))
   def coeffs(a, index), do: elem(get(:coeffs, a), index)
   def modulus_coeffs(a), do: get(:modulus_coeffs, a)
+  def modulus_coeffs_list(a), do: Tuple.to_list(get(:modulus_coeffs, a))
+  def modulus_coeffs(a, index), do: elem(get(:modulus_coeffs, a), index)
   def degree(a), do: get(:degree, a)
   def parent(a), do: get(:parent, a)
   def corresponding_fq_class(a), do: get(:corresponding_fq_class, a)

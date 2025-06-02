@@ -3,9 +3,7 @@ defmodule ExEcc.OptimizedBN128.OptimizedCurve do
   alias ExEcc.Fields.OptimizedBN128FQ2, as: FQ2
   alias ExEcc.Fields.OptimizedBN128FQ12, as: FQ12
   alias ExEcc.Fields.OptimizedFieldElements.FQP
-
-  @field_modulus ExEcc.Fields.FieldProperties.field_properties()["bn128"].field_modulus
-  @curve_order 218_882_428_718_392_752_222_464_057_452_572_750_885_483_644_004_160_343_436_982_041_865_758_084_956_17
+  alias ExEcc.FieldMath
 
   # Curve is y**2 = x**3 + 3
   @b FQ.new(3)

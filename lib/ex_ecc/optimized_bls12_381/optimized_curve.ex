@@ -56,7 +56,7 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedCurve do
   # Check if a point is the point at infinity
   def is_inf(pt) do
     {_x, _y, z} = pt
-    z == FieldMath.type(z).zero()
+    FieldMath.eq(z, FieldMath.type(z).zero())
   end
 
   # Check that a point is on the curve defined by y**2 == x**3 + b
@@ -65,24 +65,43 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedCurve do
       true
     else
       {x, y, z} = pt
+      a = FieldMath.sub(FieldMath.mul(FieldMath.pow(y, 2), z), FieldMath.pow(x, 3))
+      b = FieldMath.mul(b, FieldMath.pow(z, 3))
+      IO.inspect(a, label: "a")
+      IO.inspect(b, label: "b")
+
       FieldMath.eq(
-        FieldMath.sub(FieldMath.mul(FieldMath.pow(y, 2), z), FieldMath.pow(x, 3)),
-        FieldMath.mul(b, FieldMath.pow(z, 3))
+        a,
+        b
       )
+
+      # FieldMath.eq(
+      #   FieldMath.sub(FieldMath.mul(FieldMath.pow(y, 2), z), FieldMath.pow(x, 3)),
+      #   FieldMath.mul(b, FieldMath.pow(z, 3))
+      # )
     end
   end
 
   # Elliptic curve doubling
   def double(pt) do
     {x, y, z} = pt
-    w = 3 * x * x
-    s = y * z
-    b = x * y * s
-    h = w * w - 8 * b
-    s_squared = s * s
-    newx = 2 * h * s
-    newy = w * (4 * b - h) - 8 * y * y * s_squared
-    newz = 8 * s * s_squared
+    w = FieldMath.mul(3, FieldMath.mul(x, x))
+    s = FieldMath.mul(y, z)
+    b = FieldMath.mul(x, y, s)
+    h = FieldMath.sub(FieldMath.mul(w, w), FieldMath.mul(8, b))
+    s_squared = FieldMath.mul(s, s)
+    newx = FieldMath.mul(2, FieldMath.mul(h, s))
+
+    newy =
+      FieldMath.sub(
+        FieldMath.sub(
+          FieldMath.mul(w, FieldMath.sub(FieldMath.mul(4, b), h)),
+          FieldMath.mul(8, FieldMath.mul(y, y, s_squared))
+        ),
+        s_squared
+      )
+
+    newz = FieldMath.mul(8, s, s_squared)
     {newx, newy, newz}
   end
 
@@ -92,36 +111,51 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedCurve do
     {x2, y2, z2} = p2
     {one, zero} = {FieldMath.one(x1), FieldMath.zero(x1)}
 
-    if z1 == zero or z2 == zero do
-      if z2 == zero do
+    if FieldMath.eq(z1, zero) or FieldMath.eq(z2, zero) do
+      if FieldMath.eq(z2, zero) do
         p1
       else
         p2
       end
     else
-      u1 = y2 * z1
-      u2 = y1 * z2
-      v1 = x2 * z1
-      v2 = x1 * z2
+      u1 = FieldMath.mul(y2, z1)
+      u2 = FieldMath.mul(y1, z2)
+      v1 = FieldMath.mul(x2, z1)
+      v2 = FieldMath.mul(x1, z2)
 
       cond do
-        v1 == v2 and u1 == u2 ->
+        FieldMath.eq(v1, v2) and FieldMath.eq(u1, u2) ->
           double(p1)
 
-        v1 == v2 ->
+        FieldMath.eq(v1, v2) ->
           {one, one, zero}
 
         true ->
-          u = u1 - u2
-          v = v1 - v2
-          v_squared = v * v
-          v_squared_times_v2 = v_squared * v2
-          v_cubed = v * v_squared
-          w = z1 * z2
-          a = u * u * w - v_cubed - 2 * v_squared_times_v2
-          newx = v * a
-          newy = u * (v_squared_times_v2 - a) - v_cubed * u2
-          newz = v_cubed * w
+          u = FieldMath.sub(u1, u2)
+          v = FieldMath.sub(v1, v2)
+          v_squared = FieldMath.mul(v, v)
+          v_squared_times_v2 = FieldMath.mul(v_squared, v2)
+          v_cubed = FieldMath.mul(v, v_squared)
+          w = FieldMath.mul(z1, z2)
+
+          a =
+            FieldMath.sub(
+              FieldMath.sub(FieldMath.mul(u, u), v_cubed),
+              FieldMath.mul(2, v_squared_times_v2)
+            )
+
+          newx = FieldMath.mul(v, a)
+
+          newy =
+            FieldMath.sub(
+              FieldMath.sub(
+                FieldMath.mul(u, FieldMath.sub(v_squared_times_v2, a)),
+                FieldMath.mul(v_cubed, u2)
+              ),
+              u2
+            )
+
+          newz = FieldMath.mul(v_cubed, w)
           {newx, newy, newz}
       end
     end
@@ -142,12 +176,14 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedCurve do
   def eq(p1, p2) do
     {x1, y1, z1} = p1
     {x2, y2, z2} = p2
-    x1 * z2 == x2 * z1 and y1 * z2 == y2 * z1
+
+    FieldMath.eq(FieldMath.mul(x1, z2), FieldMath.mul(x2, z1)) and
+      FieldMath.eq(FieldMath.mul(y1, z2), FieldMath.mul(y2, z1))
   end
 
   def normalize(pt) do
     {x, y, z} = pt
-    {x / z, y / z}
+    {FieldMath.div(x, z), FieldMath.div(y, z)}
   end
 
   @w FQ12.new(List.to_tuple([0, 1] ++ List.duplicate(0, 10)))
@@ -162,26 +198,23 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedCurve do
   def twist(pt) do
     {x, y, z} = pt
     # Field isomorphism from Z[p] / x**2 to Z[p] / x**2 - 2*x + 2
-    xcoeffs = [FieldMath.coeffs(x, 0) - FieldMath.coeffs(x, 1), FieldMath.coeffs(x, 1)]
-    ycoeffs = [FieldMath.coeffs(y, 0) - FieldMath.coeffs(y, 1), FieldMath.coeffs(y, 1)]
-    zcoeffs = [FieldMath.coeffs(z, 0) - FieldMath.coeffs(z, 1), FieldMath.coeffs(z, 1)]
+    xcoeffs = [FieldMath.coeffs(x, 0) - FieldMath.coeffs(x, 1) * 9, FieldMath.coeffs(x, 1)]
+    ycoeffs = [FieldMath.coeffs(y, 0) - FieldMath.coeffs(y, 1) * 9, FieldMath.coeffs(y, 1)]
+    zcoeffs = [FieldMath.coeffs(z, 0) - FieldMath.coeffs(z, 1) * 9, FieldMath.coeffs(z, 1)]
 
     nx =
-      ([0, List.first(xcoeffs)] ++ List.duplicate(0, 5) ++ [List.last(xcoeffs)] ++ List.duplicate(0, 4))
-      |> List.to_tuple()
+      {List.first(xcoeffs), 0, 0, 0, 0, 0, List.last(xcoeffs), 0, 0, 0, 0, 0}
       |> FQ12.new()
 
     ny =
-      ([List.first(ycoeffs)] ++ List.duplicate(0, 5) ++ [List.last(ycoeffs)] ++ List.duplicate(0, 5))
-      |> List.to_tuple()
+      {List.first(ycoeffs), 0, 0, 0, 0, 0, List.last(ycoeffs), 0, 0, 0, 0, 0}
       |> FQ12.new()
 
     nz =
-      (List.duplicate(0, 3) ++ [List.first(zcoeffs)] ++ List.duplicate(0, 5) ++ [List.last(zcoeffs)] ++ List.duplicate(0, 2))
-      |> List.to_tuple()
+      {List.first(zcoeffs), 0, 0, 0, 0, 0, List.last(zcoeffs), 0, 0, 0, 0, 0}
       |> FQ12.new()
 
-    {nx, ny, nz}
+    {FieldMath.mul(nx, FieldMath.pow(@w, 2)), FieldMath.mul(ny, FieldMath.pow(@w, 3)), nz}
   end
 
   def g12 do

@@ -4,8 +4,6 @@ defmodule ExEcc.Fields.FQ do
   defstruct n: 0, field_modulus: nil
 
   def new(fq \\ %__MODULE__{}, val) do
-    IO.inspect(fq, label: "fq")
-
     if FieldMath.field_modulus(fq) == nil do
       raise "Field Modulus hasn't been specified"
     end
@@ -189,7 +187,7 @@ defmodule ExEcc.Fields.FQP do
   end
 
   def add(fqp, other) do
-    if not FieldMath.isinstance(fqp, other) do
+    if not FieldMath.isinstance(other, FieldMath.type(fqp)) do
       raise "Expected an FQP object, but got object of type #{FieldMath.type(fqp)}"
     end
 
@@ -200,7 +198,7 @@ defmodule ExEcc.Fields.FQP do
   end
 
   def sub(fqp, other) do
-    if not FieldMath.isinstance(fqp, other) do
+    if not FieldMath.isinstance(other, FieldMath.type(fqp)) do
       raise "Expected an FQP object, but got object of type #{FieldMath.type(fqp)}"
     end
 
@@ -226,35 +224,32 @@ defmodule ExEcc.Fields.FQP do
             FieldMath.degree(fqp) * 2 - 1
           )
 
-        b =
-          for(
-            i <- 0..(FieldMath.degree(fqp) - 1),
-            j <- 0..(FieldMath.degree(fqp) - 1),
-            do: {i, j}
-          )
-          |> Enum.reduce(b, fn {i, j}, b ->
-            Map.put(
-              b,
-              i + j,
-              FieldMath.add(
-                Map.get(b, i + j),
-                FieldMath.mul(FieldMath.coeffs(fqp)[i], FieldMath.coeffs(other)[j])
-              )
+        for i <- 0..(FieldMath.degree(fqp) - 1), j <- 0..(FieldMath.degree(fqp) - 1) do
+          {i, j}
+        end
+        |> Enum.reduce(b, fn {i, j}, b ->
+          List.update_at(
+            b,
+            i + j,
+            FieldMath.add(
+              Enum.at(b, i + j),
+              FieldMath.mul(FieldMath.coeffs(fqp, i), FieldMath.coeffs(other, j))
             )
-          end)
-
-        reduce_while(b, fn b ->
+          )
+        end)
+        |> reduce_while(fn b ->
           if length(b) > FieldMath.degree(fqp) do
-            {exp, top} = {length(b) - FieldMath.degree(fqp) - 1, List.pop_at(b, 0)}
+            exp = length(b) - FieldMath.degree(fqp) - 1
+            [top | b] = b
 
             b =
               Enum.reduce(0..(FieldMath.degree(fqp) - 1), b, fn i, b ->
-                Map.put(
+                List.update_at(
                   b,
                   exp + i,
                   FieldMath.sub(
-                    Map.get(b, exp + i),
-                    FieldMath.mul(top, FieldMath.modulus_coeffs(fqp)[i])
+                    Enum.at(b, exp + i),
+                    FieldMath.mul(top, FieldMath.modulus_coeffs(fqp, i))
                   )
                 )
               end)
@@ -264,7 +259,6 @@ defmodule ExEcc.Fields.FQP do
             {:halt, b}
           end
         end)
-        |> Map.values()
         |> List.to_tuple()
         |> FieldMath.type(fqp).new()
 

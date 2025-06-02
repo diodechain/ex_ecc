@@ -17,16 +17,18 @@ defmodule ExEcc.Utils do
     else
       {lm, hm} = {1, 0}
       {low, high} = {rem(a, n), n}
-      {lm, _low, _hm, _high} = reduce_while({lm, low, hm, high}, fn {lm, low, hm, high} ->
-        if low > 1 do
-          r = div(high, low)
-          nm = hm - lm * r
-          new = high - low * r
-          {:cont, {nm, new, lm, low}}
-        else
-          {:halt, {lm, low, hm, high}}
-        end
-      end)
+
+      {lm, _low, _hm, _high} =
+        reduce_while({lm, low, hm, high}, fn {lm, low, hm, high} ->
+          if low > 1 do
+            r = div(high, low)
+            nm = hm - lm * r
+            new = high - low * r
+            {:cont, {nm, new, lm, low}}
+          else
+            {:halt, {lm, low, hm, high}}
+          end
+        end)
 
       rem(lm, n)
     end
@@ -34,6 +36,7 @@ defmodule ExEcc.Utils do
 
   def deg(p) do
     d = length(p) - 1
+
     reduce_while(d, fn d ->
       if Enum.at(p, d) == 0 and d do
         {:cont, d - 1}
@@ -48,16 +51,21 @@ defmodule ExEcc.Utils do
     degb = deg(b)
     temp = Enum.to_list(a)
     o = List.duplicate(0, length(a))
-    {o, temp} = Enum.reduce((dega - degb)..-1//-1, {o, temp}, fn i, {o, temp} ->
-      o = List.update_at(o, i, fn val -> val + div(Enum.at(temp, degb + i), Enum.at(b, degb)) end)
-      temp = Enum.reduce(0..(degb + 1), temp, fn c, temp ->
-        List.update_at(temp, c + i, fn val -> val - Enum.at(o, c) end)
+
+    {o, temp} =
+      Enum.reduce((dega - degb)..0//-1, {o, temp}, fn i, {o, temp} ->
+        o =
+          List.update_at(o, i, fn val -> val + div(Enum.at(temp, degb + i), Enum.at(b, degb)) end)
+
+        temp =
+          Enum.reduce(0..degb, temp, fn c, temp ->
+            List.update_at(temp, c + i, fn val -> val - Enum.at(o, c) end)
+          end)
+
+        {o, temp}
       end)
-      {o, temp}
-    end)
 
     temp
     |> Enum.take(deg(o) + 1)
-    |> List.to_tuple()
   end
 end

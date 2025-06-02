@@ -1,7 +1,6 @@
 defmodule ExEcc.Fields.OptimizedFQ do
   alias ExEcc.Utils
   alias ExEcc.FieldMath
-  alias __MODULE__, as: FQ
 
   defstruct n: 0, field_modulus: nil
 
@@ -208,7 +207,7 @@ defmodule ExEcc.Fields.OptimizedFQP do
   end
 
   def add(fqp, other) do
-    if not FieldMath.isinstance(fqp, other) do
+    if not FieldMath.isinstance(other, FieldMath.type(fqp)) do
       raise "Expected an FQP object, but got object of type #{FieldMath.type(fqp)}"
     end
 
@@ -233,7 +232,7 @@ defmodule ExEcc.Fields.OptimizedFQP do
   def mul(fqp, other) do
     cond do
       is_integer(other) ->
-        for c <- Tuple.to_list(FieldMath.coeffs(fqp)) do
+        for c <- FieldMath.coeffs_list(fqp) do
           rem(c * other, FieldMath.field_modulus(fqp))
         end
         |> List.to_tuple()
@@ -243,27 +242,26 @@ defmodule ExEcc.Fields.OptimizedFQP do
         b = List.duplicate(0, FieldMath.degree(fqp) * 2 - 1)
 
         # Optimized polynomial multiplication
-        b =
-          Enum.reduce(0..(FieldMath.degree(fqp) - 1), b, fn i, acc ->
-            Enum.reduce(0..(FieldMath.degree(fqp) - 1), acc, fn j, acc ->
-              List.update_at(acc, i + j, fn val ->
-                val + FieldMath.coeffs(fqp, i) * FieldMath.coeffs(other, j)
-              end)
-            end)
+        inner_enumerate = Enum.with_index(FieldMath.coeffs_list(other))
+        self_enumerate = Enum.with_index(FieldMath.coeffs_list(fqp))
+
+        for {eli, i} <- self_enumerate, {elj, j} <- inner_enumerate do
+          {eli, elj, i, j}
+        end
+        |> Enum.reduce(b, fn {eli, elj, i, j}, b ->
+          List.update_at(b, i + j, fn val -> val + eli * elj end)
+        end)
+
+        # MID = len(self.coeffs) // 2
+        Enum.reduce((FieldMath.degree(fqp) - 2)..0//-1, b, fn exp, b ->
+          [top | b] = b
+
+          FieldMath.mc_tuples(fqp)
+          |> Enum.reduce(b, fn {i, c}, b ->
+            List.update_at(b, exp + i, fn val -> val - top * c end)
           end)
-
-        # Optimized reduction using precomputed mc_tuples
-        b =
-          while b, length(b) > FieldMath.degree(fqp) do
-            {exp, top} = {length(b) - FieldMath.degree(fqp) - 1, List.last(b)}
-            b = List.delete_at(b, -1)
-
-            Enum.reduce(FieldMath.mc_tuples(fqp), b, fn {i, c}, b ->
-              List.update_at(b, exp + i, fn val -> val - top * c end)
-            end)
-          end
-
-        Enum.map(b, &rem(&1, FieldMath.field_modulus(fqp)))
+        end)
+        |> Enum.map(&rem(&1, FieldMath.field_modulus(fqp)))
         |> List.to_tuple()
         |> FieldMath.type(fqp).new()
 
@@ -316,8 +314,8 @@ defmodule ExEcc.Fields.OptimizedFQP do
     }
 
     {low, high} = {
-      FieldMath.coeffs(fqp) ++ [0],
-      FieldMath.modulus_coeffs(fqp) ++ [1]
+      FieldMath.coeffs_list(fqp) ++ [0],
+      FieldMath.modulus_coeffs_list(fqp) ++ [1]
     }
 
     {lm, low, _hm, _high} =
@@ -328,17 +326,19 @@ defmodule ExEcc.Fields.OptimizedFQP do
           nm = Enum.map(hm, & &1)
           new = Enum.map(high, & &1)
 
-          {nm, _new} =
+          {nm, new} =
             for(i <- 0..FieldMath.degree(fqp), j <- 0..(FieldMath.degree(fqp) - i), do: {i, j})
             |> Enum.reduce({nm, new}, fn {i, j}, {nm, new} ->
-              nm = List.update_at(nm, i + j, fn val -> val - lm[i] * r[j] end)
-              new = List.update_at(new, i + j, fn val -> val - low[i] * r[j] end)
+              nm = List.update_at(nm, i + j, fn val -> val - Enum.at(lm, i) * Enum.at(r, j) end)
+
+              new =
+                List.update_at(new, i + j, fn val -> val - Enum.at(low, i) * Enum.at(r, j) end)
+
               {nm, new}
             end)
 
-          {nm, new} = Enum.map(nm, &rem(&1, FieldMath.field_modulus(fqp)))
-          {new, _} = Enum.map(new, &rem(&1, FieldMath.field_modulus(fqp)))
-
+          nm = Enum.map(nm, &rem(&1, FieldMath.field_modulus(fqp)))
+          new = Enum.map(new, &rem(&1, FieldMath.field_modulus(fqp)))
           {:cont, {nm, new, lm, low}}
         else
           {:halt, {lm, low, hm, high}}
