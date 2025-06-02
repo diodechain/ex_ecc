@@ -46,6 +46,7 @@ defmodule ExEcc.FieldMath do
   def fq12_modulus_coeffs(a), do: get(:fq12_modulus_coeffs, a)
   def field_modulus(a), do: get(:field_modulus, a)
   def coeffs(a), do: get(:coeffs, a)
+  def coeffs_list(a), do: Tuple.to_list(get(:coeffs, a))
   def coeffs(a, index), do: elem(get(:coeffs, a), index)
   def modulus_coeffs(a), do: get(:modulus_coeffs, a)
   def degree(a), do: get(:degree, a)
@@ -90,10 +91,6 @@ defmodule ExEcc.FieldMath do
   def isinstance(a, :int), do: is_integer(a)
 
   def isinstance(a, other_type) when is_atom(other_type) do
-    IO.inspect({a, other_type}, label: "a, other_type")
-    IO.inspect(type(a), label: "type(a)")
-    IO.inspect(parent(a), label: "parent(a)")
-
     type(a) == other_type ||
       Enum.any?(List.wrap(parent(a)), fn p -> isinstance(p, other_type) end)
   end
@@ -103,17 +100,14 @@ defmodule ExEcc.FieldMath do
   end
 
   defp get(atom, a) do
-    IO.inspect(a, label: "get(#{atom}, a)")
+    # IO.inspect(a, label: "get(#{atom} in #{inspect(a)})")
     type = type(a)
-    IO.inspect(type, label: "type")
 
     cond do
-      IO.inspect(function?(type, atom, 0), label: "function?(type, #{atom}, 0)") ->
-        IO.inspect({type, atom, []}, label: "type, atom, []")
-        IO.inspect(apply(type, atom, []), label: "apply(type, atom, [])")
+      function?(type, atom, 0) ->
         apply(type, atom, [])
 
-      is_map(a) and IO.inspect(Map.has_key?(a, atom), label: "Map.has_key?(a, atom)") ->
+      is_map(a) and Map.has_key?(a, atom) ->
         Map.get(a, atom)
 
       function?(type, :parent, 0) ->
@@ -121,13 +115,10 @@ defmodule ExEcc.FieldMath do
           function?(p, atom, 0) && apply(p, atom, [])
         end)
 
-      is_map(a) and IO.inspect(Map.has_key?(a, :parent), label: "Map.has_key?(a, :parent)") ->
-        IO.inspect(a.parent, label: "a.parent")
-
+      is_map(a) and Map.has_key?(a, :parent) ->
         Enum.find_value(List.wrap(a.parent), fn p ->
           function?(p, atom, 0) && apply(p, atom, [])
         end)
-        |> IO.inspect(label: "result")
 
       true ->
         nil

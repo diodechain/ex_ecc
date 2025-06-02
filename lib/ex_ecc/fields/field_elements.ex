@@ -243,29 +243,29 @@ defmodule ExEcc.Fields.FQP do
             )
           end)
 
-          reduce_while(b, fn b ->
-            if length(b) > FieldMath.degree(fqp) do
-              {exp, top} = {length(b) - FieldMath.degree(fqp) - 1, List.pop_at(b, 0)}
+        reduce_while(b, fn b ->
+          if length(b) > FieldMath.degree(fqp) do
+            {exp, top} = {length(b) - FieldMath.degree(fqp) - 1, List.pop_at(b, 0)}
 
-              b =
-                Enum.reduce(0..(FieldMath.degree(fqp) - 1), b, fn i, b ->
-                  Map.put(
-                    b,
-                    exp + i,
-                    FieldMath.sub(
-                      Map.get(b, exp + i),
-                      FieldMath.mul(top, FieldMath.modulus_coeffs(fqp)[i])
-                    )
+            b =
+              Enum.reduce(0..(FieldMath.degree(fqp) - 1), b, fn i, b ->
+                Map.put(
+                  b,
+                  exp + i,
+                  FieldMath.sub(
+                    Map.get(b, exp + i),
+                    FieldMath.mul(top, FieldMath.modulus_coeffs(fqp)[i])
                   )
-                end)
+                )
+              end)
 
-              {:cont, b}
-            else
-              {:halt, b}
-            end
-          end)
-          |> Map.values()
-          |> List.to_tuple()
+            {:cont, b}
+          else
+            {:halt, b}
+          end
+        end)
+        |> Map.values()
+        |> List.to_tuple()
         |> FieldMath.type(fqp).new()
 
       true ->

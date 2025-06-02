@@ -2,6 +2,7 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedCurve do
   alias ExEcc.Fields.OptimizedBLS12381FQ, as: FQ
   alias ExEcc.Fields.OptimizedBLS12381FQ2, as: FQ2
   alias ExEcc.Fields.OptimizedBLS12381FQ12, as: FQ12
+  alias ExEcc.FieldMath
 
   @field_modulus ExEcc.Fields.FieldProperties.field_properties()["bls12_381"].field_modulus
   def field_modulus, do: @field_modulus
@@ -47,22 +48,27 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedCurve do
 
   # Point at infinity over FQ
   @z1 {FQ.one(), FQ.one(), FQ.zero()}
+  def z1, do: @z1
   # Point at infinity for twisted curve over FQ2
   @z2 {FQ2.one(), FQ2.one(), FQ2.zero()}
+  def z2, do: @z2
 
   # Check if a point is the point at infinity
   def is_inf(pt) do
     {_x, _y, z} = pt
-    z == FieldMath.zero(z)
+    z == FieldMath.type(z).zero()
   end
 
   # Check that a point is on the curve defined by y**2 == x**3 + b
-  def is_on_curve(pt, curve_b) do
+  def is_on_curve(pt, b) do
     if is_inf(pt) do
       true
     else
       {x, y, z} = pt
-      y ** 2 * z - x ** 3 == curve_b * z ** 3
+      FieldMath.eq(
+        FieldMath.sub(FieldMath.mul(FieldMath.pow(y, 2), z), FieldMath.pow(x, 3)),
+        FieldMath.mul(b, FieldMath.pow(z, 3))
+      )
     end
   end
 
@@ -123,7 +129,7 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedCurve do
 
   # Elliptic curve point multiplication
   def multiply(pt, n) when is_integer(n) do
-    {x, y, z} = pt
+    {x, _y, _z} = pt
 
     cond do
       n == 0 -> {FieldMath.one(x), FieldMath.one(x), FieldMath.zero(x)}
@@ -161,28 +167,19 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedCurve do
     zcoeffs = [FieldMath.coeffs(z, 0) - FieldMath.coeffs(z, 1), FieldMath.coeffs(z, 1)]
 
     nx =
-      FQ12.new(
-        List.to_tuple(
-          [0, xcoeffs[0]] ++
-            List.duplicate(FQ.zero(), 5) ++ [xcoeffs[1]] ++ List.duplicate(FQ.zero(), 4)
-        )
-      )
+      ([0, List.first(xcoeffs)] ++ List.duplicate(0, 5) ++ [List.last(xcoeffs)] ++ List.duplicate(0, 4))
+      |> List.to_tuple()
+      |> FQ12.new()
 
     ny =
-      FQ12.new(
-        List.to_tuple(
-          [ycoeffs[0]] ++
-            List.duplicate(FQ.zero(), 5) ++ [ycoeffs[1]] ++ List.duplicate(FQ.zero(), 5)
-        )
-      )
+      ([List.first(ycoeffs)] ++ List.duplicate(0, 5) ++ [List.last(ycoeffs)] ++ List.duplicate(0, 5))
+      |> List.to_tuple()
+      |> FQ12.new()
 
     nz =
-      FQ12.new(
-        List.to_tuple(
-          ([0] * 3 + [zcoeffs[0]]) ++
-            List.duplicate(FQ.zero(), 5) ++ [zcoeffs[1]] ++ List.duplicate(FQ.zero(), 2)
-        )
-      )
+      (List.duplicate(0, 3) ++ [List.first(zcoeffs)] ++ List.duplicate(0, 5) ++ [List.last(zcoeffs)] ++ List.duplicate(0, 2))
+      |> List.to_tuple()
+      |> FQ12.new()
 
     {nx, ny, nz}
   end

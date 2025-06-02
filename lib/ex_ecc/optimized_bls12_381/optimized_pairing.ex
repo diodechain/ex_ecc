@@ -1,6 +1,5 @@
 defmodule ExEcc.OptimizedBLS12381.OptimizedPairing do
   alias ExEcc.Fields.OptimizedBLS12381FQ, as: FQ
-  alias ExEcc.Fields.OptimizedBLS12381FQ2, as: FQ2
   alias ExEcc.Fields.OptimizedBLS12381FQ12, as: FQ12
   alias ExEcc.Fields.FieldProperties
   alias ExEcc.OptimizedBLS12381.OptimizedCurve, as: Curve
@@ -242,7 +241,7 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedPairing do
   end
 
   def final_exponentiate(p) do
-    cofactor = div(:math.pow(@field_modulus, 4) - :math.pow(@field_modulus, 2) + 1, @curve_order)
+    cofactor = div(@field_modulus ** 4 - @field_modulus ** 2 + 1, Curve.curve_order())
     p2 = FieldMath.mul(exp_by_p(exp_by_p(p)), p)
 
     p3 =

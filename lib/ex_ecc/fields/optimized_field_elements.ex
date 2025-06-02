@@ -184,8 +184,6 @@ defmodule ExEcc.Fields.OptimizedFQP do
     # for performance reasons
     coeffs =
       if FieldMath.isinstance(elem(coeffs, 0), :int) do
-        IO.inspect(coeffs, label: "coeffs")
-
         Enum.map(Tuple.to_list(coeffs), fn c -> rem(c, FieldMath.field_modulus(fqp)) end)
         |> List.to_tuple()
       else
@@ -221,19 +219,18 @@ defmodule ExEcc.Fields.OptimizedFQP do
   end
 
   def sub(fqp, other) do
-    if not FieldMath.isinstance(fqp, other) do
-      raise "Expected an FQP object, but got object of type #{FieldMath.type(fqp)}"
+    if not FieldMath.isinstance(other, FieldMath.type(fqp)) do
+      raise "Expected an FQP object, but got object of type #{FieldMath.type(other)}"
     end
 
-    FieldMath.type(fqp).new(
-      for {x, y} <- Enum.zip(FieldMath.coeffs(fqp), FieldMath.coeffs(other)),
-          do: rem(x - y, FieldMath.field_modulus(fqp))
-    )
+    Enum.map(Enum.zip(FieldMath.coeffs_list(fqp), FieldMath.coeffs_list(other)), fn {x, y} ->
+      rem(x - y, FieldMath.field_modulus(fqp))
+    end)
+    |> List.to_tuple()
+    |> FieldMath.type(fqp).new()
   end
 
   def mul(fqp, other) do
-    IO.inspect(other, label: "other")
-
     cond do
       is_integer(other) ->
         for c <- Tuple.to_list(FieldMath.coeffs(fqp)) do
@@ -361,7 +358,7 @@ defmodule ExEcc.Fields.OptimizedFQP do
       raise "Expected an FQP object, but got object of type #{FieldMath.type(other)}"
     end
 
-    Enum.zip(FieldMath.coeffs(fqp), FieldMath.coeffs(other))
+    Enum.zip(FieldMath.coeffs_list(fqp), FieldMath.coeffs_list(other))
     |> Enum.all?(fn {c1, c2} -> c1 == c2 end)
   end
 
