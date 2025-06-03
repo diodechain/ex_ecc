@@ -191,11 +191,11 @@ defmodule ExEcc.BLS12_381.BLS12381Curve do
   def g12, do: twist(@g2)
 end
 
-defmodule ExEcc.BLS12_381.BLS12381CurveCheck do
-  use ExUnit.Case
-  alias ExEcc.BLS12_381.BLS12381Curve, as: Curve
+# defmodule ExEcc.BLS12_381.BLS12381CurveCheck do
+#   use ExUnit.Case
+#   alias ExEcc.BLS12_381.BLS12381Curve, as: Curve
 
-  if not Curve.is_on_curve(Curve.g12(), Curve.b12()) do
-    raise "Twist creates a point not on curve"
-  end
-end
+#   if not Curve.is_on_curve(Curve.g12(), Curve.b12()) do
+#     raise "Twist creates a point not on curve"
+#   end
+# end

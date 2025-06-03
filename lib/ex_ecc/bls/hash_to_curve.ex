@@ -1,30 +1,25 @@
 defmodule ExEcc.BLS.HashToCurve do
   alias ExEcc.BLS.Constants
   alias ExEcc.BLS.Hash
-  # alias ExEcc.BLS.Typing # For G1Uncompressed, G2Uncompressed types
-  # alias ExEcc.Fields.OptimizedFieldElements, as: OptFQ # For FQ, FQ2 types/structs
-  # alias ExEcc.OptimizedBLS12381 # For curve operations like add, iso_map, swu, clear_cofactor, field_modulus
-
-  # The `hash_function` parameter in Python often implies a specific hash like hashlib.sha256.
-  # In Elixir, we'll assume SHA-256 as it's common for BLS12-381 ciphersuites.
-  # If other hash functions are needed, the functions here would need to be parameterized or duplicated.
-
-  # --- Hash to G2 ---
+  alias ExEcc.Fields.OptimizedBLS12381FQ, as: FQ
+  alias ExEcc.Fields.OptimizedBLS12381FQ2, as: FQ2
 
   @doc """
-  Convert a message to a point on G2.
-  Follows BLS12381G2_XMD:SHA-256_SSWU_RO_ ciphersuite.
+  Convert a message to a point on G2 as defined here:
+  https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-09#section-6.6.3
+
+  The idea is to first hash into FQ2 and then use SSWU to map the result into G2.
+
+  Contents and inputs follow the ciphersuite ``BLS12381G2_XMD:SHA-256_SSWU_RO_``
+  defined here:
   https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-09#section-8.8.2
   """
-  #
-  def hash_to_g2(_message, _dst) do
-    # {u0, u1} = hash_to_field_fq2(message, 2, dst) # Assuming hash_function is SHA256 implicitly
-    # q0 = map_to_curve_g2(u0)
-    # q1 = map_to_curve_g2(u1)
-    # r = ExEcc.OptimizedBLS12381.add(q0, q1)
-    # p = clear_cofactor_g2(r)
-    # p
-    :not_implemented_yet_g2
+  def hash_to_g2(message, dst, hash_function) do
+    {u0, u1} = hash_to_field_fq2(message, 2, dst, hash_function)
+    q0 = map_to_curve_g2(u0)
+    q1 = map_to_curve_g2(u1)
+    r = ExEcc.OptimizedBLS12381.OptimizedCurve.add(q0, q1)
+    clear_cofactor_g2(r)
   end
 
   @doc """
@@ -34,108 +29,115 @@ defmodule ExEcc.BLS.HashToCurve do
   Implicitly uses SHA256.
   """
   #
-  def hash_to_field_fq2(message, count, dst) do
+  def hash_to_field_fq2(message, count, dst, hash_function) do
     # Extension degree of FQ2
     m = 2
     len_in_bytes = count * m * Constants.hash_to_field_l()
-    # Assumes SHA256 from expand_message_xmd
-    _pseudo_random_bytes = Hash.expand_message_xmd(message, dst, len_in_bytes)
+    pseudo_random_bytes = Hash.expand_message_xmd(message, dst, len_in_bytes, hash_function)
 
-    # field_mod = ExEcc.OptimizedBLS12381.field_modulus()
-    # modulus_coeffs_fq2 = ExEcc.OptimizedBLS12381.Parameters.fq2_modulus_coeffs() # Or however it's defined
-    # mc_tuples_fq2 = ExEcc.OptimizedBLS12381.Parameters.fq2_mc_tuples() # Or however it's defined
+    Enum.reduce(0..(count - 1), [], fn i, u ->
+      e =
+        Enum.reduce(0..(m - 1), [], fn j, e ->
+          elem_offset = Constants.hash_to_field_l() * (j + i * m)
+          tv = binary_part(pseudo_random_bytes, elem_offset, Constants.hash_to_field_l())
+          e ++ [rem(Hash.os2ip(tv), ExEcc.OptimizedBLS12381.OptimizedCurve.field_modulus())]
+        end)
 
-    # Enum.map(0..(count-1), fn i ->
-    #   e_coeffs = Enum.map(0..(m-1), fn j ->
-    #     elem_offset = Constants.hash_to_field_l() * (j + i * m)
-    #     tv = :binary.part(pseudo_random_bytes, elem_offset, Constants.hash_to_field_l())
-    #     rem(Hash.os2ip(tv), field_mod)
-    #   end)
-    #   # Construct FQ2 element. Assumes OptFQ.FQ2.new_fq2/4 or similar constructor.
-    #   # OptFQ.FQ2.new_fq2(e_coeffs, modulus_coeffs_fq2, mc_tuples_fq2, field_mod)
-    # end)
-    # |> List.to_tuple() # If the return spec is a tuple
-    :not_implemented_yet_fq2_field_hash
+      u ++ [FQ2.new(List.to_tuple(e))]
+    end)
+    |> List.to_tuple()
   end
 
   @doc """
-  Map To Curve for G2 (using SWU map and 3-Isogeny).
+  Map To Curve for G2
+
+  First, convert FQ2 point to a point on the 3-Isogeny curve.
+  SWU Map: https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-09#section-6.6.3
+
+  Second, map 3-Isogeny curve to BLS12-381-G2 curve.
+  3-Isogeny Map:
+  https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-09#appendix-C.3
   """
-  #
-  def map_to_curve_g2(_u_fq2) do
-    # {x, y, z} = ExEcc.OptimizedBLS12381.optimized_swu_g2(u_fq2)
-    # ExEcc.OptimizedBLS12381.iso_map_g2(x, y, z)
-    :not_implemented_yet_map_g2
+  def map_to_curve_g2(u) do
+    {x, y, z} = ExEcc.OptimizedBLS12381.OptimizedSWU.optimized_swu_g2(u)
+    ExEcc.OptimizedBLS12381.OptimizedSWU.iso_map_g2(x, y, z)
   end
 
   @doc """
-  Clear Cofactor for G2 points.
+  Clear Cofactor via Multiplication
+
+  Ensure a point falls in the correct sub group of the curve.
   """
-  #
-  def clear_cofactor_g2(_p) do
-    # ExEcc.OptimizedBLS12381.multiply_clear_cofactor_g2(p)
-    :not_implemented_yet_clear_g2
+  def clear_cofactor_g2(p) do
+    ExEcc.OptimizedBLS12381.OptimizedClearCofactor.multiply_clear_cofactor_g2(p)
   end
 
   # --- Hash to G1 ---
 
   @doc """
-  Convert a message to a point on G1.
-  Follows BLS12381G1_XMD:SHA-256_SSWU_RO_ ciphersuite.
+  Convert a message to a point on G1 as defined here:
+  https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-09#section-6.6.3
+
+  The idea is to first hash into FQ and then use SSWU to map the result into G1.
+
+  Contents and inputs follow the ciphersuite ``BLS12381G1_XMD:SHA-256_SSWU_RO_``
+  defined here:
   https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-09#section-8.8.1
   """
-  #
-  def hash_to_g1(_message, _dst) do
-    # {u0, u1} = hash_to_field_fq(message, 2, dst) # Assuming SHA256
-    # q0 = map_to_curve_g1(u0)
-    # q1 = map_to_curve_g1(u1)
-    # r = ExEcc.OptimizedBLS12381.add(q0, q1)
-    # p = clear_cofactor_g1(r)
-    # p
-    :not_implemented_yet_g1
+  def hash_to_g1(message, dst, hash_function) do
+    {u0, u1} = hash_to_field_fq(message, 2, dst, hash_function)
+    q0 = map_to_curve_g1(u0)
+    q1 = map_to_curve_g1(u1)
+    r = ExEcc.OptimizedBLS12381.OptimizedCurve.add(q0, q1)
+    clear_cofactor_g1(r)
   end
 
   @doc """
-  Hash To Base Field for FQ.
-  Returns a tuple of `count` FQ elements.
-  Implicitly uses SHA256.
+  Hash To Base Field for FQ
+
+  Convert a message to a point in the finite field as defined here:
+  https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-09#section-5.3
   """
-  #
-  def hash_to_field_fq(message, count, dst) do
+  def hash_to_field_fq(message, count, dst, hash_function) do
     # Extension degree of FQ
     m = 1
     len_in_bytes = count * m * Constants.hash_to_field_l()
-    _pseudo_random_bytes = Hash.expand_message_xmd(message, dst, len_in_bytes)
+    pseudo_random_bytes = Hash.expand_message_xmd(message, dst, len_in_bytes, hash_function)
 
-    # field_mod = ExEcc.OptimizedBLS12381.field_modulus()
+    Enum.reduce(0..(count - 1), [], fn i, u ->
+      e =
+        Enum.reduce(0..(m - 1), [], fn j, e ->
+          elem_offset = Constants.hash_to_field_l() * (j + i * m)
+          tv = binary_part(pseudo_random_bytes, elem_offset, Constants.hash_to_field_l())
+          e ++ [rem(Hash.os2ip(tv), ExEcc.OptimizedBLS12381.OptimizedCurve.field_modulus())]
+        end)
 
-    # Enum.map(0..(count-1), fn i ->
-    #   elem_offset = Constants.hash_to_field_l() * (i * m) # m is 1, so just i
-    #   tv = :binary.part(pseudo_random_bytes, elem_offset, Constants.hash_to_field_l())
-    #   fq_val = rem(Hash.os2ip(tv), field_mod)
-    #   # Construct FQ element. Assumes OptFQ.new_fq/2 or similar.
-    #   # OptFQ.new(fq_val, field_mod)
-    # end)
-    # |> List.to_tuple()
-    :not_implemented_yet_fq_field_hash
+      u ++ [FQ.new(List.to_tuple(e))]
+    end)
+    |> List.to_tuple()
   end
 
   @doc """
-  Map To Curve for G1 (using SWU map and 11-Isogeny).
+  Map To Curve for G1
+
+  First, convert FQ point to a point on the 11-Isogeny curve.
+  SWU Map: https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-09#section-6.6.3
+
+  Second, map 11-Isogeny curve to BLS12-381-G1 curve.
+  11-Isogeny Map:
+  https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-09#name-11-isogeny-map-for-bls12-38
   """
-  #
-  def map_to_curve_g1(_u_fq) do
-    # {x, y, z} = ExEcc.OptimizedBLS12381.optimized_swu_g1(u_fq)
-    # ExEcc.OptimizedBLS12381.iso_map_g1(x, y, z)
-    :not_implemented_yet_map_g1
+  def map_to_curve_g1(u) do
+    {x, y, z} = ExEcc.OptimizedBLS12381.OptimizedSWU.optimized_swu_g1(u)
+    ExEcc.OptimizedBLS12381.OptimizedSWU.iso_map_g1(x, y, z)
   end
 
   @doc """
-  Clear Cofactor for G1 points.
+  Clear Cofactor via Multiplication
+
+  Ensure a point falls in the correct subgroup of the curve.
   """
-  #
-  def clear_cofactor_g1(_p) do
-    # ExEcc.OptimizedBLS12381.multiply_clear_cofactor_g1(p)
-    :not_implemented_yet_clear_g1
+  def clear_cofactor_g1(p) do
+    ExEcc.OptimizedBLS12381.OptimizedClearCofactor.multiply_clear_cofactor_g1(p)
   end
 end

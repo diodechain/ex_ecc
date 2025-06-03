@@ -2,6 +2,7 @@ defmodule ExEcc.BLS12_381.BLS12381Pairing do
   alias ExEcc.Fields.OptimizedFieldElements, as: FQ
   alias ExEcc.Fields.FQ12
   alias ExEcc.BLS12_381.BLS12381Curve, as: Curve
+  alias ExEcc.FieldMath
 
   # field_modulus = field_properties["bls12_381"]["field_modulus"]
   # This will be taken from the FQ module if needed, or assumed to be part of FQ12 operations.
@@ -29,10 +30,10 @@ defmodule ExEcc.BLS12_381.BLS12381Pairing do
     cond do
       not FieldMath.eq(x1, x2) ->
         # m = (y2 - y1) / (x2 - x1)
-        m = FieldMath.divide(FieldMath.sub(y2, y1), FieldMath.sub(x2, x1))
+        m = FieldMath.div(FieldMath.sub(y2, y1), FieldMath.sub(x2, x1))
         # return m * (xt - x1) - (yt - y1)
         FieldMath.sub(
-          FieldMath.multiply(m, FieldMath.sub(xt, x1)),
+          FieldMath.mul(m, FieldMath.sub(xt, x1)),
           FieldMath.sub(yt, y1)
         )
 
@@ -40,14 +41,14 @@ defmodule ExEcc.BLS12_381.BLS12381Pairing do
       FieldMath.eq(y1, y2) ->
         # m = 3 * x1**2 / (2 * y1)
         m =
-          FieldMath.divide(
-            FieldMath.multiply(FieldMath.new(3, field_modulus()), FieldMath.pow(x1, 2)),
-            FieldMath.multiply(FieldMath.new(2, field_modulus()), y1)
+          FieldMath.div(
+            FieldMath.mul(FieldMath.new(3, field_modulus()), FieldMath.pow(x1, 2)),
+            FieldMath.mul(FieldMath.new(2, field_modulus()), y1)
           )
 
         # return m * (xt - x1) - (yt - y1)
         FieldMath.sub(
-          FieldMath.multiply(m, FieldMath.sub(xt, x1)),
+          FieldMath.mul(m, FieldMath.sub(xt, x1)),
           FieldMath.sub(yt, y1)
         )
 
@@ -104,14 +105,14 @@ defmodule ExEcc.BLS12_381.BLS12381Pairing do
           {q_fq12, FQ12.new(List.to_tuple([1] ++ List.duplicate(0, 11)), field_modulus())},
           fn i, {r_acc, f_acc} ->
             # f = f * f * linefunc(R, R, P)
-            f_doubled = FQ12.mul(f_acc, f_acc)
-            f_new = FQ12.mul(f_doubled, linefunc(r_acc, r_acc, p_fq12))
+            f_doubled = FieldMath.mul(f_acc, f_acc)
+            f_new = FieldMath.mul(f_doubled, linefunc(r_acc, r_acc, p_fq12))
             # double function needs to handle FQ12 points
             r_new = Curve.double(r_acc)
 
             if Bitwise.band(@ate_loop_count, Bitwise.bsl(1, i)) != 0 do
               # f = f * linefunc(R, Q, P)
-              f_updated = FQ12.mul(f_new, linefunc(r_new, q_fq12, p_fq12))
+              f_updated = FieldMath.mul(f_new, linefunc(r_new, q_fq12, p_fq12))
               # add function needs to handle FQ12 points
               r_updated = Curve.add(r_new, q_fq12)
               {r_updated, f_updated}
@@ -122,8 +123,8 @@ defmodule ExEcc.BLS12_381.BLS12381Pairing do
         )
 
       # Final exponentiation
-      exponent = div(trunc(:math.pow(field_modulus(), 12)) - 1, Curve.curve_order())
-      FQ12.pow(final_f, exponent)
+      exponent = div(field_modulus() ** 12 - 1, Curve.curve_order())
+      FieldMath.pow(final_f, exponent)
     end
   end
 
@@ -149,7 +150,7 @@ defmodule ExEcc.BLS12_381.BLS12381Pairing do
     # This is a very large number. FQ12.pow must handle it.
     field_modulus_val = field_modulus()
     exponent_val = div(trunc(:math.pow(field_modulus_val, 12)) - 1, Curve.curve_order())
-    FQ12.pow(f_val, exponent_val)
+    FieldMath.pow(f_val, exponent_val)
   end
 
   def ate_loop_count, do: @ate_loop_count

@@ -64,10 +64,11 @@ defmodule ExEcc.Fields.FQ do
         _ -> raise "Expected an int or FQ object, but got #{inspect(other)}"
       end
 
-    ret = FieldMath.mod_int(
-      fq.n * Utils.prime_field_inv(on, FieldMath.field_modulus(fq)),
-      FieldMath.field_modulus(fq)
-    )
+    ret =
+      FieldMath.mod_int(
+        fq.n * Utils.prime_field_inv(on, FieldMath.field_modulus(fq)),
+        FieldMath.field_modulus(fq)
+      )
 
     FieldMath.new(fq, ret)
   end
@@ -330,6 +331,7 @@ defmodule ExEcc.Fields.FQP do
     {lm, low, _hm, _high} =
       reduce_while({lm, low, hm, high}, fn {lm, low, hm, high} ->
         IO.inspect(Utils.deg(low), label: "deg(low)")
+
         if Utils.deg(low) > 0 do
           r = Utils.poly_rounded_div(high, low)
           r = r ++ List.duplicate(0, FieldMath.degree(fqp) + 1 - length(r))

@@ -1,4 +1,4 @@
-defmodule ExEcc.OptimizedBLS12381.ClearCofactor do
+defmodule ExEcc.OptimizedBLS12381.OptimizedClearCofactor do
   alias ExEcc.OptimizedBLS12381.Constants
   alias ExEcc.OptimizedBLS12381.OptimizedCurve
 
