@@ -44,7 +44,7 @@ defmodule ExEcc.FieldMath do
   def pow(a, b), do: call(:pow, a, b)
   def inv(a), do: call(:inv, a)
   def eq(a, b), do: call(:eq, a, b)
-  def neq(a, b), do: call(:neq, a, b)
+  def neg(a), do: call(:neg, a)
   def lt(a, b), do: call(:lt, a, b)
 
   def fq2_modulus_coeffs(a), do: get(:fq2_modulus_coeffs, a)

@@ -21,11 +21,11 @@ defmodule ExEcc.OptimizedBLS12381.Constants do
   def ev3, do: @ev3
   @ev4 1637752706019426886789797193293828301565549384974986623510918743054325021588194075665960171838131772227885159387073  # noqa: E501
   def ev4, do: @ev4
-  @etas [FQ2.new({@ev1, @ev2}), FQ2.new({FieldMath.neg(@ev2), @ev1}), FQ2.new({@ev3, @ev4}), FQ2.new({FieldMath.neg(@ev4), @ev3})]
+  @etas [FQ2.new({@ev1, @ev2}), FQ2.new({-@ev2, @ev1}), FQ2.new({@ev3, @ev4}), FQ2.new({-@ev4, @ev3})]
   def etas, do: @etas
   @rv1 10287321462351063499753244792157952773848399
   def rv1, do: @rv1
-  @positive_eighth_roots_of_unity {FQ2.new({1, 0}), FQ2.new({0, 1}), FQ2.new({@rv1, @rv1}), FQ2.new({@rv1, FieldMath.neg(@rv1)})}
+  @positive_eighth_roots_of_unity {FQ2.new({1, 0}), FQ2.new({0, 1}), FQ2.new({@rv1, @rv1}), FQ2.new({@rv1, -@rv1})}
   def positive_eighth_roots_of_unity, do: @positive_eighth_roots_of_unity
 
 # X Numerator

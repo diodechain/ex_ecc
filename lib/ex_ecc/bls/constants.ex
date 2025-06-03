@@ -1,5 +1,5 @@
 defmodule ExEcc.BLS.Constants do
-  alias ExEcc.Fields.FQ2
+  alias ExEcc.Fields.OptimizedBLS12381FQ2, as: FQ2
   alias ExEcc.FieldMath
 
   @q ExEcc.OptimizedBLS12381.OptimizedCurve.field_modulus()
