@@ -61,16 +61,12 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedCurve do
 
   # Check that a point is on the curve defined by y**2 == x**3 + b
   def is_on_curve(pt, b) do
-    IO.inspect(pt, label: "is_on_curve pt")
-
     if is_inf(pt) do
       true
     else
       {x, y, z} = pt
       a = FieldMath.sub(FieldMath.mul(FieldMath.pow(y, 2), z), FieldMath.pow(x, 3))
       b = FieldMath.mul(b, FieldMath.pow(z, 3))
-      IO.inspect(a, label: "a")
-      IO.inspect(b, label: "b")
 
       FieldMath.eq(
         a,
@@ -199,7 +195,6 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedCurve do
 
   def twist(pt) do
     {x, y, z} = pt
-    IO.inspect(pt, label: "twist pt")
     # Field isomorphism from Z[p] / x**2 to Z[p] / x**2 - 2*x + 2
     xcoeffs = [FieldMath.coeffs(x, 0) - FieldMath.coeffs(x, 1) * 9, FieldMath.coeffs(x, 1)]
     ycoeffs = [FieldMath.coeffs(y, 0) - FieldMath.coeffs(y, 1) * 9, FieldMath.coeffs(y, 1)]

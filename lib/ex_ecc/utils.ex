@@ -1,5 +1,6 @@
 defmodule ExEcc.Utils do
   import While
+  alias ExEcc.FieldMath
 
   @doc """
   Extended Euclidean algorithm to find modular inverses for integers.
@@ -56,12 +57,12 @@ defmodule ExEcc.Utils do
       Enum.reduce((dega - degb)..0//-1, {o, temp}, fn i, {o, temp} ->
         o =
           List.update_at(o, i, fn val ->
-            val + FieldMath.div(Enum.at(temp, degb + i), Enum.at(b, degb))
+            FieldMath.add(val, FieldMath.div(Enum.at(temp, degb + i), Enum.at(b, degb)))
           end)
 
         temp =
           Enum.reduce(0..degb, temp, fn c, temp ->
-            List.update_at(temp, c + i, fn val -> val - Enum.at(o, c) end)
+            List.update_at(temp, c + i, fn val -> FieldMath.sub(val, Enum.at(o, c)) end)
           end)
 
         {o, temp}

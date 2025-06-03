@@ -64,10 +64,12 @@ defmodule ExEcc.Fields.FQ do
         _ -> raise "Expected an int or FQ object, but got #{inspect(other)}"
       end
 
-    FieldMath.mod_int(
+    ret = FieldMath.mod_int(
       fq.n * Utils.prime_field_inv(on, FieldMath.field_modulus(fq)),
       FieldMath.field_modulus(fq)
     )
+
+    FieldMath.new(fq, ret)
   end
 
   def pow(fq, exponent) when is_integer(exponent) do
@@ -321,64 +323,75 @@ defmodule ExEcc.Fields.FQP do
     }
 
     {low, high} = {
-      Tuple.to_list(FieldMath.coeffs(fqp)) ++ [0],
-      Tuple.to_list(FieldMath.modulus_coeffs(fqp)) ++ [1]
+      FieldMath.coeffs_list(fqp) ++ [0],
+      FieldMath.modulus_coeffs_list(fqp) ++ [1]
     }
 
     {lm, low, _hm, _high} =
-      while Utils.deg(low) do
-        r = Utils.poly_rounded_div(high, low)
-        r = r ++ List.duplicate(0, FieldMath.degree(fqp) + 1 - length(r))
-        nm = Enum.map(hm, & &1)
-        new = Enum.map(high, & &1)
+      reduce_while({lm, low, hm, high}, fn {lm, low, hm, high} ->
+        IO.inspect(Utils.deg(low), label: "deg(low)")
+        if Utils.deg(low) > 0 do
+          r = Utils.poly_rounded_div(high, low)
+          r = r ++ List.duplicate(0, FieldMath.degree(fqp) + 1 - length(r))
+          nm = hm
+          new = high
 
-        cond do
-          length(lm) != FieldMath.degree(fqp) + 1 ->
-            raise "Length of lm is not #{FieldMath.degree(fqp) + 1}"
+          cond do
+            length(lm) != FieldMath.degree(fqp) + 1 ->
+              raise "Length of lm is not #{FieldMath.degree(fqp) + 1}"
 
-          length(hm) != FieldMath.degree(fqp) + 1 ->
-            raise "Length of hm is not #{FieldMath.degree(fqp) + 1}"
+            length(hm) != FieldMath.degree(fqp) + 1 ->
+              raise "Length of hm is not #{FieldMath.degree(fqp) + 1}"
 
-          length(nm) != FieldMath.degree(fqp) + 1 ->
-            raise "Length of nm is not #{FieldMath.degree(fqp) + 1}"
+            length(nm) != FieldMath.degree(fqp) + 1 ->
+              raise "Length of nm is not #{FieldMath.degree(fqp) + 1}"
 
-          length(low) != FieldMath.degree(fqp) + 1 ->
-            raise "Length of low is not #{FieldMath.degree(fqp) + 1}"
+            length(low) != FieldMath.degree(fqp) + 1 ->
+              raise "Length of low is not #{FieldMath.degree(fqp) + 1}"
 
-          length(high) != FieldMath.degree(fqp) + 1 ->
-            raise "Length of high is not #{FieldMath.degree(fqp) + 1}"
+            length(high) != FieldMath.degree(fqp) + 1 ->
+              raise "Length of high is not #{FieldMath.degree(fqp) + 1}"
 
-          length(new) != FieldMath.degree(fqp) + 1 ->
-            raise "Length of new is not #{FieldMath.degree(fqp) + 1}"
+            length(new) != FieldMath.degree(fqp) + 1 ->
+              raise "Length of new is not #{FieldMath.degree(fqp) + 1}"
 
-          true ->
-            :ok
+            true ->
+              :ok
+          end
+
+          {nm, new} =
+            for(i <- 0..FieldMath.degree(fqp), j <- 0..(FieldMath.degree(fqp) - i), do: {i, j})
+            |> Enum.reduce({nm, new}, fn {i, j}, {nm, new} ->
+              nm =
+                List.update_at(
+                  nm,
+                  i + j,
+                  fn x ->
+                    FieldMath.sub(x, FieldMath.mul(Enum.at(lm, i), Enum.at(r, j)))
+                  end
+                )
+
+              new =
+                List.update_at(
+                  new,
+                  i + j,
+                  fn x ->
+                    FieldMath.sub(x, FieldMath.mul(Enum.at(low, i), Enum.at(r, j)))
+                  end
+                )
+
+              {nm, new}
+            end)
+
+          {:cont, {nm, new, lm, low}}
+        else
+          {:halt, {lm, low, hm, high}}
         end
+      end)
 
-        {nm, new} =
-          for(i <- 0..FieldMath.degree(fqp), j <- 0..(FieldMath.degree(fqp) - i), do: {i, j})
-          |> Enum.reduce({nm, new}, fn {i, j}, {nm, new} ->
-            nm =
-              Map.put(
-                nm,
-                i + j,
-                FieldMath.sub(Map.get(nm, i + j), FieldMath.mul(lm[i], r[j]))
-              )
-
-            new =
-              Map.put(
-                new,
-                i + j,
-                FieldMath.sub(Map.get(new, i + j), FieldMath.mul(low[i], r[j]))
-              )
-
-            {nm, new}
-          end)
-
-        {_lm, _low, _hm, _high} = {nm, new, lm, low}
-      end
-
-    FieldMath.type(fqp).new(Enum.take(lm, FieldMath.degree(fqp)) / trunc(Enum.at(low, 0)))
+    FieldMath.type(fqp).new(
+      List.to_tuple(Enum.take(lm, FieldMath.degree(fqp)) |> FieldMath.div(trunc(Enum.at(low, 0))))
+    )
   end
 
   def repr(fqp) do

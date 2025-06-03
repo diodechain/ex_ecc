@@ -38,12 +38,21 @@ defmodule ExEcc.FieldMath do
     end
   end
 
-  def add(a, b) when is_integer(a), do: call(:add, b, a)
+  def add(a, b) when is_integer(a) and not is_integer(b), do: call(:add, b, a)
   def add(a, b), do: call(:add, a, b)
-  def mul(a, b) when is_integer(a), do: call(:mul, b, a)
+  def mul(a, b) when is_integer(a) and not is_integer(b), do: call(:mul, b, a)
   def mul(a, b), do: call(:mul, a, b)
   def sub(a, b), do: call(:sub, a, b)
+
+  def div(n, fqp) when is_integer(n) and not is_integer(fqp) do
+    ExEcc.FieldMath.new(
+      fqp,
+      mod_int(ExEcc.Utils.prime_field_inv(fqp.n, field_modulus(fqp)) * n, field_modulus(fqp))
+    )
+  end
+
   def div(a, b), do: call(:div, a, b)
+
   def pow(a, b), do: call(:pow, a, b)
   def inv(a), do: call(:inv, a)
   def eq(a, b), do: call(:eq, a, b)
@@ -127,7 +136,6 @@ defmodule ExEcc.FieldMath do
   end
 
   defp get(atom, a) do
-    # IO.inspect(a, label: "get(#{atom} in #{inspect(a)})")
     type = type(a)
 
     cond do
@@ -172,10 +180,17 @@ defmodule ExEcc.FieldMath do
 
   defp function?(type, op, param_count) do
     type = type(type)
+    ensure_compiled?(type) && function_exported?(type, op, param_count)
+  end
 
-    case Code.ensure_compiled(type) do
-      {:module, _} -> function_exported?(type, op, param_count)
-      _ -> false
+  defp ensure_compiled?(type) do
+    if String.starts_with?(to_string(type), "Elixir.") do
+      case Code.ensure_compiled(type) do
+        {:module, _} -> true
+        _ -> false
+      end
+    else
+      false
     end
   end
 end
