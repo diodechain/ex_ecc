@@ -89,7 +89,7 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedCurve do
     {x, y, z} = pt
     w = FieldMath.mul(3, FieldMath.mul(x, x))
     s = FieldMath.mul(y, z)
-    b = FieldMath.mul(x, y, s)
+    b = FieldMath.mul(x, y) |> FieldMath.mul(s)
     h = FieldMath.sub(FieldMath.mul(w, w), FieldMath.mul(8, b))
     s_squared = FieldMath.mul(s, s)
     newx = FieldMath.mul(2, FieldMath.mul(h, s))
@@ -98,12 +98,12 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedCurve do
       FieldMath.sub(
         FieldMath.sub(
           FieldMath.mul(w, FieldMath.sub(FieldMath.mul(4, b), h)),
-          FieldMath.mul(8, FieldMath.mul(y, y, s_squared))
+          FieldMath.mul(8, FieldMath.mul(y, y)) |> FieldMath.mul(s_squared)
         ),
         s_squared
       )
 
-    newz = FieldMath.mul(8, s, s_squared)
+    newz = FieldMath.mul(8, s) |> FieldMath.mul(s_squared)
     {newx, newy, newz}
   end
 
@@ -111,7 +111,7 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedCurve do
   def add(p1, p2) do
     {x1, y1, z1} = p1
     {x2, y2, z2} = p2
-    {one, zero} = {FieldMath.one(x1), FieldMath.zero(x1)}
+    {one, zero} = {FieldMath.type(x1).one(), FieldMath.type(x1).zero()}
 
     if FieldMath.eq(z1, zero) or FieldMath.eq(z2, zero) do
       if FieldMath.eq(z2, zero) do
@@ -168,7 +168,7 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedCurve do
     {x, _y, _z} = pt
 
     cond do
-      n == 0 -> {FieldMath.one(x), FieldMath.one(x), FieldMath.zero(x)}
+      n == 0 -> {FieldMath.type(x).one(), FieldMath.type(x).one(), FieldMath.type(x).zero()}
       n == 1 -> pt
       rem(n, 2) == 0 -> multiply(double(pt), div(n, 2))
       true -> add(multiply(double(pt), div(n, 2)), pt)

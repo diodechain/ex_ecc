@@ -1,12 +1,12 @@
 defmodule ExEcc.OptimizedBLS12381.Constants do
   alias ExEcc.Fields.OptimizedBLS12381FQ, as: FQ
   alias ExEcc.Fields.OptimizedBLS12381FQ2, as: FQ2
-  alias ExEcc.FieldMath
 
   #
   # Ciphersuite BLS12381G2-SHA256-SSWU-RO parameters
   #
-
+  @iso_3_a FQ2.new({0, 240})
+  def iso_3_a, do: @iso_3_a
   @iso_3_b FQ2.new({1012, 1012})
   def iso_3_b, do: @iso_3_b
   @iso_3_z FQ2.new({-2, -1})

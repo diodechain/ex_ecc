@@ -13,7 +13,8 @@ defmodule ExEcc.FieldMath do
                 modulus_coeffs: nil,
                 degree: nil,
                 mc_tuples: nil,
-                corresponding_fq_class: nil
+                corresponding_fq_class: nil,
+                sgn0: nil
 
       def parent(), do: unquote(parent)
       def zero(), do: FieldMath.resolve(parent(), :zero, 1).zero(__MODULE__)
@@ -37,7 +38,9 @@ defmodule ExEcc.FieldMath do
     end
   end
 
+  def add(a, b) when is_integer(a), do: call(:add, b, a)
   def add(a, b), do: call(:add, a, b)
+  def mul(a, b) when is_integer(a), do: call(:mul, b, a)
   def mul(a, b), do: call(:mul, a, b)
   def sub(a, b), do: call(:sub, a, b)
   def div(a, b), do: call(:div, a, b)
@@ -47,6 +50,7 @@ defmodule ExEcc.FieldMath do
   def neg(a), do: call(:neg, a)
   def lt(a, b), do: call(:lt, a, b)
 
+  def sgn0(a), do: get(:sgn0, a)
   def fq2_modulus_coeffs(a), do: get(:fq2_modulus_coeffs, a)
   def fq12_modulus_coeffs(a), do: get(:fq12_modulus_coeffs, a)
   def field_modulus(a), do: get(:field_modulus, a)
@@ -60,6 +64,14 @@ defmodule ExEcc.FieldMath do
   def parent(a), do: get(:parent, a)
   def corresponding_fq_class(a), do: get(:corresponding_fq_class, a)
   def mc_tuples(a), do: get(:mc_tuples, a)
+
+  def mod_int(a, b) when is_integer(b) do
+    case a do
+      %{n: n} -> rem(n, b)
+      n when is_integer(n) -> rem(n, b)
+      _ -> raise "Only int and T_FQ types are accepted: got {type(x)}"
+    end
+  end
 
   defp call(op, a, b) do
     apply(resolve(a, op, 2), op, [a, b])
@@ -86,7 +98,8 @@ defmodule ExEcc.FieldMath do
         fq2_modulus_coeffs: nil,
         coeffs: nil,
         modulus_coeffs: nil,
-        degree: nil
+        degree: nil,
+        sgn0: nil
       },
       fn {key, value}, acc -> Map.put(acc, key, value) end
     )
@@ -99,7 +112,7 @@ defmodule ExEcc.FieldMath do
   def isinstance(nil, _), do: false
 
   def isinstance(a, :int_types_or_FQ) do
-    Enum.any?([:int, FQ], fn t -> isinstance(a, t) end)
+    Enum.any?([:int, ExEcc.Fields.FQ], fn t -> isinstance(a, t) end)
   end
 
   def isinstance(a, :int), do: is_integer(a)
@@ -143,6 +156,8 @@ defmodule ExEcc.FieldMath do
     resolve(type, op, param_count) || resolve(rest, op, param_count)
   end
 
+  def resolve(n, _op, _param_count) when is_integer(n), do: ExEcc.IntegerMath
+
   def resolve(type, op, param_count) do
     if function?(type, op, param_count) do
       type
@@ -157,6 +172,25 @@ defmodule ExEcc.FieldMath do
 
   defp function?(type, op, param_count) do
     type = type(type)
-    Code.ensure_compiled?(type) and function_exported?(type, op, param_count)
+
+    case Code.ensure_compiled(type) do
+      {:module, _} -> function_exported?(type, op, param_count)
+      _ -> false
+    end
   end
+end
+
+defmodule ExEcc.IntegerMath do
+  def add(a, b), do: a + b
+  def mul(a, b), do: a * b
+  def sub(a, b), do: a - b
+  def div(a, b), do: Kernel.div(a, b)
+  def pow(a, b), do: Integer.pow(a, b)
+  def inv(a), do: Kernel.div(1, a)
+  def eq(a, b), do: a == b
+  def neg(a), do: -a
+  def lt(a, b), do: a < b
+  def sgn0(a), do: if(a < 0, do: -1, else: 1)
+  def mod_int(a, b), do: rem(a, b)
+  def type(_), do: :int
 end

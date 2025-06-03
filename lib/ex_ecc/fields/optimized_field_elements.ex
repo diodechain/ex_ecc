@@ -32,7 +32,7 @@ defmodule ExEcc.Fields.OptimizedFQ do
         _ -> raise "Expected an int or FQ object, but got #{inspect(other)}"
       end
 
-    FieldMath.rem(fq.n + on, FieldMath.field_modulus(fq))
+    FieldMath.mod_int(fq.n + on, FieldMath.field_modulus(fq))
   end
 
   def mul(fq, other) do
@@ -43,7 +43,7 @@ defmodule ExEcc.Fields.OptimizedFQ do
         _ -> raise "Expected an int or FQ object, but got #{inspect(other)}"
       end
 
-    FieldMath.rem(fq.n * on, FieldMath.field_modulus(fq))
+    FieldMath.mod_int(fq.n * on, FieldMath.field_modulus(fq))
   end
 
   def sub(fq, other) do
@@ -54,7 +54,7 @@ defmodule ExEcc.Fields.OptimizedFQ do
         _ -> raise "Expected an int or FQ object, but got #{inspect(other)}"
       end
 
-    FieldMath.rem(fq.n - on, FieldMath.field_modulus(fq))
+    FieldMath.mod_int(fq.n - on, FieldMath.field_modulus(fq))
   end
 
   def div(fq, other) do
@@ -65,7 +65,7 @@ defmodule ExEcc.Fields.OptimizedFQ do
         _ -> raise "Expected an int or FQ object, but got #{inspect(other)}"
       end
 
-    FieldMath.rem(
+    FieldMath.mod_int(
       fq.n * Utils.prime_field_inv(on, FieldMath.field_modulus(fq)),
       FieldMath.field_modulus(fq)
     )

@@ -31,7 +31,7 @@ defmodule ExEcc.Fields.FQ do
         _ -> raise "Expected an int or FQ object, but got #{inspect(other)}"
       end
 
-    FieldMath.rem(fq.n + on, FieldMath.field_modulus(fq))
+    FieldMath.mod_int(fq.n + on, FieldMath.field_modulus(fq))
   end
 
   def mul(fq, other) do
@@ -42,7 +42,7 @@ defmodule ExEcc.Fields.FQ do
         _ -> raise "Expected an int or FQ object, but got #{inspect(other)}"
       end
 
-    FieldMath.rem(fq.n * on, FieldMath.field_modulus(fq))
+    FieldMath.mod_int(fq.n * on, FieldMath.field_modulus(fq))
   end
 
   def sub(fq, other) do
@@ -53,7 +53,7 @@ defmodule ExEcc.Fields.FQ do
         _ -> raise "Expected an int or FQ object, but got #{inspect(other)}"
       end
 
-    FieldMath.rem(fq.n - on, FieldMath.field_modulus(fq))
+    FieldMath.mod_int(fq.n - on, FieldMath.field_modulus(fq))
   end
 
   def div(fq, other) do
@@ -64,7 +64,7 @@ defmodule ExEcc.Fields.FQ do
         _ -> raise "Expected an int or FQ object, but got #{inspect(other)}"
       end
 
-    FieldMath.rem(
+    FieldMath.mod_int(
       fq.n * Utils.prime_field_inv(on, FieldMath.field_modulus(fq)),
       FieldMath.field_modulus(fq)
     )
@@ -226,10 +226,10 @@ defmodule ExEcc.Fields.FQP do
         |> List.to_tuple()
         |> FieldMath.type(fqp).new()
 
-      FieldMath.isinstance(other, FQP) ->
+      FieldMath.isinstance(other, ExEcc.Fields.FQP) ->
         b =
           List.duplicate(
-            FieldMath.corresponding_fq_class(fqp).new(0),
+            FieldMath.new(FieldMath.corresponding_fq_class(fqp), 0),
             FieldMath.degree(fqp) * 2 - 1
           )
 
@@ -240,10 +240,12 @@ defmodule ExEcc.Fields.FQP do
           List.update_at(
             b,
             i + j,
-            FieldMath.add(
-              Enum.at(b, i + j),
-              FieldMath.mul(FieldMath.coeffs(fqp, i), FieldMath.coeffs(other, j))
-            )
+            fn x ->
+              FieldMath.add(
+                x,
+                FieldMath.mul(FieldMath.coeffs(fqp, i), FieldMath.coeffs(other, j))
+              )
+            end
           )
         end)
         |> reduce_while(fn b ->
@@ -256,10 +258,12 @@ defmodule ExEcc.Fields.FQP do
                 List.update_at(
                   b,
                   exp + i,
-                  FieldMath.sub(
-                    Enum.at(b, exp + i),
-                    FieldMath.mul(top, FieldMath.modulus_coeffs(fqp, i))
-                  )
+                  fn x ->
+                    FieldMath.sub(
+                      x,
+                      FieldMath.mul(top, FieldMath.modulus_coeffs(fqp, i))
+                    )
+                  end
                 )
               end)
 
@@ -374,7 +378,7 @@ defmodule ExEcc.Fields.FQP do
         {_lm, _low, _hm, _high} = {nm, new, lm, low}
       end
 
-    FieldMath.type(fqp).new(Enum.take(lm, FieldMath.degree(fqp)) / FieldMath.int(low[0]))
+    FieldMath.type(fqp).new(Enum.take(lm, FieldMath.degree(fqp)) / trunc(Enum.at(low, 0)))
   end
 
   def repr(fqp) do

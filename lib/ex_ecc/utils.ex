@@ -55,7 +55,9 @@ defmodule ExEcc.Utils do
     {o, _temp} =
       Enum.reduce((dega - degb)..0//-1, {o, temp}, fn i, {o, temp} ->
         o =
-          List.update_at(o, i, fn val -> val + div(Enum.at(temp, degb + i), Enum.at(b, degb)) end)
+          List.update_at(o, i, fn val ->
+            val + FieldMath.div(Enum.at(temp, degb + i), Enum.at(b, degb))
+          end)
 
         temp =
           Enum.reduce(0..degb, temp, fn c, temp ->

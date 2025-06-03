@@ -91,7 +91,7 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedPairing do
 
   def normalize1(p) do
     {x, y} = Curve.normalize(p)
-    {x, y, FieldMath.one(x)}
+    {x, y, FieldMath.type(x).one()}
   end
 
   # Create a function representing the line between P1 and P2,

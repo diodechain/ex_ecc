@@ -2,6 +2,8 @@ defmodule ExEcc.MixProject do
   use Mix.Project
 
   def project do
+    :erlang.system_flag(:backtrace_depth, 30)
+
     [
       app: :ex_ecc,
       version: "0.1.0",

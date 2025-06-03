@@ -108,11 +108,11 @@ defmodule ExEcc.BLS.Hash do
       (z_pad <> msg <> l_i_b_str <> <<0>> <> dst_prime)
       |> hash_function.fun.()
 
-    b = [hash_function.fun(b_0 <> <<1::size(8)>> <> dst_prime)]
+    b = [hash_function.fun.(b_0 <> <<1::size(8)>> <> dst_prime)]
 
     b =
       Enum.reduce(2..ell, b, fn i, b ->
-        b ++ [hash_function.fun(xor(b_0, Enum.at(b, i - 2)) <> i2osp(i, 1) <> dst_prime)]
+        b ++ [hash_function.fun.(xor(b_0, Enum.at(b, i - 2)) <> i2osp(i, 1) <> dst_prime)]
       end)
 
     pseudo_random_bytes = Enum.join(b, "")
