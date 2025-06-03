@@ -99,7 +99,7 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedPairing do
   # to avoid unneeded divisions
   def linefunc(p1, p2, t) do
     {x1, y1, z1} = p1
-    zero = FieldMath.zero(x1)
+    zero = FieldMath.type(x1).zero()
     {x2, y2, z2} = p2
     {xt, yt, zt} = t
 

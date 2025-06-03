@@ -20,22 +20,21 @@ defmodule ExEcc.BLS.Hash do
   def hkdf_expand(prk, info, length)
       when is_binary(prk) and is_binary(info) and is_integer(length) and length >= 0 do
     # :sha256 digest size
-    hash_len = 32
-    n = :math.ceil(length / hash_len) |> round()
+    n = trunc(:math.ceil(length / 32))
 
-    okm_acc = รอบ_hkdf_expand(prk, info, n, <<>>, <<>>, 1)
-    :binary.part(okm_acc, 0, length)
-  end
+    # okm = T(1) || T(2) || T(3) || ... || T(n)
+    {_previous, okm} =
+      Enum.reduce(0..(n - 1), {"", ""}, fn i, {previous, okm} ->
+        # Concatenate (T(i) || info || i)
+        text = previous <> info <> <<i + 1>>
 
-  defp รอบ_hkdf_expand(_prk, _info, n, okm, _previous, i) when i > n do
-    okm
-  end
+        # T(i + 1) = HMAC(T(i) || info || i)
+        previous = :crypto.mac(:hmac, :sha256, prk, text)
+        {previous, okm <> previous}
+      end)
 
-  defp รอบ_hkdf_expand(prk, info, n, okm, previous, i) do
-    text = previous <> info <> <<i::size(8)>>
-    current_t = :crypto.hmac(:sha256, prk, text)
-    new_okm = okm <> current_t
-    รอบ_hkdf_expand(prk, info, n, new_okm, current_t, i + 1)
+    # Return first `length` bytes.
+    binary_part(okm, 0, length)
   end
 
   @doc """
@@ -73,20 +72,7 @@ defmodule ExEcc.BLS.Hash do
   """
 
   def xor(a, b) when is_binary(a) and is_binary(b) and byte_size(a) == byte_size(b) do
-    :binary.bin_to_list(a)
-    |> Enum.zip(:binary.bin_to_list(b))
-    |> Enum.map(fn {byte_a, byte_b} -> Bitwise.bxor(byte_a, byte_b) end)
-    |> Enum.into(<<>>)
-
-    # More efficient way using binary comprehensions if Elixir version supports well or custom NIF.
-    # For now, list conversion is straightforward.
-    # A more direct binary approach (less readable but potentially faster for large binaries):
-    # size = byte_size(a)
-    # << result :: binary-size(size) >> =
-    #   for i <- 0..(size-1), into: <<>> do
-    #     << Bitwise.bxor(:binary.at(a,i), :binary.at(b,i)) :: size(8) >>
-    #   end
-    # result
+    :crypto.exor(a, b)
   end
 
   @doc """
@@ -95,49 +81,41 @@ defmodule ExEcc.BLS.Hash do
   https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-11#section-5.3.1
   """
 
-  def expand_message_xmd(msg, dst, len_in_bytes) do
-    # Using :sha256, so b_in_bytes = 32, r_in_bytes = 64 (block size)
-    # :crypto.hash_info(:sha256).digest_size
-    b_in_bytes = 32
+  defmodule Hash do
+    defstruct [:digest_size, :block_size, :fun]
+  end
 
-    # :crypto.hash_info(:sha256).block_size (not directly available, SHA256 block size is 512 bits = 64 bytes)
-    r_in_bytes = 64
+  def expand_message_xmd(msg, dst, len_in_bytes, %Hash{} = hash_function) do
+    b_in_bytes = hash_function.digest_size
+    r_in_bytes = hash_function.block_size
 
     if byte_size(dst) > 255 do
-      raise ArgumentError, "DST must be <= 255 bytes"
+      raise "DST must be <= 255 bytes"
     end
 
-    ell = :math.ceil(len_in_bytes / b_in_bytes) |> round()
+    ell = trunc(:math.ceil(len_in_bytes / b_in_bytes))
 
     if ell > 255 do
-      raise ArgumentError, "invalid len_in_bytes for hash function (ell > 255)"
+      raise "invalid len_in_bytes for hash function (ell > 255)"
     end
 
     dst_prime = dst <> i2osp(byte_size(dst), 1)
-    # binary of r_in_bytes zeros
+    # Append the length of the DST as a single byte
     z_pad = <<0::size(r_in_bytes * 8)>>
     l_i_b_str = i2osp(len_in_bytes, 2)
 
-    b_0_input = z_pad <> msg <> l_i_b_str <> <<0::size(8)>> <> dst_prime
-    b_0 = sha256(b_0_input)
+    b_0 =
+      (z_pad <> msg <> l_i_b_str <> <<0>> <> dst_prime)
+      |> hash_function.fun.()
 
-    b_1_input = b_0 <> <<1::size(8)>> <> dst_prime
-    b_1 = sha256(b_1_input)
+    b = [hash_function.fun(b_0 <> <<1::size(8)>> <> dst_prime)]
 
-    # Iteratively compute b_i
-    # pseudorandom_bytes = b_1 <> b_2 <> ... <> b_ell
-    # {[list_of_b_i_digests], prev_b_0, prev_b_i_minus_1}
-    initial_acc = {[b_1], b_0, b_1}
-
-    {all_b_digests, _, _} =
-      Enum.reduce(2..ell, initial_acc, fn i, {acc_b_list, acc_b_0, acc_b_i_minus_1} ->
-        input_for_b_i = xor(acc_b_0, acc_b_i_minus_1) <> i2osp(i, 1) <> dst_prime
-        current_b_i = sha256(input_for_b_i)
-        # Prepending, so will reverse later
-        {[current_b_i | acc_b_list], acc_b_0, current_b_i}
+    b =
+      Enum.reduce(2..ell, b, fn i, b ->
+        b ++ [hash_function.fun(xor(b_0, Enum.at(b, i - 2)) <> i2osp(i, 1) <> dst_prime)]
       end)
 
-    pseudo_random_bytes = Enum.reverse(all_b_digests) |> IO.iodata_to_binary()
-    :binary.part(pseudo_random_bytes, 0, len_in_bytes)
+    pseudo_random_bytes = Enum.join(b, "")
+    binary_part(pseudo_random_bytes, 0, len_in_bytes)
   end
 end
