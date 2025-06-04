@@ -181,7 +181,7 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedCurve do
 
   def normalize(pt) do
     {x, y, z} = pt
-    {FieldMath.div(x, z), FieldMath.div(y, z)}
+    {FieldMath.div(x, z), %{} = FieldMath.div(y, z)}
   end
 
   @w FQ12.new(List.to_tuple([0, 1] ++ List.duplicate(0, 10)))

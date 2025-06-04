@@ -14,7 +14,7 @@ defmodule ExEcc.Fields.OptimizedFQ do
         FieldMath.isinstance(val, FieldMath.type(fq)) ->
           val.n
 
-        FieldMath.isinstance(val, :int) ->
+        FieldMath.isinstance(val, ExEcc.IntegerMath) ->
           rem(val, FieldMath.field_modulus(fq))
 
         true ->
@@ -182,7 +182,7 @@ defmodule ExEcc.Fields.OptimizedFQP do
     # Not converting coeffs to FQ or explicitly making them integers
     # for performance reasons
     coeffs =
-      if FieldMath.isinstance(elem(coeffs, 0), :int) do
+      if FieldMath.isinstance(elem(coeffs, 0), ExEcc.IntegerMath) do
         Enum.map(Tuple.to_list(coeffs), fn c -> rem(c, FieldMath.field_modulus(fqp)) end)
         |> List.to_tuple()
       else
@@ -212,7 +212,7 @@ defmodule ExEcc.Fields.OptimizedFQP do
     end
 
     FieldMath.type(fqp).new(
-      for {x, y} <- Enum.zip(FieldMath.coeffs(fqp), FieldMath.coeffs(other)),
+      for {x, y} <- Enum.zip(FieldMath.coeffs_list(fqp), FieldMath.coeffs_list(other)),
           do: rem(x + y, FieldMath.field_modulus(fqp))
     )
   end
@@ -432,7 +432,7 @@ defmodule ExEcc.Fields.OptimizedFQ2 do
 
   # Optimized sgn0 implementation for m = 2
   def sgn0(fq2) do
-    [x_0, x_1] = fq2.coeffs
+    {x_0, x_1} = fq2.coeffs
     sign_0 = rem(x_0, 2)
     zero_0 = x_0 == 0
     sign_1 = rem(x_1, 2)

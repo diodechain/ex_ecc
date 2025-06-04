@@ -13,7 +13,7 @@ defmodule ExEcc.Fields.FQ do
         FieldMath.isinstance(val, FieldMath.type(fq)) ->
           val.n
 
-        FieldMath.isinstance(val, :int) ->
+        FieldMath.isinstance(val, ExEcc.IntegerMath) ->
           rem(val, FieldMath.field_modulus(fq))
 
         true ->

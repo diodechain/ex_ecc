@@ -116,15 +116,15 @@ defmodule ExEcc.FieldMath do
 
   def type(%type{}), do: type(type)
   def type(type) when is_atom(type), do: type
-  def type(int) when is_integer(int), do: :int
+  def type(int) when is_integer(int), do: ExEcc.IntegerMath
 
   def isinstance(nil, _), do: false
 
   def isinstance(a, :int_types_or_FQ) do
-    Enum.any?([:int, ExEcc.Fields.FQ], fn t -> isinstance(a, t) end)
+    Enum.any?([ExEcc.IntegerMath, ExEcc.Fields.FQ], fn t -> isinstance(a, t) end)
   end
 
-  def isinstance(a, :int), do: is_integer(a)
+  def isinstance(a, ExEcc.IntegerMath), do: is_integer(a)
 
   def isinstance(a, other_type) when is_atom(other_type) do
     type(a) == other_type ||
@@ -207,7 +207,7 @@ defmodule ExEcc.IntegerMath do
   def lt(a, b), do: a < b
   def sgn0(a), do: if(a < 0, do: -1, else: 1)
   def mod_int(a, b), do: rem(a, b)
-  def type(_), do: :int
+  def type(_), do: ExEcc.IntegerMath
 
   def pow(integer, exponent, modulus) when is_integer(exponent) and is_integer(modulus) do
     cond do

@@ -36,7 +36,7 @@ defmodule ExEcc.BLS.PointCompression do
   If z2 is None, the given z1 is a G1 point.
   Else, (z1, z2) is a G2 point.
   """
-  def compress_g1(pt) do
+  def compress_g1(pt = {_x, _y, _z}) do
     if Curve.is_inf(pt) do
       # Set c_flag = 1 and b_flag = 1. leave a_flag = x = 0
       Constants.pow_2_383() + Constants.pow_2_382()
@@ -56,7 +56,7 @@ defmodule ExEcc.BLS.PointCompression do
   the a_flag bit helps determine the y-coordinate when decompressing,
   and the 381-bit integer x is the x-coordinate of the point.
   """
-  def decompress_g1(z) do
+  def decompress_g1(z) when is_integer(z) do
     {c_flag, b_flag, a_flag} = get_flags(z)
 
     # c_flag == 1 indicates the compressed form

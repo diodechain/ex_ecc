@@ -1,9 +1,7 @@
 defmodule ExEcc.BLS.Ciphersuites.G2BasicTest do
   use ExUnit.Case
   alias ExEcc.BLS.Ciphersuites.G2Basic
-  alias ExEcc.BLS.Ciphersuites.Base.ValidationError
   alias ExEcc.BLS.G2Primitives
-  alias ExEcc.OptimizedBLS12381
   alias ExEcc.OptimizedBLS12381.OptimizedCurve
 
   # Constants from Python test
@@ -38,8 +36,13 @@ defmodule ExEcc.BLS.Ciphersuites.G2BasicTest do
     end
 
     test "fails with invalid private key" do
-      assert {:error, %ValidationError{}} = G2Basic.sk_to_pk(0)
-      assert {:error, %ValidationError{}} = G2Basic.sk_to_pk("hello")
+      assert_raise RuntimeError, "Invalid private key", fn ->
+        G2Basic.sk_to_pk(0)
+      end
+
+      assert_raise RuntimeError, "Invalid private key", fn ->
+        G2Basic.sk_to_pk("hello")
+      end
     end
   end
 
@@ -49,9 +52,17 @@ defmodule ExEcc.BLS.Ciphersuites.G2BasicTest do
     end
 
     test "fails with invalid inputs" do
-      assert {:error, %ValidationError{}} = G2Basic.sign(0, @sample_message)
-      assert {:error, %ValidationError{}} = G2Basic.sign("hello", @sample_message)
-      assert {:error, %ValidationError{}} = G2Basic.sign(1, 123)
+      assert_raise RuntimeError, "Invalid secret key", fn ->
+        G2Basic.sign(0, @sample_message)
+      end
+
+      assert_raise RuntimeError, "Invalid secret key", fn ->
+        G2Basic.sign("hello", @sample_message)
+      end
+
+      assert_raise RuntimeError, "Invalid message", fn ->
+        G2Basic.sign(1, 123)
+      end
     end
   end
 
@@ -65,8 +76,13 @@ defmodule ExEcc.BLS.Ciphersuites.G2BasicTest do
     end
 
     test "fails with invalid inputs" do
-      assert {:error, %ValidationError{}} = G2Basic.aggregate(["hello"])
-      assert {:error, %ValidationError{}} = G2Basic.aggregate([])
+      assert_raise RuntimeError, "Invalid signature", fn ->
+        G2Basic.aggregate(["hello"])
+      end
+
+      assert_raise RuntimeError, "Insufficient number of signatures. (n < 1)", fn ->
+        G2Basic.aggregate([])
+      end
     end
   end
 

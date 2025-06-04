@@ -73,7 +73,12 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedSWU do
   def optimized_swu_g2(t) do
     t2 = FieldMath.mul(t, t)
     iso_3_z_t2 = FieldMath.mul(Constants.iso_3_z(), t2)
-    temp = FieldMath.add(iso_3_z_t2, FieldMath.mul(iso_3_z_t2, iso_3_z_t2))
+
+    temp =
+      FieldMath.mul(iso_3_z_t2, iso_3_z_t2)
+      |> IO.inspect(label: "iso_3_z_t2")
+      |> FieldMath.add(iso_3_z_t2)
+
     # The initial calculation for denominator_val for optimized_swu_g2
     calculated_denominator = FieldMath.neg(FieldMath.mul(Constants.iso_3_a(), temp))
     temp_plus_one = FieldMath.add(temp, FieldMath.type(temp).one())
