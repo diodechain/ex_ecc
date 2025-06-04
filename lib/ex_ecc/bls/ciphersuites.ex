@@ -278,10 +278,11 @@ defmodule ExEcc.BLS.Ciphersuites do
     end
 
     def aggregate_verify(cls, pks, messages, signature) do
-      if length(messages) != length(Enum.uniq(messages)) do
+      if length(pks) != length(messages) do
         false
       else
-        Base._core_aggregate_verify(cls, pks, messages, signature, cls.dst())
+        augmented_messages = Enum.zip(pks, messages) |> Enum.map(fn {pk, msg} -> pk <> msg end)
+        Base._core_aggregate_verify(cls, pks, augmented_messages, signature, cls.dst())
       end
     end
   end

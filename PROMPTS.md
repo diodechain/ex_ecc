@@ -7,4 +7,50 @@ This directory contains an unfinished port of py_ecc from python to elixir now n
 
 Redo this elixir module port in the same way as the port in @bn128_curve.ex . Don't port type enforcement.
 
-Run `./test.sh` and then compare @optimized_swu.py and @optimized_swu.ex to identify the bug in the elixir port. Likely @point_compression.py and @point_compression.ex are relevant for this as well. Fix the bug in the port and run `./test.sh` again. When fixing the bug do this by correcting elixir port behaviour, but do not add any additional logic to the elixir port that is not present in the python reference. The elixir and python code should get more aligned rather than less. E.g. the bug exists because there is a mismatch. Reducing mismatches and making the code more similiar will be the way to correct the bevahiour.
+Run `./test.sh` and then compare @optimized_swu.py and @optimized_swu.ex to identify the bug in the elixir port. Likely @point_compression.py and @point_compression.ex are relevant for this as well. Fix the bug in the port and run `./test.sh` again. When fixing the bug do this by correcting elixir port behaviour, but do not add any additional logic to the elixir port that is not present in the python reference. The elixir and python code should get more aligned rather than less. E.g. the bug exists because there is a mismatch. Reducing mismatches and making the code more similiar will be the way to correct the bevahiour. Also where applicable ensure variable names are matching between the port and the reference and the port is not diverging onto different names (apart from the usage of lower casing and underscores).
+
+ Specific Comparison Goals:
+
+"Please compare the implementations of [specific function] across all ciphersuite variants in both Python and Elixir, focusing on:
+- Input validation logic
+- Message handling
+- Error conditions
+- Return value conditions
+- Any differences in the mathematical operations"
+
+Systematic Analysis:
+
+ "Please analyze the following aspects of both implementations:
+   1. Function signatures and parameter handling
+   2. Preconditions and validation checks
+   3. Core algorithm steps
+   4. Error handling
+   5. Return value conditions
+   For each aspect, highlight any differences between the implementations."
+
+Security-Critical Differences:
+
+   "Please identify any differences in the implementations that could affect:
+   - Security properties
+   - Message handling
+   - Key validation
+   - Signature verification
+   - Aggregation behavior"
+
+Cross-Reference:
+
+   "Please compare how each function in the Elixir implementation relates to its Python counterpart, including:
+   - Direct equivalents
+   - Functions that have been split or combined
+   - Functions that have been moved to different modules
+   - Any missing or additional functionality"
+
+Verification Steps:
+
+   "Please verify that each security-critical operation in the Python implementation has an equivalent in the Elixir implementation, including:
+   - Input validation
+   - Message preprocessing
+   - Key validation
+   - Signature verification
+   - Aggregation checks"   
+
