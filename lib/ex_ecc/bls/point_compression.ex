@@ -164,8 +164,8 @@ defmodule ExEcc.BLS.PointCompression do
       {Constants.pow_2_383() + Constants.pow_2_382(), 0}
     else
       {x, y} = Curve.normalize(pt)
-      {x_re, x_im} = x.coeffs
-      {y_re, y_im} = y.coeffs
+      {x_re, x_im} = FieldMath.coeffs(x)
+      {y_re, y_im} = FieldMath.coeffs(y)
 
       # Record the leftmost bit of y_im to the a_flag1
       # If y_im happens to be zero, then use the bit of y_re
@@ -236,12 +236,12 @@ defmodule ExEcc.BLS.PointCompression do
 
       # Choose the y whose leftmost bit of the imaginary part is equal to the a_flag1
       # If y_im happens to be zero, then use the bit of y_re
-      {y_re, y_im} = y.coeffs
+      {y_re, y_im} = FieldMath.coeffs(y)
 
       y =
         if (y_im > 0 and FieldMath.mod_int(y_im * 2, Constants.q()) != a_flag1) or
              (y_im == 0 and FieldMath.mod_int(y_re * 2, Constants.q()) != a_flag1) do
-          FQ2.new(FieldMath.mul(y, -1).coeffs)
+          FQ2.new(FieldMath.mul(y, -1) |> FieldMath.coeffs())
         else
           y
         end

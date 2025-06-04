@@ -31,7 +31,8 @@ defmodule ExEcc.Fields.FQ do
         _ -> raise "Expected an int or FQ object, but got #{inspect(other)}"
       end
 
-    FieldMath.mod_int(fq.n + on, FieldMath.field_modulus(fq))
+    n = FieldMath.mod_int(fq.n + on, FieldMath.field_modulus(fq))
+    FieldMath.new(fq, n)
   end
 
   def mul(fq, other) do
@@ -42,7 +43,8 @@ defmodule ExEcc.Fields.FQ do
         _ -> raise "Expected an int or FQ object, but got #{inspect(other)}"
       end
 
-    FieldMath.mod_int(fq.n * on, FieldMath.field_modulus(fq))
+    n = FieldMath.mod_int(fq.n * on, FieldMath.field_modulus(fq))
+    FieldMath.new(fq, n)
   end
 
   def sub(fq, other) do
@@ -53,7 +55,8 @@ defmodule ExEcc.Fields.FQ do
         _ -> raise "Expected an int or FQ object, but got #{inspect(other)}"
       end
 
-    FieldMath.mod_int(fq.n - on, FieldMath.field_modulus(fq))
+    n = FieldMath.mod_int(fq.n - on, FieldMath.field_modulus(fq))
+    FieldMath.new(fq, n)
   end
 
   def div(fq, other) do
@@ -64,13 +67,13 @@ defmodule ExEcc.Fields.FQ do
         _ -> raise "Expected an int or FQ object, but got #{inspect(other)}"
       end
 
-    ret =
+    n =
       FieldMath.mod_int(
         fq.n * Utils.prime_field_inv(on, FieldMath.field_modulus(fq)),
         FieldMath.field_modulus(fq)
       )
 
-    FieldMath.new(fq, ret)
+    FieldMath.new(fq, n)
   end
 
   def pow(fq, exponent) when is_integer(exponent) do
@@ -203,10 +206,10 @@ defmodule ExEcc.Fields.FQP do
       raise "Expected an FQP object, but got object of type #{FieldMath.type(fqp)}"
     end
 
-    FieldMath.type(fqp).new(
-      for {x, y} <- Enum.zip(FieldMath.coeffs(fqp), FieldMath.coeffs(other)),
-          do: FieldMath.add(x, y)
-    )
+    Enum.zip(FieldMath.coeffs_list(fqp), FieldMath.coeffs_list(other))
+    |> Enum.map(fn {x, y} -> FieldMath.add(x, y) end)
+    |> List.to_tuple()
+    |> FieldMath.type(fqp).new()
   end
 
   def sub(fqp, other) do
@@ -214,10 +217,10 @@ defmodule ExEcc.Fields.FQP do
       raise "Expected an FQP object, but got object of type #{FieldMath.type(fqp)}"
     end
 
-    FieldMath.type(fqp).new(
-      for {x, y} <- Enum.zip(FieldMath.coeffs(fqp), FieldMath.coeffs(other)),
-          do: FieldMath.sub(x, y)
-    )
+    Enum.zip(FieldMath.coeffs_list(fqp), FieldMath.coeffs_list(other))
+    |> Enum.map(fn {x, y} -> FieldMath.sub(x, y) end)
+    |> List.to_tuple()
+    |> FieldMath.type(fqp).new()
   end
 
   def mul(fqp, other) do

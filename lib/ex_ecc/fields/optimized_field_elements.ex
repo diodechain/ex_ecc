@@ -32,7 +32,8 @@ defmodule ExEcc.Fields.OptimizedFQ do
         _ -> raise "Expected an int or FQ object, but got #{inspect(other)}"
       end
 
-    FieldMath.mod_int(fq.n + on, FieldMath.field_modulus(fq))
+    n = FieldMath.mod_int(fq.n + on, FieldMath.field_modulus(fq))
+    FieldMath.new(fq, n)
   end
 
   def mul(fq, other) do
@@ -43,7 +44,8 @@ defmodule ExEcc.Fields.OptimizedFQ do
         _ -> raise "Expected an int or FQ object, but got #{inspect(other)}"
       end
 
-    FieldMath.mod_int(fq.n * on, FieldMath.field_modulus(fq))
+    n = FieldMath.mod_int(fq.n * on, FieldMath.field_modulus(fq))
+    FieldMath.new(fq, n)
   end
 
   def sub(fq, other) do
@@ -54,7 +56,8 @@ defmodule ExEcc.Fields.OptimizedFQ do
         _ -> raise "Expected an int or FQ object, but got #{inspect(other)}"
       end
 
-    FieldMath.mod_int(fq.n - on, FieldMath.field_modulus(fq))
+    n = FieldMath.mod_int(fq.n - on, FieldMath.field_modulus(fq))
+    FieldMath.new(fq, n)
   end
 
   def div(fq, other) do
@@ -65,10 +68,13 @@ defmodule ExEcc.Fields.OptimizedFQ do
         _ -> raise "Expected an int or FQ object, but got #{inspect(other)}"
       end
 
-    FieldMath.mod_int(
-      fq.n * Utils.prime_field_inv(on, FieldMath.field_modulus(fq)),
-      FieldMath.field_modulus(fq)
-    )
+    n =
+      FieldMath.mod_int(
+        fq.n * Utils.prime_field_inv(on, FieldMath.field_modulus(fq)),
+        FieldMath.field_modulus(fq)
+      )
+
+    FieldMath.new(fq, n)
   end
 
   def pow(fq, exponent) when is_integer(exponent) do
@@ -211,10 +217,10 @@ defmodule ExEcc.Fields.OptimizedFQP do
       raise "Expected an FQP object, but got object of type #{FieldMath.type(fqp)}"
     end
 
-    FieldMath.type(fqp).new(
-      for {x, y} <- Enum.zip(FieldMath.coeffs_list(fqp), FieldMath.coeffs_list(other)),
-          do: rem(x + y, FieldMath.field_modulus(fqp))
-    )
+    Enum.zip(FieldMath.coeffs_list(fqp), FieldMath.coeffs_list(other))
+    |> Enum.map(fn {x, y} -> rem(x + y, FieldMath.field_modulus(fqp)) end)
+    |> List.to_tuple()
+    |> FieldMath.type(fqp).new()
   end
 
   def sub(fqp, other) do
@@ -222,9 +228,8 @@ defmodule ExEcc.Fields.OptimizedFQP do
       raise "Expected an FQP object, but got object of type #{FieldMath.type(other)}"
     end
 
-    Enum.map(Enum.zip(FieldMath.coeffs_list(fqp), FieldMath.coeffs_list(other)), fn {x, y} ->
-      rem(x - y, FieldMath.field_modulus(fqp))
-    end)
+    Enum.zip(FieldMath.coeffs_list(fqp), FieldMath.coeffs_list(other))
+    |> Enum.map(fn {x, y} -> rem(x - y, FieldMath.field_modulus(fqp)) end)
     |> List.to_tuple()
     |> FieldMath.type(fqp).new()
   end
@@ -376,7 +381,7 @@ defmodule ExEcc.Fields.OptimizedFQP do
   end
 
   def neg(fqp) do
-    FieldMath.type(fqp).new(Enum.map(FieldMath.coeffs(fqp), &(-&1)))
+    FieldMath.type(fqp).new(Enum.map(FieldMath.coeffs_list(fqp), &(-&1)))
   end
 
   def one(cls) do
@@ -390,7 +395,8 @@ defmodule ExEcc.Fields.OptimizedFQP do
   # Optimized sgn0 implementation
   def sgn0(fqp) do
     {sign, _zero} =
-      Enum.reduce(FieldMath.coeffs(fqp), {0, 1}, fn x_i, {sign, zero} ->
+      FieldMath.coeffs_list(fqp)
+      |> Enum.reduce({0, 1}, fn x_i, {sign, zero} ->
         sign_i = rem(x_i, 2)
         zero_i = x_i == 0
         {sign || (zero && sign_i), zero && zero_i}

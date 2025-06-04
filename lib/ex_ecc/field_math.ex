@@ -1,4 +1,6 @@
 defmodule ExEcc.FieldMath do
+  alias ExEcc.FieldMath
+
   defmacro __using__(opts) do
     parent = opts[:parent]
 
@@ -20,7 +22,7 @@ defmodule ExEcc.FieldMath do
       def zero(), do: FieldMath.resolve(parent(), :zero, 1).zero(__MODULE__)
       def one(), do: FieldMath.resolve(parent(), :one, 1).one(__MODULE__)
 
-      def new(fq \\ %__MODULE__{}, val) do
+      def new(fq \\ %__MODULE__{}, val) when is_integer(val) or is_tuple(val) do
         FieldMath.new(fq, val)
       end
     end
@@ -45,10 +47,8 @@ defmodule ExEcc.FieldMath do
   def sub(a, b), do: call(:sub, a, b)
 
   def div(n, fqp) when is_integer(n) and not is_integer(fqp) do
-    ExEcc.FieldMath.new(
-      fqp,
-      mod_int(ExEcc.Utils.prime_field_inv(fqp.n, field_modulus(fqp)) * n, field_modulus(fqp))
-    )
+    n = mod_int(ExEcc.Utils.prime_field_inv(fqp.n, field_modulus(fqp)) * n, field_modulus(fqp))
+    FieldMath.new(fqp, n)
   end
 
   def div(a, b), do: call(:div, a, b)
@@ -63,7 +63,17 @@ defmodule ExEcc.FieldMath do
   def fq2_modulus_coeffs(a), do: get(:fq2_modulus_coeffs, a)
   def fq12_modulus_coeffs(a), do: get(:fq12_modulus_coeffs, a)
   def field_modulus(a), do: get(:field_modulus, a)
-  def coeffs(a), do: get(:coeffs, a)
+
+  def coeffs(a) do
+    coeffs = get(:coeffs, a)
+
+    if not is_tuple(coeffs) do
+      raise "coeffs is not a tuple: #{inspect(coeffs)}"
+    end
+
+    coeffs
+  end
+
   def coeffs_list(a), do: Tuple.to_list(get(:coeffs, a))
   def coeffs(a, index), do: elem(get(:coeffs, a), index)
   def modulus_coeffs(a), do: get(:modulus_coeffs, a)
@@ -225,4 +235,7 @@ defmodule ExEcc.IntegerMath do
     end
     |> rem(modulus)
   end
+
+  def zero(), do: 0
+  def one(), do: 1
 end

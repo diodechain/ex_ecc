@@ -234,7 +234,7 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedPairing do
             end)
 
   def exp_by_p(x) do
-    Enum.zip(@exptable, x.coeffs)
+    Enum.zip(@exptable, FieldMath.coeffs(x))
     |> Enum.reduce(FQ12.zero(), fn {table_entry, coeff}, acc ->
       FieldMath.add(acc, FieldMath.mul(table_entry, coeff))
     end)
