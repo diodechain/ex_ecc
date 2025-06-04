@@ -120,8 +120,8 @@ defmodule ExEcc.BLS.PointCompression do
   component is favored.
   """
   def modular_squareroot_in_FQ2(value) do
-    candidate_squareroot = value ** div(Constants.fq2_order() + 8, 16)
-    check = candidate_squareroot ** 2 / value
+    candidate_squareroot = FieldMath.pow(value, div(Constants.fq2_order() + 8, 16))
+    check = FieldMath.div(FieldMath.pow(candidate_squareroot, 2), value)
 
     if check in Enum.take_every(Constants.eighth_roots_of_unity(), 2) do
       x1 =

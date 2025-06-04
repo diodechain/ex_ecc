@@ -78,7 +78,7 @@ defmodule ExEcc.BLS.Ciphersuites do
 
       cond do
         pubkey_point == false -> false
-        Curve.is_inf(pubkey_point) -> false
+        G2Primitives.is_inf(pubkey_point) -> false
         not G2Primitives.subgroup_check(pubkey_point) -> false
         true -> true
       end
@@ -115,7 +115,7 @@ defmodule ExEcc.BLS.Ciphersuites do
 
         # Procedure
         if not key_validate(pk) do
-          raise "Invalid public key"
+          raise "Invalid public key for #{inspect(pk)} (2)"
         end
 
         signature_point = G2Primitives.signature_to_g2(signature)
@@ -178,7 +178,7 @@ defmodule ExEcc.BLS.Ciphersuites do
         # Inputs validation
         for pk <- pks do
           if not cls._is_valid_pubkey(pk) do
-            raise "Invalid public key"
+            raise "Invalid public key for #{inspect(pk)} (1)"
           end
         end
 
@@ -210,7 +210,7 @@ defmodule ExEcc.BLS.Ciphersuites do
           aggregate =
             Enum.reduce(Enum.zip(pks, messages), FQ12.one(), fn {pk, message}, aggregate ->
               if not key_validate(pk) do
-                raise "Invalid public key"
+                raise "Invalid public key for #{inspect(pk)} (3)"
               end
 
               pubkey_point = G2Primitives.pubkey_to_g1(pk)
@@ -349,7 +349,7 @@ defmodule ExEcc.BLS.Ciphersuites do
         # Inputs validation
         for pk <- pks do
           if not Base._is_valid_pubkey(pk) do
-            raise "Invalid public key"
+            raise "Invalid public key for #{inspect(pk)} (4)"
           end
         end
 

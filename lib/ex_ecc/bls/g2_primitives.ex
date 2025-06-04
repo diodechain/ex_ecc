@@ -3,8 +3,10 @@ defmodule ExEcc.BLS.G2Primitives do
   alias ExEcc.BLS.PointCompression, as: PointCompression
   alias ExEcc.BLS.Hash
 
+  defdelegate is_inf(p), to: Curve
+
   def subgroup_check(p) do
-    Curve.is_inf(Curve.multiply(p, Curve.curve_order()))
+    is_inf(Curve.multiply(p, Curve.curve_order()))
   end
 
   def g2_to_signature(pt) do
