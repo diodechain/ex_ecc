@@ -244,11 +244,11 @@ defmodule ExEcc.BLS.Ciphersuites do
     @dst "BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_"
     def dst(), do: @dst
 
-    def aggregate_verify(cls, pks, messages, signature) do
+    def aggregate_verify(pks, messages, signature) do
       if length(messages) != length(Enum.uniq(messages)) do
         false
       else
-        Base._core_aggregate_verify(cls, pks, messages, signature, cls.dst())
+        Base._core_aggregate_verify(__MODULE__, pks, messages, signature, @dst)
       end
     end
 
@@ -277,12 +277,12 @@ defmodule ExEcc.BLS.Ciphersuites do
       Base._core_verify(cls, pk, message, signature, cls.dst())
     end
 
-    def aggregate_verify(cls, pks, messages, signature) do
+    def aggregate_verify(pks, messages, signature) do
       if length(pks) != length(messages) do
         false
       else
         augmented_messages = Enum.zip(pks, messages) |> Enum.map(fn {pk, msg} -> pk <> msg end)
-        Base._core_aggregate_verify(cls, pks, augmented_messages, signature, cls.dst())
+        Base._core_aggregate_verify(__MODULE__, pks, augmented_messages, signature, @dst)
       end
     end
   end
@@ -307,8 +307,8 @@ defmodule ExEcc.BLS.Ciphersuites do
       Base._is_valid_pubkey(pubkey) and Base.key_validate(pubkey)
     end
 
-    def aggregate_verify(cls, pks, messages, signature) do
-      Base._core_aggregate_verify(cls, pks, messages, signature, cls.dst())
+    def aggregate_verify(pks, messages, signature) do
+      Base._core_aggregate_verify(__MODULE__, pks, messages, signature, @dst)
     end
 
     def pop_prove(cls, sk) do
