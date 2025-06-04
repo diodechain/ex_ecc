@@ -111,8 +111,7 @@ defmodule ExEcc.Fields.OptimizedFQ do
   end
 
   def neg(fq) do
-    %type{} = fq
-    type.new(-fq.n)
+    FieldMath.type(fq).new(-fq.n)
   end
 
   def repr(fq) do
@@ -381,7 +380,9 @@ defmodule ExEcc.Fields.OptimizedFQP do
   end
 
   def neg(fqp) do
-    FieldMath.type(fqp).new(Enum.map(FieldMath.coeffs_list(fqp), &(-&1)))
+    Enum.map(FieldMath.coeffs_list(fqp), &(-&1))
+    |> List.to_tuple()
+    |> FieldMath.type(fqp).new()
   end
 
   def one(cls) do

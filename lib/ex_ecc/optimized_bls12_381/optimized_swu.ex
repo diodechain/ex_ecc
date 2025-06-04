@@ -79,7 +79,11 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedSWU do
       |> FieldMath.add(iso_3_z_t2)
 
     # The initial calculation for denominator_val for optimized_swu_g2
-    calculated_denominator = FieldMath.neg(FieldMath.mul(Constants.iso_3_a(), temp))
+    calculated_denominator =
+      Constants.iso_3_a()
+      |> FieldMath.mul(temp)
+      |> FieldMath.neg()
+
     temp_plus_one = FieldMath.add(temp, FieldMath.type(temp).one())
     # b(Z * t^2 + Z^2 * t^4 + 1)
     numerator_val = FieldMath.mul(Constants.iso_3_b(), temp_plus_one)
@@ -194,9 +198,9 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedSWU do
     initial_accumulator = {false, gamma}
 
     {is_valid_root, result} =
-      Enum.reduce_while(Constants.positive_eighth_roots_of_unity(), initial_accumulator, fn root,
-                                                                                            {acc_is_valid,
-                                                                                             acc_result} ->
+      Constants.positive_eighth_roots_of_unity()
+      |> Tuple.to_list()
+      |> Enum.reduce_while(initial_accumulator, fn root, {acc_is_valid, acc_result} ->
         sqrt_candidate = FieldMath.mul(root, gamma)
 
         check_val =
@@ -223,12 +227,14 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedSWU do
     # ISO_3_MAP_COEFFICIENTS comes from Constants
     # Horner Polynomial Evaluation
     {new_mapped_values, _} =
-      Enum.reduce(
-        Enum.with_index(Constants.iso_3_map_coefficients()),
+      Constants.iso_3_map_coefficients()
+      |> Tuple.to_list()
+      |> Enum.with_index()
+      |> Enum.reduce(
         {mapped_values, z_powers},
-        fn {k_i, i}, {current_mapped_values, current_z_powers} ->
-          # last element
-          val_i = Enum.at(k_i, -1)
+        fn {k_i_tuple, i}, {current_mapped_values, current_z_powers} ->
+          k_i = Tuple.to_list(k_i_tuple)
+          val_i = List.last(k_i)
 
           val_i_updated =
             Enum.reduce(
@@ -263,7 +269,12 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedSWU do
     # y-numerator * x-denominator
     y_g2 = FieldMath.mul(x_den, y_num_updated)
 
-    {x_g2, y_g2, z_g2}
+    # Canonicalize point at infinity
+    if FieldMath.eq(z_g2, FieldMath.type(z_g2).zero()) do
+      ExEcc.OptimizedBLS12381.OptimizedCurve.z2()
+    else
+      {x_g2, y_g2, z_g2}
+    end
   end
 
   # Optimal Map from 11-Isogenous Curve to G1
@@ -272,10 +283,6 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedSWU do
     mapped_values = List.duplicate(FieldMath.type(z).zero(), 4)
 
     # Max power needed is 15 for z, assuming ISO_11_MAP_COEFFICIENTS structure
-    # Python code has z_powers up to z**15, implying coefficients might need up to that.
-    # Let's generate powers of z up to a reasonable limit needed by the coefficients.
-    # The maximum length of a coefficient list (minus one for the last term) will determine max power.
-    # For now, creating up to z_powers[14] which is z^15, as in Python.
     z_powers = Enum.map(1..15, &FieldMath.pow(z, &1))
 
     # ISO_11_MAP_COEFFICIENTS from Constants
@@ -284,17 +291,15 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedSWU do
       Enum.reduce(
         Enum.with_index(Constants.iso_11_map_coefficients()),
         {mapped_values, z_powers},
-        fn {k_i, i}, {current_mapped_values, current_z_powers} ->
-          # last element
-          val_i = Enum.at(k_i, -1)
+        fn {k_i_tuple, i}, {current_mapped_values, current_z_powers} ->
+          k_i = Tuple.to_list(k_i_tuple)
+          val_i = List.last(k_i)
 
           val_i_updated =
             Enum.reduce(
               Enum.with_index(Enum.reverse(Enum.slice(k_i, 0..(length(k_i) - 2)))),
               val_i,
               fn {k_i_j, j}, acc_val_i ->
-                # Ensure j is within bounds for current_z_powers
-                # Python code uses z_powers[j], Elixir Enum.at(current_z_powers, j)
                 FieldMath.add(
                   FieldMath.mul(acc_val_i, x),
                   FieldMath.mul(Enum.at(current_z_powers, j), k_i_j)
@@ -305,6 +310,9 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedSWU do
           {List.replace_at(current_mapped_values, i, val_i_updated), current_z_powers}
         end
       )
+
+    # Apply the missing correction: mapped_values[1] = mapped_values[1] * z
+    new_mapped_values = List.update_at(new_mapped_values, 1, fn v -> FieldMath.mul(v, z) end)
 
     x_num = Enum.at(new_mapped_values, 0)
     x_den = Enum.at(new_mapped_values, 1)
@@ -320,6 +328,11 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedSWU do
     x_g1 = FieldMath.mul(x_num, y_den_updated)
     y_g1 = FieldMath.mul(x_den, y_num_updated)
 
-    {x_g1, y_g1, z_g1}
+    # Canonicalize point at infinity
+    if FieldMath.eq(z_g1, FieldMath.type(z_g1).zero()) do
+      ExEcc.OptimizedBLS12381.OptimizedCurve.z1()
+    else
+      {x_g1, y_g1, z_g1}
+    end
   end
 end

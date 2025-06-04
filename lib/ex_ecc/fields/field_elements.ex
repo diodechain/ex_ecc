@@ -105,8 +105,7 @@ defmodule ExEcc.Fields.FQ do
   end
 
   def neg(fq) do
-    %type{} = fq
-    type.new(-fq.n)
+    FieldMath.new(fq, -fq.n)
   end
 
   def repr(fq) do
@@ -165,7 +164,8 @@ defmodule ExEcc.Fields.FQP do
 
   defstruct coeffs: {}, modulus_coeffs: {}, degree: 0, field_modulus: nil
 
-  def new(fqp \\ %__MODULE__{}, coeffs, modulus_coeffs) do
+  def new(fqp \\ %__MODULE__{}, coeffs, modulus_coeffs)
+      when is_tuple(coeffs) and is_tuple(modulus_coeffs) do
     if FieldMath.field_modulus(fqp) == nil do
       raise "Field Modulus hasn't been specified"
     end
@@ -394,9 +394,9 @@ defmodule ExEcc.Fields.FQP do
         end
       end)
 
-    FieldMath.type(fqp).new(
-      List.to_tuple(Enum.take(lm, FieldMath.degree(fqp)) |> FieldMath.div(trunc(Enum.at(low, 0))))
-    )
+    List.to_tuple(Enum.take(lm, FieldMath.degree(fqp)))
+    |> FieldMath.type(fqp).new()
+    |> FieldMath.div(trunc(hd(low)))
   end
 
   def repr(fqp) do
@@ -417,7 +417,9 @@ defmodule ExEcc.Fields.FQP do
   end
 
   def neg(fqp) do
-    FieldMath.type(fqp).new(Enum.map(FieldMath.coeffs(fqp), &(-&1)))
+    Enum.map(FieldMath.coeffs_list(fqp), &(-&1))
+    |> List.to_tuple()
+    |> FieldMath.type(fqp).new()
   end
 
   def one(cls) do
@@ -444,7 +446,7 @@ defmodule ExEcc.Fields.FQ2 do
   def parent(), do: FQP
   def degree(), do: 2
 
-  def new(fqp \\ %__MODULE__{}, coeffs) do
+  def new(fqp \\ %__MODULE__{}, coeffs) when is_tuple(coeffs) do
     if FieldMath.fq2_modulus_coeffs(fqp) == nil do
       raise "FQ2 Modulus Coeffs haven't been specified"
     end
@@ -469,7 +471,7 @@ defmodule ExEcc.Fields.FQ12 do
   def parent(), do: FQP
   def degree(), do: 12
 
-  def new(fqp \\ %__MODULE__{}, coeffs) do
+  def new(fqp \\ %__MODULE__{}, coeffs) when is_tuple(coeffs) do
     if FieldMath.fq12_modulus_coeffs(fqp) == nil do
       raise "FQ12 Modulus Coeffs haven't been specified"
     end

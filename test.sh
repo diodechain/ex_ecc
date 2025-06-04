@@ -1,3 +1,7 @@
 #!/bin/bash
-echo "mix test test/ex_ecc/bls/ciphersuites/g2_basic_test.exs --max-failures=1 2>&1 | head -n 50"
-mix test test/ex_ecc/bls/ciphersuites/g2_basic_test.exs --max-failures=1 2>&1 | head -n 50
+set -e
+export MIX_ENV=test
+echo "mix compile"
+mix compile
+echo "mix test test/ex_ecc/bls/ciphersuites/g2_basic_test.exs --seed=0 --max-failures=1 2>&1"
+mix test test/ex_ecc/bls/ciphersuites/g2_basic_test.exs --seed=0 --max-failures=1 2>&1

@@ -95,7 +95,7 @@ defmodule ExEcc.BLS.Ciphersuites do
       end
 
       # Procedure
-      message_point = HashToCurve.hash_to_g2(message, dst, cls.xmd_hash_function)
+      message_point = HashToCurve.hash_to_g2(message, dst, cls.xmd_hash_function())
       signature_point = Curve.multiply(message_point, sk)
       G2Primitives.g2_to_signature(signature_point)
     end
