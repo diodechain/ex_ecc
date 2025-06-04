@@ -79,8 +79,8 @@ defmodule ExEcc.FieldMath do
 
   def mod_int(a, b) when is_integer(b) do
     case a do
-      %{n: n} -> rem(n, b)
-      n when is_integer(n) -> rem(n, b)
+      %{n: n} -> Integer.mod(n, b)
+      n when is_integer(n) -> Integer.mod(n, b)
       _ -> raise "Only int and T_FQ types are accepted: got {type(x)}"
     end
   end
@@ -209,7 +209,7 @@ defmodule ExEcc.IntegerMath do
   def neg(a), do: -a
   def lt(a, b), do: a < b
   def sgn0(a), do: if(a < 0, do: -1, else: 1)
-  def mod_int(a, b), do: rem(a, b)
+  def mod_int(a, b), do: Integer.mod(a, b)
   def type(_), do: ExEcc.IntegerMath
 
   def pow(integer, exponent, modulus) when is_integer(exponent) and is_integer(modulus) do
@@ -220,13 +220,13 @@ defmodule ExEcc.IntegerMath do
       exponent == 1 ->
         integer
 
-      rem(exponent, 2) == 0 ->
-        pow(rem(integer * integer, modulus), Kernel.div(exponent, 2), modulus)
+      Integer.mod(exponent, 2) == 0 ->
+        pow(Integer.mod(integer * integer, modulus), Kernel.div(exponent, 2), modulus)
 
       true ->
-        pow(rem(integer * integer, modulus), Kernel.div(exponent, 2), modulus) * integer
+        pow(Integer.mod(integer * integer, modulus), Kernel.div(exponent, 2), modulus) * integer
     end
-    |> rem(modulus)
+    |> Integer.mod(modulus)
   end
 
   def zero(), do: 0

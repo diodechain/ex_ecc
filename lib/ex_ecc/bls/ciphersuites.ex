@@ -59,7 +59,7 @@ defmodule ExEcc.BLS.Ciphersuites do
           # noqa: E741
           l = ceil(1.5 * ceil(:math.log2(Curve.curve_order())) / 8)
           okm = Hash.hkdf_expand(prk, key_info <> Hash.i2osp(l, 2), l)
-          {:cont, rem(Hash.os2ip(okm), Curve.curve_order())}
+          {:cont, Integer.mod(Hash.os2ip(okm), Curve.curve_order())}
         else
           {:halt, sk}
         end

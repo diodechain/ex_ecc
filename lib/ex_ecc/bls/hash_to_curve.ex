@@ -40,7 +40,7 @@ defmodule ExEcc.BLS.HashToCurve do
         Enum.reduce(0..(m - 1), [], fn j, e ->
           elem_offset = Constants.hash_to_field_l() * (j + i * m)
           tv = binary_part(pseudo_random_bytes, elem_offset, Constants.hash_to_field_l())
-          e ++ [rem(Hash.os2ip(tv), ExEcc.OptimizedBLS12381.OptimizedCurve.field_modulus())]
+          e ++ [Integer.mod(Hash.os2ip(tv), ExEcc.OptimizedBLS12381.OptimizedCurve.field_modulus())]
         end)
 
       u ++ [FQ2.new(List.to_tuple(e))]
@@ -109,7 +109,7 @@ defmodule ExEcc.BLS.HashToCurve do
         Enum.reduce(0..(m - 1), [], fn j, e ->
           elem_offset = Constants.hash_to_field_l() * (j + i * m)
           tv = binary_part(pseudo_random_bytes, elem_offset, Constants.hash_to_field_l())
-          e ++ [rem(Hash.os2ip(tv), ExEcc.OptimizedBLS12381.OptimizedCurve.field_modulus())]
+          e ++ [Integer.mod(Hash.os2ip(tv), ExEcc.OptimizedBLS12381.OptimizedCurve.field_modulus())]
         end)
 
       u ++ [FQ.new(List.to_tuple(e))]

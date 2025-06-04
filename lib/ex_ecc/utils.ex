@@ -11,13 +11,13 @@ defmodule ExEcc.Utils do
     # https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-09#section-4
     # inv0(x): This function returns the multiplicative inverse of x in
     # F, extended to all of F by fixing inv0(0) == 0.
-    a = rem(a, n)
+    a = Integer.mod(a, n)
 
     if a == 0 do
       0
     else
       {lm, hm} = {1, 0}
-      {low, high} = {rem(a, n), n}
+      {low, high} = {Integer.mod(a, n), n}
 
       {lm, _low, _hm, _high} =
         reduce_while({lm, low, hm, high}, fn {lm, low, hm, high} ->
@@ -31,7 +31,7 @@ defmodule ExEcc.Utils do
           end
         end)
 
-      rem(lm, n)
+      Integer.mod(lm, n)
     end
   end
 

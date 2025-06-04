@@ -14,7 +14,7 @@ defmodule ExEcc.Fields.FQ do
           val.n
 
         FieldMath.isinstance(val, ExEcc.IntegerMath) ->
-          rem(val, FieldMath.field_modulus(fq))
+          Integer.mod(val, FieldMath.field_modulus(fq))
 
         true ->
           raise "Expected an int or FQ object, but got #{inspect(val)}"
@@ -84,7 +84,7 @@ defmodule ExEcc.Fields.FQ do
       exponent == 1 ->
         FieldMath.type(fq).new(fq.n)
 
-      rem(exponent, 2) == 0 ->
+      Integer.mod(exponent, 2) == 0 ->
         FieldMath.pow(FieldMath.mul(fq, fq), Kernel.div(exponent, 2))
 
       true ->
@@ -312,7 +312,7 @@ defmodule ExEcc.Fields.FQP do
       other == 1 ->
         FieldMath.type(fqp).new(FieldMath.coeffs(fqp))
 
-      rem(other, 2) == 0 ->
+      Integer.mod(other, 2) == 0 ->
         FieldMath.pow(FieldMath.mul(fqp, fqp), Kernel.div(other, 2))
 
       true ->

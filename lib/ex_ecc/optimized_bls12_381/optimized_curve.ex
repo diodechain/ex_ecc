@@ -166,7 +166,7 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedCurve do
     cond do
       n == 0 -> {FieldMath.type(x).one(), FieldMath.type(x).one(), FieldMath.type(x).zero()}
       n == 1 -> pt
-      rem(n, 2) == 0 -> multiply(double(pt), div(n, 2))
+      Integer.mod(n, 2) == 0 -> multiply(double(pt), div(n, 2))
       true -> add(multiply(double(pt), div(n, 2)), pt)
     end
   end

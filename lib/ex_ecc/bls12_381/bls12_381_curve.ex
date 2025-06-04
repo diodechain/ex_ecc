@@ -11,10 +11,10 @@ defmodule ExEcc.BLS12_381.BLS12381Curve do
   def curve_order, do: @curve_order
 
   # TODO: Port primality and factor checks if large number math is available
-  # if :math.pow(2, @curve_order) |> round() |> rem(@curve_order) != 2 do
+  # if :math.pow(2, @curve_order) |> round() |> Integer.mod(@curve_order) != 2 do
   #   raise ValueError, "Curve order is not prime"
   # end
-  # if rem(:math.pow(@field_modulus, 12) - 1, @curve_order) != 0 do
+  # if Integer.mod(:math.pow(@field_modulus, 12) - 1, @curve_order) != 0 do
   #   raise ValueError, "Curve order is not a factor of field_modulus**12 - 1"
   # end
 
@@ -134,7 +134,7 @@ defmodule ExEcc.BLS12_381.BLS12381Curve do
     cond do
       n == 0 -> nil
       n == 1 -> pt
-      rem(n, 2) == 0 -> multiply(double(pt), div(n, 2))
+      Integer.mod(n, 2) == 0 -> multiply(double(pt), div(n, 2))
       true -> add(multiply(double(pt), div(n, 2)), pt)
     end
   end

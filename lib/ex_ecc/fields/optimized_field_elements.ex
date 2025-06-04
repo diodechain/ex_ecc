@@ -15,7 +15,7 @@ defmodule ExEcc.Fields.OptimizedFQ do
           val.n
 
         FieldMath.isinstance(val, ExEcc.IntegerMath) ->
-          rem(val, FieldMath.field_modulus(fq))
+          Integer.mod(val, FieldMath.field_modulus(fq))
 
         true ->
           raise "Expected an int or FQ object, but got #{inspect(val)}"
@@ -85,7 +85,7 @@ defmodule ExEcc.Fields.OptimizedFQ do
       exponent == 1 ->
         FieldMath.type(fq).new(fq.n)
 
-      rem(exponent, 2) == 0 ->
+      Integer.mod(exponent, 2) == 0 ->
         FieldMath.pow(FieldMath.mul(fq, fq), Kernel.div(exponent, 2))
 
       true ->
@@ -143,7 +143,7 @@ defmodule ExEcc.Fields.OptimizedFQ do
 
   # Optimized sgn0 implementation for m = 1
   def sgn0(fq) do
-    rem(fq.n, 2)
+    Integer.mod(fq.n, 2)
   end
 
   # Comparison functions for ordering (Python's @total_ordering)
@@ -188,7 +188,7 @@ defmodule ExEcc.Fields.OptimizedFQP do
     # for performance reasons
     coeffs =
       if FieldMath.isinstance(elem(coeffs, 0), ExEcc.IntegerMath) do
-        Enum.map(Tuple.to_list(coeffs), fn c -> rem(c, FieldMath.field_modulus(fqp)) end)
+        Enum.map(Tuple.to_list(coeffs), fn c -> Integer.mod(c, FieldMath.field_modulus(fqp)) end)
         |> List.to_tuple()
       else
         coeffs
@@ -217,7 +217,7 @@ defmodule ExEcc.Fields.OptimizedFQP do
     end
 
     Enum.zip(FieldMath.coeffs_list(fqp), FieldMath.coeffs_list(other))
-    |> Enum.map(fn {x, y} -> rem(x + y, FieldMath.field_modulus(fqp)) end)
+    |> Enum.map(fn {x, y} -> Integer.mod(x + y, FieldMath.field_modulus(fqp)) end)
     |> List.to_tuple()
     |> FieldMath.type(fqp).new()
   end
@@ -228,7 +228,7 @@ defmodule ExEcc.Fields.OptimizedFQP do
     end
 
     Enum.zip(FieldMath.coeffs_list(fqp), FieldMath.coeffs_list(other))
-    |> Enum.map(fn {x, y} -> rem(x - y, FieldMath.field_modulus(fqp)) end)
+    |> Enum.map(fn {x, y} -> Integer.mod(x - y, FieldMath.field_modulus(fqp)) end)
     |> List.to_tuple()
     |> FieldMath.type(fqp).new()
   end
@@ -237,7 +237,7 @@ defmodule ExEcc.Fields.OptimizedFQP do
     cond do
       is_integer(other) ->
         for c <- FieldMath.coeffs_list(fqp) do
-          rem(c * other, FieldMath.field_modulus(fqp))
+          Integer.mod(c * other, FieldMath.field_modulus(fqp))
         end
         |> List.to_tuple()
         |> FieldMath.type(fqp).new()
@@ -265,7 +265,7 @@ defmodule ExEcc.Fields.OptimizedFQP do
             List.update_at(b, exp + i, fn val -> val - top * c end)
           end)
         end)
-        |> Enum.map(&rem(&1, FieldMath.field_modulus(fqp)))
+        |> Enum.map(&Integer.mod(&1, FieldMath.field_modulus(fqp)))
         |> List.to_tuple()
         |> FieldMath.type(fqp).new()
 
@@ -278,7 +278,7 @@ defmodule ExEcc.Fields.OptimizedFQP do
     cond do
       is_integer(other) ->
         for c <- FieldMath.coeffs_list(fqp) do
-          rem(
+          Integer.mod(
             c * Utils.prime_field_inv(other, FieldMath.field_modulus(fqp)),
             FieldMath.field_modulus(fqp)
           )
@@ -303,7 +303,7 @@ defmodule ExEcc.Fields.OptimizedFQP do
       other == 1 ->
         FieldMath.type(fqp).new(FieldMath.coeffs(fqp))
 
-      rem(other, 2) == 0 ->
+      Integer.mod(other, 2) == 0 ->
         FieldMath.pow(FieldMath.mul(fqp, fqp), Kernel.div(other, 2))
 
       true ->
@@ -348,8 +348,8 @@ defmodule ExEcc.Fields.OptimizedFQP do
               {nm, new}
             end)
 
-          nm = Enum.map(nm, &rem(&1, FieldMath.field_modulus(fqp)))
-          new = Enum.map(new, &rem(&1, FieldMath.field_modulus(fqp)))
+          nm = Enum.map(nm, &Integer.mod(&1, FieldMath.field_modulus(fqp)))
+          new = Enum.map(new, &Integer.mod(&1, FieldMath.field_modulus(fqp)))
           {:cont, {nm, new, lm, low}}
         else
           {:halt, {lm, low, hm, high}}
@@ -398,7 +398,7 @@ defmodule ExEcc.Fields.OptimizedFQP do
     {sign, _zero} =
       FieldMath.coeffs_list(fqp)
       |> Enum.reduce({0, 1}, fn x_i, {sign, zero} ->
-        sign_i = rem(x_i, 2)
+        sign_i = Integer.mod(x_i, 2)
         zero_i = x_i == 0
         {sign || (zero && sign_i), zero && zero_i}
       end)
@@ -440,9 +440,9 @@ defmodule ExEcc.Fields.OptimizedFQ2 do
   # Optimized sgn0 implementation for m = 2
   def sgn0(fq2) do
     {x_0, x_1} = fq2.coeffs
-    sign_0 = rem(x_0, 2)
+    sign_0 = Integer.mod(x_0, 2)
     zero_0 = x_0 == 0
-    sign_1 = rem(x_1, 2)
+    sign_1 = Integer.mod(x_1, 2)
     sign_0 || (zero_0 && sign_1)
   end
 end

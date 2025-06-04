@@ -29,7 +29,7 @@ defmodule ExEcc.BLS.PointCompression do
   Else, (z1, z2) is a G2 point.
   """
   def is_point_at_infinity(z1, z2 \\ nil) do
-    rem(z1, Constants.pow_2_381()) == 0 and (z2 == nil or z2 == 0)
+    Integer.mod(z1, Constants.pow_2_381()) == 0 and (z2 == nil or z2 == 0)
   end
 
   @doc """
@@ -42,10 +42,12 @@ defmodule ExEcc.BLS.PointCompression do
       Constants.pow_2_383() + Constants.pow_2_382()
     else
       {x, y} = Curve.normalize(pt)
+      x_n = Integer.mod(x.n, Constants.q())
+      y_n = Integer.mod(y.n, Constants.q())
       # Record y's leftmost bit to the a_flag
-      a_flag = div(y.n * 2, Constants.q())
+      a_flag = div(y_n * 2, Constants.q())
       # Set c_flag = 1 and b_flag = 0
-      x.n + a_flag * Constants.pow_2_381() + Constants.pow_2_383()
+      x_n + a_flag * Constants.pow_2_381() + Constants.pow_2_383()
     end
   end
 
@@ -67,13 +69,13 @@ defmodule ExEcc.BLS.PointCompression do
 
     is_inf_pt = is_point_at_infinity(z)
 
-    if b_flag == 1 != is_inf_pt do
-      raise "b_flag should be #{is_inf_pt}"
+    if b_flag != (if is_inf_pt, do: 1, else: 0) do
+      raise "b_flag should be #{if is_inf_pt, do: 1, else: 0}"
     end
 
     if is_inf_pt do
       # 3 MSBs should be 110
-      if a_flag do
+      if a_flag != 0 do
         raise "a point at infinity should have a_flag == 0"
       end
 
@@ -81,7 +83,7 @@ defmodule ExEcc.BLS.PointCompression do
     else
       # Else, not point at infinity
       # 3 MSBs should be 100 or 101
-      x = rem(z, Constants.pow_2_381())
+      x = Integer.mod(z, Constants.pow_2_381())
 
       if x >= Constants.q() do
         raise "x value should be less than field modulus. Got #{x}"
@@ -91,12 +93,12 @@ defmodule ExEcc.BLS.PointCompression do
       # using quadratic residue
       y =
         IntegerMath.pow(
-          rem(x ** 3 + Curve.b().n, Constants.q()),
+          Integer.mod(x ** 3 + Curve.b().n, Constants.q()),
           div(Constants.q() + 1, 4),
           Constants.q()
         )
 
-      if IntegerMath.pow(y, 2, Constants.q()) != rem(x ** 3 + Curve.b().n, Constants.q()) do
+      if IntegerMath.pow(y, 2, Constants.q()) != Integer.mod(x ** 3 + Curve.b().n, Constants.q()) do
         raise "The given point is not on G1: y**2 = x**3 + b"
       end
 
@@ -200,8 +202,8 @@ defmodule ExEcc.BLS.PointCompression do
 
     is_inf_pt = is_point_at_infinity(z1, z2)
 
-    if b_flag1 == 1 != is_inf_pt do
-      raise "b_flag should be #{is_inf_pt}"
+    if b_flag1 != (if is_inf_pt, do: 1, else: 0) do
+      raise "b_flag should be #{if is_inf_pt, do: 1, else: 0}"
     end
 
     if is_inf_pt do
@@ -214,7 +216,7 @@ defmodule ExEcc.BLS.PointCompression do
     else
       # Else, not point at infinity
       # 3 MSBs should be 100 or 101
-      x1 = rem(z1, Constants.pow_2_381())
+      x1 = Integer.mod(z1, Constants.pow_2_381())
       # Ensure that x1 is less than the field modulus.
       if x1 >= Constants.q() do
         raise "x1 value should be less than field modulus. Got #{x1}"
