@@ -206,7 +206,7 @@ defmodule ExEcc.BLS.PointCompression do
 
     if is_inf_pt do
       # 3 MSBs should be 110
-      if a_flag1 do
+      if a_flag1 != 0 do
         raise "a point at infinity should have a_flag == 0"
       end
 
@@ -214,14 +214,14 @@ defmodule ExEcc.BLS.PointCompression do
     else
       # Else, not point at infinity
       # 3 MSBs should be 100 or 101
-      x1 = FieldMath.mod_int(Curve.z1(), Constants.pow_2_381())
+      x1 = rem(z1, Constants.pow_2_381())
       # Ensure that x1 is less than the field modulus.
       if x1 >= Constants.q() do
         raise "x1 value should be less than field modulus. Got #{x1}"
       end
 
       # Ensure that z2 is less than the field modulus.
-      if FieldMath.mod_int(Curve.z2(), Constants.q()) >= Constants.q() do
+      if z2 >= Constants.q() do
         raise "z2 point value should be less than field modulus. Got #{z2}"
       end
 
@@ -239,8 +239,8 @@ defmodule ExEcc.BLS.PointCompression do
       {y_re, y_im} = FieldMath.coeffs(y)
 
       y =
-        if (y_im > 0 and FieldMath.mod_int(y_im * 2, Constants.q()) != a_flag1) or
-             (y_im == 0 and FieldMath.mod_int(y_re * 2, Constants.q()) != a_flag1) do
+        if (y_im > 0 and div(y_im * 2, Constants.q()) != a_flag1) or
+             (y_im == 0 and div(y_re * 2, Constants.q()) != a_flag1) do
           FQ2.new(FieldMath.mul(y, -1) |> FieldMath.coeffs())
         else
           y

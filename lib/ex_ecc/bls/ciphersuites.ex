@@ -245,7 +245,11 @@ defmodule ExEcc.BLS.Ciphersuites do
     def dst(), do: @dst
 
     def aggregate_verify(cls, pks, messages, signature) do
-      Base._core_aggregate_verify(cls, pks, messages, signature, cls.dst())
+      if length(messages) != length(Enum.uniq(messages)) do
+        false
+      else
+        Base._core_aggregate_verify(cls, pks, messages, signature, cls.dst())
+      end
     end
 
     def aggregate(signatures), do: Base.aggregate(__MODULE__, signatures)
