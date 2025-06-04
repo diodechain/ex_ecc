@@ -9,7 +9,7 @@ Redo this elixir module port in the same way as the port in @bn128_curve.ex . Do
 
 Run `./test.sh` and then compare @optimized_swu.py and @optimized_swu.ex to identify the bug in the elixir port. Likely @point_compression.py and @point_compression.ex are relevant for this as well. Fix the bug in the port and run `./test.sh` again. When fixing the bug do this by correcting elixir port behaviour, but do not add any additional logic to the elixir port that is not present in the python reference. The elixir and python code should get more aligned rather than less. E.g. the bug exists because there is a mismatch. Reducing mismatches and making the code more similiar will be the way to correct the bevahiour. Also where applicable ensure variable names are matching between the port and the reference and the port is not diverging onto different names (apart from the usage of lower casing and underscores).
 
- Specific Comparison Goals:
+Specific Comparison Goals:
 
 "Please compare the implementations of [specific function] across all ciphersuite variants in both Python and Elixir, focusing on:
 - Input validation logic
