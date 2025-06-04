@@ -134,8 +134,8 @@ defmodule ExEcc.BLS12_381.BLS12381Curve do
     cond do
       n == 0 -> nil
       n == 1 -> pt
-      rem(n, 2) == 0 -> double(multiply(pt, div(n, 2))) |> add(pt)
-      true -> add(pt, multiply(double(pt), div(n, 2)))
+      rem(n, 2) == 0 -> multiply(double(pt), div(n, 2))
+      true -> add(multiply(double(pt), div(n, 2)), pt)
     end
   end
 
