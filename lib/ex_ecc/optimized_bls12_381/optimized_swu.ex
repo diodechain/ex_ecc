@@ -269,12 +269,7 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedSWU do
     # y-numerator * x-denominator
     y_g2 = FieldMath.mul(x_den, y_num_updated)
 
-    # Canonicalize point at infinity
-    if FieldMath.eq(z_g2, FieldMath.type(z_g2).zero()) do
-      ExEcc.OptimizedBLS12381.OptimizedCurve.z2()
-    else
-      {x_g2, y_g2, z_g2}
-    end
+    {x_g2, y_g2, z_g2}
   end
 
   # Optimal Map from 11-Isogenous Curve to G1
@@ -285,54 +280,43 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedSWU do
     # Max power needed is 15 for z, assuming ISO_11_MAP_COEFFICIENTS structure
     z_powers = Enum.map(1..15, &FieldMath.pow(z, &1))
 
-    # ISO_11_MAP_COEFFICIENTS from Constants
     # Horner Polynomial Evaluation
-    {new_mapped_values, _} =
-      Enum.reduce(
-        Enum.with_index(Constants.iso_11_map_coefficients()),
-        {mapped_values, z_powers},
-        fn {k_i_tuple, i}, {current_mapped_values, current_z_powers} ->
-          k_i = Tuple.to_list(k_i_tuple)
-          val_i = List.last(k_i)
+    mapped_values =
+      Constants.iso_11_map_coefficients()
+      |> Tuple.to_list()
+      |> Enum.with_index()
+      |> Enum.reduce(
+        mapped_values,
+        fn {k_i, i}, mapped_values ->
+          [last | rest] = Enum.reverse(Tuple.to_list(k_i))
+          mapped_values = List.replace_at(mapped_values, i, last)
 
-          val_i_updated =
-            Enum.reduce(
-              Enum.with_index(Enum.reverse(Enum.slice(k_i, 0..(length(k_i) - 2)))),
-              val_i,
-              fn {k_i_j, j}, acc_val_i ->
-                FieldMath.add(
-                  FieldMath.mul(acc_val_i, x),
-                  FieldMath.mul(Enum.at(current_z_powers, j), k_i_j)
-                )
-              end
-            )
+          Enum.with_index(rest)
+          |> Enum.reduce(mapped_values, fn {k_i_j, j}, mapped_values ->
+            new_i =
+              FieldMath.add(
+                FieldMath.mul(Enum.at(mapped_values, i), x),
+                FieldMath.mul(Enum.at(z_powers, j), k_i_j)
+              )
 
-          {List.replace_at(current_mapped_values, i, val_i_updated), current_z_powers}
+            List.replace_at(mapped_values, i, new_i)
+          end)
         end
       )
 
-    # Apply the missing correction: mapped_values[1] = mapped_values[1] * z
-    new_mapped_values = List.update_at(new_mapped_values, 1, fn v -> FieldMath.mul(v, z) end)
+    # Correct for x-denominator polynomial being 1-order lower than
+    # x-numerator polynomial
+    mapped_values = List.update_at(mapped_values, 1, &FieldMath.mul(&1, z))
+    mapped_values = List.update_at(mapped_values, 2, &FieldMath.mul(&1, y))
+    mapped_values = List.update_at(mapped_values, 3, &FieldMath.mul(&1, z))
 
-    x_num = Enum.at(new_mapped_values, 0)
-    x_den = Enum.at(new_mapped_values, 1)
-    y_num = Enum.at(new_mapped_values, 2)
-    y_den = Enum.at(new_mapped_values, 3)
+    # x-denominator * y-denominator
+    z_g1 = FieldMath.mul(Enum.at(mapped_values, 1), Enum.at(mapped_values, 3))
+    # x-numerator * y-denominator
+    x_g1 = FieldMath.mul(Enum.at(mapped_values, 0), Enum.at(mapped_values, 3))
+    # y-numerator * x-denominator
+    y_g1 = FieldMath.mul(Enum.at(mapped_values, 1), Enum.at(mapped_values, 2))
 
-    # y-numerator * y
-    y_num_updated = FieldMath.mul(y_num, y)
-    # y-denominator * z
-    y_den_updated = FieldMath.mul(y_den, z)
-
-    z_g1 = FieldMath.mul(x_den, y_den_updated)
-    x_g1 = FieldMath.mul(x_num, y_den_updated)
-    y_g1 = FieldMath.mul(x_den, y_num_updated)
-
-    # Canonicalize point at infinity
-    if FieldMath.eq(z_g1, FieldMath.type(z_g1).zero()) do
-      ExEcc.OptimizedBLS12381.OptimizedCurve.z1()
-    else
-      {x_g1, y_g1, z_g1}
-    end
+    {x_g1, y_g1, z_g1}
   end
 end
