@@ -1,240 +1,256 @@
 defmodule ExEcc.BLS.PointCompression do
-  alias ExEcc.BLS.Constants
-  # alias ExEcc.BLS.Typing # G1Compressed, G1Uncompressed, G2Compressed, G2Uncompressed
-  # alias ExEcc.Fields.OptimizedFieldElements, as: OptFQ # FQ, FQ2 structs and operations
-  # alias ExEcc.OptimizedBLS12381 # Z1, Z2, b, b2, field_modulus (q), is_inf, is_on_curve, normalize
-
-  # Placeholder for field_modulus (q)
-  # q = ExEcc.OptimizedBLS12381.field_modulus()
-  # b_g1 = ExEcc.OptimizedBLS12381.b() # Curve parameter for G1
-  # b_g2 = ExEcc.OptimizedBLS12381.b2() # Curve parameter for G2 (an FQ2 element)
-  # z1_point = ExEcc.OptimizedBLS12381.z1() # Point at infinity for G1
-  # z2_point = ExEcc.OptimizedBLS12381.z2() # Point at infinity for G2
-
-  # For optimized FQ/FQ2 elements, we assume they are integers or tuples of integers.
-  # FQ.n would be the integer itself.
-  # FQ2.coeffs would be [real_part, imag_part], both integers.
+  alias ExEcc.OptimizedBLS12381.OptimizedCurve, as: Curve
+  alias ExEcc.Fields.OptimizedBLS12381FQ, as: FQ
+  alias ExEcc.Fields.OptimizedBLS12381FQ2, as: FQ2
+  alias ExEcc.BLS.Constants, as: Constants
+  alias ExEcc.IntegerMath, as: IntegerMath
+  alias ExEcc.FieldMath, as: FieldMath
+  import Bitwise
 
   @doc """
-  Gets the flags from a point.
+  The most-significant three bits of a G1 or G2 encoding should be masked away before
+  the coordinate(s) are interpreted.
+  These bits are used to unambiguously represent the underlying element
+  The format: (c_flag, b_flag, a_flag, x)
+  https://github.com/zcash/librustzcash/blob/6e0364cd42a2b3d2b958a54771ef51a8db79dd29/pairing/src/bls12_381/README.md#bls12-381-instantiation  # noqa: E501
   """
-
-  def get_flags(z) when is_integer(z) do
-    c_flag = Bitwise.band(Bitwise.bsr(z, 383), 1) == 1
-    i_flag = Bitwise.band(Bitwise.bsr(z, 382), 1) == 1
-    s_flag = Bitwise.band(Bitwise.bsr(z, 381), 1) == 1
-    {c_flag, i_flag, s_flag}
+  def get_flags(z) do
+    # The most significant bit.
+    c_flag = z >>> 383 &&& 1
+    # The second-most significant bit.
+    b_flag = z >>> 382 &&& 1
+    # The third-most significant bit.
+    a_flag = z >>> 381 &&& 1
+    {c_flag, b_flag, a_flag}
   end
 
   @doc """
-  Checks if a compressed point (z1 or z1,z2) represents the point at infinity.
+  If z2 is None, the given z1 is a G1 point.
+  Else, (z1, z2) is a G2 point.
   """
-
   def is_point_at_infinity(z1, z2 \\ nil) do
-    # rem(z1, Constants.pow_2_381()) == 0 and (is_nil(z2) or z2 == 0)
-    # Actual check from py_ecc: (z1 % POW_2_381 == 0) and (z2 is None or z2 == 0)
-    # However, the b_flag (infinity flag) is the primary indicator used in decompression logic.
-    # This helper might be for a different context or a redundant check if b_flag is already known.
-    # The `decompress_G1/G2` uses `b_flag` for this, so this function might not be directly needed there.
-    # Let's rely on b_flag for decompression logic as per the Python code.
-    # This is a direct port of the helper if needed elsewhere.
-    rem(z1, Constants.pow_2_381()) == 0 and (is_nil(z2) or z2 == 0)
+    rem(z1, Constants.pow_2_381()) == 0 and (z2 == nil or z2 == 0)
   end
-
-  # --- G1 Compression/Decompression ---
-
-  #
-  def compress_g1(_pt) do
-    # q = ExEcc.OptimizedBLS12381.field_modulus()
-    # if ExEcc.OptimizedBLS12381.is_inf(pt) do
-    #   Constants.pow_2_383() + Constants.pow_2_382()
-    # else
-    #   {x_fq, y_fq} = ExEcc.OptimizedBLS12381.normalize(pt) # Assuming normalize returns FQ structs/maps
-    #   x_n = x_fq.n # Assuming FQ struct has .n field for integer value
-    #   y_n = y_fq.n
-    #   a_flag = div(y_n * 2, q) # Integer division
-    #   x_n + a_flag * Constants.pow_2_381() + Constants.pow_2_383()
-    # end
-    # |> ExEcc.BLS.Typing.g1_compressed() # If G1Compressed is a struct/tagged tuple
-    :not_implemented_compress_g1
-  end
-
-  #
-  def decompress_g1(_z_compressed) do
-    # z = z_compressed # If G1Compressed is just an integer alias
-    # {c_flag, b_flag, a_flag} = get_flags(z)
-    # q_val = ExEcc.OptimizedBLS12381.field_modulus()
-    # b_val_fq = ExEcc.OptimizedBLS12381.b() # This should be an FQ struct
-    # b_val_n = b_val_fq.n
-
-    # unless c_flag, do: raise ArgumentError, "c_flag should be 1"
-    # is_inf_pt_flag = b_flag # Direct use of b_flag
-
-    # if is_inf_pt_flag do
-    #   if a_flag, do: raise ArgumentError, "a point at infinity should have a_flag == 0"
-    #   ExEcc.OptimizedBLS12381.z1() # Return point at infinity for G1
-    # else
-    #   x_n = rem(z, Constants.pow_2_381())
-    #   if x_n >= q_val, do: raise ArgumentError, "Point value should be less than field modulus. Got #{x_n}"
-
-    #   # Y^2 = X^3 + b (mod q)
-    #   # y_n_sq_candidate = rem(x_n * x_n * x_n + b_val_n, q_val)
-    #   # y_n = :crypto.mod_pow(y_n_sq_candidate, div(q_val + 1, 4), q_val) # Modular sqrt using Fermat's Little theorem (if q % 4 == 3)
-    #   # Python uses pow(base, exp, mod)
-    #   y_n_sq_rhs = rem(ModMath.pow(x_n, 3, q_val) + b_val_n, q_val)
-    #   y_n = ModMath.pow(y_n_sq_rhs, div(q_val + 1, 4), q_val)
-
-    #   unless rem(ModMath.pow(y_n, 2, q_val), q_val) == rem(y_n_sq_rhs, q_val) do
-    #     raise ArgumentError, "The given point is not on G1: y**2 = x**3 + b"
-    #   end
-
-    #   y_sign_bit = div(y_n * 2, q_val)
-    #   y_final_n = if y_sign_bit != Bitwise.to_integer(a_flag), do: q_val - y_n, else: y_n
-
-    #   # Construct FQ elements for the point (x, y, 1)
-    #   # x_fq = OptFQ.new(x_n, q_val)
-    #   # y_fq = OptFQ.new(y_final_n, q_val)
-    #   # one_fq = OptFQ.one(q_val)
-    #   # {x_fq, y_fq, one_fq}
-    #   :not_implemented_yet_non_inf_g1_decomp
-    # end
-    :not_implemented_decompress_g1
-  end
-
-  # --- G2 Compression/Decompression ---
 
   @doc """
-  Modular square root in FQ2. Favors higher imaginary or real part for tie-breaking.
-  This requires FQ2 arithmetic (pow, division, negation, comparison of coeffs).
+  If z2 is None, the given z1 is a G1 point.
+  Else, (z1, z2) is a G2 point.
   """
-  #
-  def modular_squareroot_in_fq2(_value_fq2) do
-    # eighth_roots = Constants.eighth_roots_of_unity() # List of FQ2 elements
-    # fq2_order_val = Constants.fq2_order()
-
-    # # FQ2 exponentiation: value_fq2 ** ((fq2_order_val + 8) // 16)
-    # candidate_sqrt = OptFQ.FQ2.pow(value_fq2, div(fq2_order_val + 8, 16))
-    # check_val_fq2 = OptFQ.FQ2.divide(OptFQ.FQ2.pow(candidate_sqrt, 2), value_fq2)
-
-    # # Check if check_val_fq2 is in EIGHTH_ROOTS_OF_UNITY[::2] (every second element)
-    # # This means comparing FQ2 elements.
-    # matching_root_index = Enum.find_index(0..3, fn i ->
-    #   OptFQ.FQ2.eq(check_val_fq2, Enum.at(eighth_roots, i * 2))
-    # end)
-
-    # if is_integer(matching_root_index) do
-    #   root_divisor = Enum.at(eighth_roots, matching_root_index * 2)
-    #   x1 = OptFQ.FQ2.divide(candidate_sqrt, root_divisor)
-    #   x2 = OptFQ.FQ2.neg(x1)
-
-    #   # Compare x1 and x2 based on coeffs [real, imag]
-    #   # {x1_re, x1_im} = OptFQ.FQ2.coeffs(x1) # Assuming coeffs returns [re, im]
-    #   # {x2_re, x2_im} = OptFQ.FQ2.coeffs(x2)
-
-    #   # if x1_im > x2_im or (x1_im == x2_im and x1_re > x2_re), do: x1, else: x2
-    #   :not_implemented_comparison_part
-    # else
-    #   nil
-    # end
-    :not_implemented_modular_sqrt_fq2
+  def compress_g1(pt) do
+    if Curve.is_inf(pt) do
+      # Set c_flag = 1 and b_flag = 1. leave a_flag = x = 0
+      Constants.pow_2_383() + Constants.pow_2_382()
+    else
+      {x, y} = Curve.normalize(pt)
+      # Record y's leftmost bit to the a_flag
+      a_flag = div(y.n * 2, Constants.q())
+      # Set c_flag = 1 and b_flag = 0
+      x.n + a_flag * Constants.pow_2_381() + Constants.pow_2_383()
+    end
   end
 
-  #
-  def compress_g2(_pt) do
-    # q_val = ExEcc.OptimizedBLS12381.field_modulus()
-    # b2_val = ExEcc.OptimizedBLS12381.b2() # FQ2 element
-    # unless ExEcc.OptimizedBLS12381.is_on_curve(pt, b2_val), do: raise ArgumentError, "Point not on twisted curve G2"
+  @doc """
+  A compressed point is a 384-bit integer with the bit order
+  (c_flag, b_flag, a_flag, x), where the c_flag bit is always set to 1,
+  the b_flag bit indicates infinity when set to 1,
+  the a_flag bit helps determine the y-coordinate when decompressing,
+  and the 381-bit integer x is the x-coordinate of the point.
+  """
+  def decompress_g1(z) do
+    {c_flag, b_flag, a_flag} = get_flags(z)
 
-    # if ExEcc.OptimizedBLS12381.is_inf(pt) do
-    #   {Constants.pow_2_383() + Constants.pow_2_382(), 0}
-    # else
-    #   {x_fq2, y_fq2} = ExEcc.OptimizedBLS12381.normalize(pt) # x_fq2, y_fq2 are FQ2 structs
-
-    #   # Assuming FQ2 struct has .coeffs field like [real_part_int, imag_part_int]
-    #   # For optimized elements, coeffs are integers.
-    #   [x_re, x_im] = x_fq2.coeffs
-    #   [y_re, y_im] = y_fq2.coeffs
-
-    #   a_flag1 = if y_im > 0, do: div(y_im * 2, q_val), else: div(y_re * 2, q_val)
-
-    #   # x_im goes to z1, x_re goes to z2
-    #   z1 = x_im + a_flag1 * Constants.pow_2_381() + Constants.pow_2_383()
-    #   z2 = x_re
-    #   {round(z1), round(z2)} # Ensure integers if any FQ2 ops returned floats (unlikely with direct int coeffs)
-    # end
-    # # |> ExEcc.BLS.Typing.g2_compressed() # If G2Compressed is a struct/tagged tuple
-    :not_implemented_compress_g2
-  end
-
-  #
-  def decompress_g2(_p_compressed) do
-    # {z1, z2} = p_compressed # If G2Compressed is a tuple {int, int}
-    # {c_flag1, b_flag1, a_flag1} = get_flags(z1)
-    # q_val = ExEcc.OptimizedBLS12381.field_modulus()
-    # b2_val_fq2 = ExEcc.OptimizedBLS12381.b2()
-
-    # unless c_flag1, do: raise ArgumentError, "c_flag1 should be 1"
-    # is_inf_pt_flag = b_flag1
-
-    # if is_inf_pt_flag do
-    #   if a_flag1, do: raise ArgumentError, "a point at infinity should have a_flag1 == 0"
-    #   ExEcc.OptimizedBLS12381.z2() # Return point at infinity for G2
-    # else
-    #   x1_im_part = rem(z1, Constants.pow_2_381())
-    #   if x1_im_part >= q_val, do: raise ArgumentError, "x1 (imag) value invalid"
-    #   if z2 >= q_val, do: raise ArgumentError, "z2 (real) value invalid"
-
-    #   x2_re_part = z2
-
-    #   # x = FQ2([x2_re_part, x1_im_part]) using OptimizedFieldElements.FQ2.new_fq2/4 or similar
-    #   # Need modulus_coeffs and mc_tuples for the specific FQ2 field (BLS12-381 specific)
-    #   # x_fq2 = OptFQ.FQ2.new_fq2([x2_re_part, x1_im_part], bls12381_fq2_mod_coeffs, bls12381_fq2_mc_tuples, q_val)
-
-    #   # y_fq2_sq_rhs = OptFQ.FQ2.add(OptFQ.FQ2.pow(x_fq2, 3), b2_val_fq2)
-    #   # y_fq2 = modular_squareroot_in_fq2(y_fq2_sq_rhs)
-
-    #   # if is_nil(y_fq2), do: raise ArgumentError, "Failed to find modular squareroot in FQ2"
-
-    #   # # Sign selection for y_fq2
-    #   # [y_re_int, y_im_int] = y_fq2.coeffs
-
-    #   # y_sign_bit_source = if y_im_int > 0, do: y_im_int, else: y_re_int
-    #   # chosen_sign_bit = div(y_sign_bit_source * 2, q_val)
-
-    #   # y_final_fq2 =
-    #   #   if chosen_sign_bit != Bitwise.to_integer(a_flag1) do
-    #   #     OptFQ.FQ2.neg(y_fq2)
-    #   #   else
-    #   #     y_fq2
-    #   #   end
-
-    #   # one_fq2 = OptFQ.FQ2.new_fq2([1,0], bls12381_fq2_mod_coeffs, bls12381_fq2_mc_tuples, q_val) # FQ2(1)
-    #   # candidate_point = {x_fq2, y_final_fq2, one_fq2}
-
-    #   # unless ExEcc.OptimizedBLS12381.is_on_curve(candidate_point, b2_val_fq2) do
-    #   #   raise ArgumentError, "Decompressed point not on G2 curve"
-    #   # end
-    #   # candidate_point
-    #   :not_implemented_yet_non_inf_g2_decomp
-    # end
-    :not_implemented_decompress_g2
-  end
-
-  # Helper for modular arithmetic if not relying on a full ModMath library yet
-  # This is a simplified pow, :crypto.mod_pow is better for crypto contexts.
-  # Ensure this is used carefully, or replaced with :crypto.mod_pow where appropriate.
-  defmodule ModMath do
-    def pow(_base, 0, _mod), do: 1
-    def pow(base, 1, _mod), do: base
-
-    def pow(base, exp, mod) when rem(exp, 2) == 0 do
-      half = pow(base, div(exp, 2), mod)
-      rem(half * half, mod)
+    # c_flag == 1 indicates the compressed form
+    # MSB should be 1
+    if c_flag != 1 do
+      raise "c_flag should be 1"
     end
 
-    def pow(base, exp, mod) do
-      half = pow(base, div(exp, 2), mod)
-      rem(half * half * base, mod)
+    is_inf_pt = is_point_at_infinity(z)
+
+    if b_flag == 1 != is_inf_pt do
+      raise "b_flag should be #{is_inf_pt}"
+    end
+
+    if is_inf_pt do
+      # 3 MSBs should be 110
+      if a_flag do
+        raise "a point at infinity should have a_flag == 0"
+      end
+
+      Curve.z1()
+    else
+      # Else, not point at infinity
+      # 3 MSBs should be 100 or 101
+      x = rem(z, Constants.pow_2_381())
+
+      if x >= Constants.q() do
+        raise "x value should be less than field modulus. Got #{x}"
+      end
+
+      # Try solving y coordinate from the equation Y^2 = X^3 + b
+      # using quadratic residue
+      y =
+        IntegerMath.pow(
+          rem(x ** 3 + Curve.b().n, Constants.q()),
+          div(Constants.q() + 1, 4),
+          Constants.q()
+        )
+
+      if IntegerMath.pow(y, 2, Constants.q()) != rem(x ** 3 + Curve.b().n, Constants.q()) do
+        raise "The given point is not on G1: y**2 = x**3 + b"
+      end
+
+      # Choose the y whose leftmost bit is equal to the a_flag
+      y =
+        if div(y * 2, Constants.q()) != a_flag do
+          Constants.q() - y
+        else
+          y
+        end
+
+      {FQ.new(x), FQ.new(y), FQ.new(1)}
+    end
+  end
+
+  @doc """
+  Given value=``x``, returns the value ``y`` such that ``y**2 % q == x``,
+  and None if this is not possible. In cases where there are two solutions,
+  the value with higher imaginary component is favored;
+  if both solutions have equal imaginary component the value with higher real
+  component is favored.
+  """
+  def modular_squareroot_in_FQ2(value) do
+    candidate_squareroot = value ** div(Constants.fq2_order() + 8, 16)
+    check = candidate_squareroot ** 2 / value
+
+    if check in Enum.take_every(Constants.eighth_roots_of_unity(), 2) do
+      x1 =
+        FieldMath.div(
+          candidate_squareroot,
+          Enum.at(
+            Constants.eighth_roots_of_unity(),
+            FieldMath.div(Enum.find_index(Constants.eighth_roots_of_unity(), &(&1 == check)), 2)
+          )
+        )
+
+      x2 = FieldMath.neg(x1)
+      {x1_re, x1_im} = x1.coeffs
+      {x2_re, x2_im} = x2.coeffs
+
+      if x1_im > x2_im or (x1_im == x2_im and x1_re > x2_re) do
+        x1
+      else
+        x2
+      end
+    end
+  end
+
+  @doc """
+  The compressed point (z1, z2) has the bit order:
+  z1: (c_flag1, b_flag1, a_flag1, x1)
+  z2: (c_flag2, b_flag2, a_flag2, x2)
+  where
+  - c_flag1 is always set to 1
+  - b_flag1 indicates infinity when set to 1
+  - a_flag1 helps determine the y-coordinate when decompressing,
+  - a_flag2, b_flag2, and c_flag2 are always set to 0
+  """
+  def compress_g2(pt) do
+    if not Curve.is_on_curve(pt, Curve.b2()) do
+      raise "The given point is not on the twisted curve over FQ**2"
+    end
+
+    if Curve.is_inf(pt) do
+      {Constants.pow_2_383() + Constants.pow_2_382(), 0}
+    else
+      {x, y} = Curve.normalize(pt)
+      {x_re, x_im} = x.coeffs
+      {y_re, y_im} = y.coeffs
+
+      # Record the leftmost bit of y_im to the a_flag1
+      # If y_im happens to be zero, then use the bit of y_re
+      a_flag1 =
+        if y_im > 0 do
+          div(y_im * 2, Constants.q())
+        else
+          div(y_re * 2, Constants.q())
+        end
+
+      # Imaginary part of x goes to z1, real part goes to z2
+      # c_flag1 = 1, b_flag1 = 0
+      z1 = x_im + a_flag1 * Constants.pow_2_381() + Constants.pow_2_383()
+      # a_flag2 = b_flag2 = c_flag2 = 0
+      z2 = x_re
+      {z1, z2}
+    end
+  end
+
+  @doc """
+  Recovers x and y coordinates from the compressed point (z1, z2).
+  """
+  def decompress_g2(p) do
+    {z1, z2} = p
+    {c_flag1, b_flag1, a_flag1} = get_flags(z1)
+
+    # c_flag == 1 indicates the compressed form
+    # MSB should be 1
+    if c_flag1 != 1 do
+      raise "c_flag should be 1"
+    end
+
+    is_inf_pt = is_point_at_infinity(z1, z2)
+
+    if b_flag1 == 1 != is_inf_pt do
+      raise "b_flag should be #{is_inf_pt}"
+    end
+
+    if is_inf_pt do
+      # 3 MSBs should be 110
+      if a_flag1 do
+        raise "a point at infinity should have a_flag == 0"
+      end
+
+      Curve.z2()
+    else
+      # Else, not point at infinity
+      # 3 MSBs should be 100 or 101
+      x1 = FieldMath.mod_int(Curve.z1(), Constants.pow_2_381())
+      # Ensure that x1 is less than the field modulus.
+      if x1 >= Constants.q() do
+        raise "x1 value should be less than field modulus. Got #{x1}"
+      end
+
+      # Ensure that z2 is less than the field modulus.
+      if FieldMath.mod_int(Curve.z2(), Constants.q()) >= Constants.q() do
+        raise "z2 point value should be less than field modulus. Got #{z2}"
+      end
+
+      x2 = z2
+      # x1 is the imaginary part, x2 is the real part
+      x = FQ2.new({x2, x1})
+      y = modular_squareroot_in_FQ2(FieldMath.add(FieldMath.pow(x, 3), Curve.b2()))
+
+      if y == nil do
+        raise "Failed to find a modular squareroot"
+      end
+
+      # Choose the y whose leftmost bit of the imaginary part is equal to the a_flag1
+      # If y_im happens to be zero, then use the bit of y_re
+      {y_re, y_im} = y.coeffs
+
+      y =
+        if (y_im > 0 and FieldMath.mod_int(y_im * 2, Constants.q()) != a_flag1) or
+             (y_im == 0 and FieldMath.mod_int(y_re * 2, Constants.q()) != a_flag1) do
+          FQ2.new(FieldMath.mul(y, -1).coeffs)
+        else
+          y
+        end
+
+      if not Curve.is_on_curve({x, y, FQ2.new({1, 0})}, Curve.b2()) do
+        raise "The given point is not on the twisted curve over FQ**2"
+      end
+
+      {x, y, FQ2.new({1, 0})}
     end
   end
 end

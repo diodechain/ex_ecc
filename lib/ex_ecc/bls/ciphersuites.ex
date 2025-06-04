@@ -1,336 +1,356 @@
 defmodule ExEcc.BLS.Ciphersuites.Base do
-  # This module defines the base behaviour for BLS ciphersuites.
-  # alias ExEcc.BLS.G2Primitives # Unused alias
-  # alias ExEcc.BLS.Hash # For hkdf_*, i2osp, os2ip
-  # alias ExEcc.BLS.HashToCurve # For hash_to_g2
-  # alias ExEcc.OptimizedBLS12381 # For G1, Z1, Z2, add, curve_order, final_exponentiate, multiply, neg, pairing
-  # alias ExEcc.Fields.OptimizedFieldElements # For FQ12.one()
+  alias ExEcc.OptimizedBLS12381.OptimizedCurve, as: Curve
+  alias ExEcc.OptimizedBLS12381.OptimizedPairing, as: Pairing
+  alias ExEcc.Fields.OptimizedBLS12381FQ12, as: FQ12
+  alias ExEcc.BLS.HashToCurve
+  alias ExEcc.BLS.G2Primitives
+  alias ExEcc.BLS.Hash
+  import While
 
-  # Placeholder types for eth_typing equivalents
-  @type bls_pubkey :: binary
-  @type bls_signature :: binary
+  @dst ""
+  def dst(), do: @dst
 
-  # --- Base Behaviour Definition ---
-  defmodule ValidationError do
-    defexception [:message]
+  def xmd_hash_function(), do: ExEcc.BLS.Hash.sha256_function()
+
+  #
+  # Input validation helpers
+  #
+  def _is_valid_privkey(privkey) do
+    is_integer(privkey) and privkey > 0 and privkey < Curve.curve_order()
   end
 
-  @callback sk_to_pk(privkey :: integer) :: {:ok, bls_pubkey} | {:error, any}
-  @callback key_gen(ikm :: binary, key_info :: binary) :: {:ok, integer} | {:error, any}
-  @callback key_validate(pk :: bls_pubkey) :: boolean
-  @callback sign(sk :: integer, message :: binary) :: {:ok, bls_signature} | {:error, any}
-  @callback verify(pk :: bls_pubkey, message :: binary, signature :: bls_signature) :: boolean
-  @callback aggregate(signatures :: list(bls_signature)) :: {:ok, bls_signature} | {:error, any}
-  @callback aggregate_verify(
-              pks :: list(bls_pubkey),
-              messages :: list(binary),
-              signature :: bls_signature
-            ) :: boolean
-  # POP specific callbacks if needed later
-  # @callback pop_prove(sk :: integer) :: {:ok, bls_signature} | {:error, any}
-  # @callback pop_verify(pk :: bls_pubkey, proof :: bls_signature) :: boolean
-  # @callback fast_aggregate_verify(pks :: list(bls_pubkey), message :: binary, signature :: bls_signature) :: boolean
+  def _is_valid_pubkey(pubkey) do
+    is_binary(pubkey) and byte_size(pubkey) == 48
+  end
 
-  defmacro __using__(_opts) do
-    quote do
-      # Common DST and hash function for many suites based on BLS12-381 G2 with SHA-256
-      @dst_default <<"">>
-      # Elixir's :crypto atom for sha256
-      @xmd_hash_function_default :sha256
+  def _is_valid_message(message) do
+    is_binary(message)
+  end
 
-      # Import common validation helpers or define them here
-      defp _is_valid_privkey(privkey) do
-        # curve_order_val = ExEcc.OptimizedBLS12381.curve_order()
-        # is_integer(privkey) and privkey > 0 and privkey < curve_order_val
-        :not_implemented_yet_valid_privkey
+  def _is_valid_signature(signature) do
+    # SV: minimal-pubkey-size
+    is_binary(signature) and byte_size(signature) == 96
+  end
+
+  @doc """
+  The SkToPk algorithm takes a secret key SK and outputs the
+  corresponding public key PK.
+
+  Raise `ValidationError` when there is input validation error.
+  """
+  def sk_to_pk(cls, privkey) do
+    if not cls._is_valid_privkey(privkey) do
+      raise "Invalid private key"
+    end
+
+    G2Primitives.g1_to_pubkey(Curve.multiply(Curve.g1(), privkey))
+  end
+
+  def key_gen(cls, ikm, key_info \\ <<>>) do
+    salt = "BLS-SIG-KEYGEN-SALT-"
+    sk = 0
+
+    reduce_while(sk, fn sk ->
+      if sk == 0 do
+        salt = cls.xmd_hash_function().fun.(salt)
+        prk = Hash.hkdf_extract(salt, ikm <> <<0>>)
+        # noqa: E741
+        l = ceil(1.5 * ceil(:math.log2(Curve.curve_order())) / 8)
+        okm = Hash.hkdf_expand(prk, key_info <> Hash.i2osp(l, 2), l)
+        {:cont, rem(Hash.os2ip(okm), Curve.curve_order())}
+      else
+        {:halt, sk}
+      end
+    end)
+  end
+
+  def key_validate(pk) do
+    pubkey_point =
+      try do
+        G2Primitives.pubkey_to_g1(pk)
+      rescue
+        _ -> false
       end
 
-      defp _is_valid_pubkey(pubkey) do
-        is_binary(pubkey) and byte_size(pubkey) == 48
+    cond do
+      pubkey_point == false -> false
+      Curve.is_inf(pubkey_point) -> false
+      not G2Primitives.subgroup_check(pubkey_point) -> false
+      true -> true
+    end
+  end
+
+  @doc """
+  The CoreSign algorithm computes a signature from SK, a secret key,
+  and message, an octet string.
+
+  Raise `ValidationError` when there is input validation error.
+  """
+  def _core_sign(cls, sk, message, dst) do
+    cond do
+      not cls._is_valid_privkey(sk) -> raise "Invalid secret key"
+      not cls._is_valid_message(message) -> raise "Invalid message"
+      true -> :ok
+    end
+
+    # Procedure
+    message_point = HashToCurve.hash_to_g2(message, dst, cls.xmd_hash_function)
+    signature_point = Curve.multiply(message_point, sk)
+    G2Primitives.g2_to_signature(signature_point)
+  end
+
+  def _core_verify(cls, pk, message, signature, dst) do
+    try do
+      # Inputs validation
+      cond do
+        not cls._is_valid_pubkey(pk) -> raise "Invalid public key"
+        not cls._is_valid_message(message) -> raise "Invalid message"
+        not cls._is_valid_signature(signature) -> raise "Invalid signature"
+        true -> :ok
       end
 
-      defp _is_valid_message(message) do
-        is_binary(message)
+      # Procedure
+      if not key_validate(pk) do
+        raise "Invalid public key"
       end
 
-      defp _is_valid_signature(signature) do
-        is_binary(signature) and byte_size(signature) == 96
+      signature_point = G2Primitives.signature_to_g2(signature)
+
+      if not G2Primitives.subgroup_check(signature_point) do
+        false
+      else
+        final_exponentiation =
+          Pairing.final_exponentiate(
+            Pairing.pairing(
+              signature_point,
+              Curve.g1(),
+              final_exponentiate: false
+            ) *
+              Pairing.pairing(
+                HashToCurve.hash_to_g2(message, dst, cls.xmd_hash_function),
+                Curve.neg(G2Primitives.pubkey_to_g1(pk)),
+                final_exponentiate: false
+              )
+          )
+
+        final_exponentiation == FQ12.one()
+      end
+    rescue
+      _ -> false
+    end
+  end
+
+  @doc """
+  The Aggregate algorithm aggregates multiple signatures into one.
+
+  Raise `ValidationError` when there is input validation error.
+  """
+  def aggregate(cls, signatures) do
+    # Preconditions
+    if length(signatures) < 1 do
+      raise "Insufficient number of signatures. (n < 1)"
+    end
+
+    # Inputs validation
+    for signature <- signatures do
+      if not cls._is_valid_signature(signature) do
+        raise "Invalid signature"
+      end
+    end
+
+    # Procedure
+    # Seed with the point at infinity
+    Enum.reduce(signatures, Curve.z2(), fn signature, aggregate ->
+      signature_point = G2Primitives.signature_to_g2(signature)
+      Curve.add(aggregate, signature_point)
+    end)
+    |> G2Primitives.g2_to_signature()
+  end
+
+  def _core_aggregate_verify(cls, pks, messages, signature, dst) do
+    try do
+      # Inputs validation
+      for pk <- pks do
+        if not cls._is_valid_pubkey(pk) do
+          raise "Invalid public key"
+        end
       end
 
-      # --- Default Implementations (can be overridden by specific ciphersuites) ---
-      def sk_to_pk(privkey) do
-        # unless _is_valid_privkey(privkey), do: {:error, %ValidationError{message: "Invalid private key"}}
-        # pubkey_point = ExEcc.OptimizedBLS12381.multiply(ExEcc.OptimizedBLS12381.g1(), privkey)
-        # {:ok, G2Primitives.g1_to_pubkey(pubkey_point)}
-        :not_implemented_yet_sk_to_pk
+      for message <- messages do
+        if not cls._is_valid_message(message) do
+          raise "Invalid message"
+        end
       end
 
-      def key_gen(ikm, key_info \\ <<"">>) do
-        # salt_prefix = "BLS-SIG-KEYGEN-SALT-"
-        # L = :math.ceil((1.5 * :math.ceil(:math.log2(ExEcc.OptimizedBLS12381.curve_order()))) / 8) |> round()
-        # Loop for SK != 0:
-        #   salt = :crypto.hash(@xmd_hash_function_default, salt_prefix <> previous_salt_hash_if_any)
-        #   prk = ExEcc.BLS.Hash.hkdf_extract(salt, ikm <> <<0>>)
-        #   okm = ExEcc.BLS.Hash.hkdf_expand(prk, key_info <> ExEcc.BLS.Hash.i2osp(L, 2), L)
-        #   sk = rem(ExEcc.BLS.Hash.os2ip(okm), ExEcc.OptimizedBLS12381.curve_order())
-        # {:ok, sk}
-        :not_implemented_yet_key_gen
+      if length(pks) != length(messages) do
+        raise "Inconsistent number of PKs and messages"
       end
 
-      def key_validate(pk) do
-        # try do
-        #   pubkey_point = G2Primitives.pubkey_to_g1(pk)
-        #   cond do
-        #     ExEcc.OptimizedBLS12381.is_inf(pubkey_point) -> false
-        #     not ExEcc.BLS.G2Primitives.subgroup_check(pubkey_point) -> false
-        #     true -> true
-        #   end
-        # rescue
-        #   _e in [ExEcc.BLS.Ciphersuites.ValidationError, ArgumentError, MatchError] -> false
-        # end
-        :not_implemented_yet_key_validate
+      if not cls._is_valid_signature(signature) do
+        raise "Invalid signature"
       end
 
-      # _core_sign needs the specific DST for the ciphersuite.
-      # Each ciphersuite module will define its Sign and pass its specific DST.
-      def _core_sign(sk, message, dst_for_suite) do
-        # unless _is_valid_privkey(sk), do: {:error, %ValidationError{message: "Invalid secret key"}}
-        # unless _is_valid_message(message), do: {:error, %ValidationError{message: "Invalid message"}}
-
-        # message_point = ExEcc.BLS.HashToCurve.hash_to_g2(message, dst_for_suite) # Assumes SHA256
-        # signature_point = ExEcc.OptimizedBLS12381.multiply(message_point, sk)
-        # {:ok, G2Primitives.g2_to_signature(signature_point)}
-        :not_implemented_yet_core_sign
+      # Preconditions
+      if length(pks) < 1 do
+        raise "Insufficient number of PKs. (n < 1)"
       end
 
-      # _core_verify also needs specific DST.
-      def _core_verify(pk, message, signature, dst_for_suite) do
-        # try do
-        #   unless _is_valid_pubkey(pk), do: raise ValidationError, message: "Invalid public key"
-        #   unless _is_valid_message(message), do: raise ValidationError, message: "Invalid message"
-        #   unless _is_valid_signature(signature), do: raise ValidationError, message: "Invalid signature"
-        #   unless key_validate(pk), do: raise ValidationError, message: "Invalid public key (failed validation)"
+      # Procedure
+      signature_point = G2Primitives.signature_to_g2(signature)
 
-        #   signature_point = G2Primitives.signature_to_g2(signature)
-        #   unless ExEcc.BLS.G2Primitives.subgroup_check(signature_point), do: false
+      if not G2Primitives.subgroup_check(signature_point) do
+        false
+      else
+        aggregate =
+          Enum.reduce(Enum.zip(pks, messages), FQ12.one(), fn {pk, message}, aggregate ->
+            if not key_validate(pk) do
+              raise "Invalid public key"
+            end
 
-        #   # term1 = ExEcc.OptimizedBLS12381.pairing(signature_point, ExEcc.OptimizedBLS12381.g1(), final_exponentiate: false)
-        #   # msg_hash_point = ExEcc.BLS.HashToCurve.hash_to_g2(message, dst_for_suite)
-        #   # pubkey_g1_point = G2Primitives.pubkey_to_g1(pk)
-        #   # neg_pubkey_g1_point = ExEcc.OptimizedBLS12381.neg(pubkey_g1_point)
-        #   # term2 = ExEcc.OptimizedBLS12381.pairing(msg_hash_point, neg_pubkey_g1_point, final_exponentiate: false)
-        #   # product = ExEcc.Fields.OptimizedFieldElements.FQ12.mul(term1, term2) # Assuming FQ12 is the pairing result type
-        #   # final_exp_result = ExEcc.OptimizedBLS12381.final_exponentiate(product)
-        #   # ExEcc.Fields.OptimizedFieldElements.FQ12.eq(final_exp_result, ExEcc.Fields.OptimizedFieldElements.FQ12.one(ExEcc.OptimizedBLS12381.field_modulus()))
-        #   :not_implemented_core_verify_pairing_check
-        # rescue
-        #   _e in [ExEcc.BLS.Ciphersuites.ValidationError, ArgumentError, MatchError] -> false
-        # end
-        :not_implemented_yet_core_verify
+            pubkey_point = G2Primitives.pubkey_to_g1(pk)
+            message_point = HashToCurve.hash_to_g2(message, dst, cls.xmd_hash_function)
+
+            aggregate *
+              Pairing.pairing(
+                message_point,
+                pubkey_point,
+                final_exponentiate: false
+              )
+          end)
+
+        aggregate =
+          aggregate *
+            Pairing.pairing(signature_point, Curve.neg(Curve.g1()), final_exponentiate: false)
+
+        Pairing.final_exponentiate(aggregate) == FQ12.one()
       end
+    rescue
+      _ -> false
+    end
+  end
 
-      def aggregate(signatures) do
-        # if Enum.empty?(signatures), do: {:error, %ValidationError{message: "Insufficient number of signatures. (n < 1)"}}
-        # for sig <- signatures, unless _is_valid_signature(sig), do: {:error, %ValidationError{message: "Invalid signature in list"}}
+  def sign(cls, sk, message) do
+    _core_sign(cls, sk, message, cls.dst())
+  end
 
-        # aggregate_point = Enum.reduce(signatures, ExEcc.OptimizedBLS12381.z2(), fn sig_bytes, acc_point ->
-        #   sig_point = G2Primitives.signature_to_g2(sig_bytes)
-        #   ExEcc.OptimizedBLS12381.add(acc_point, sig_point)
-        # end)
-        # {:ok, G2Primitives.g2_to_signature(aggregate_point)}
-        :not_implemented_yet_aggregate
-      end
+  def verify(cls, pk, message, signature) do
+    _core_verify(cls, pk, message, signature, cls.dst())
+  end
+end
 
-      # _core_aggregate_verify needs specific DST
-      def _core_aggregate_verify(pks, messages, signature, dst_for_suite) do
-        # try do
-        #   # Validations for pks, messages, signature lengths, etc.
-        #   # ...
-        #   # signature_point = G2Primitives.signature_to_g2(signature)
-        #   # unless ExEcc.BLS.G2Primitives.subgroup_check(signature_point), do: false
+defmodule G2Basic do
+  alias ExEcc.BLS.Ciphersuites.Base
+  @dst "BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_"
+  def dst(), do: @dst
 
-        #   # aggregate_pairing_val = ExEcc.Fields.OptimizedFieldElements.FQ12.one(ExEcc.OptimizedBLS12381.field_modulus())
-        #   # Enum.zip(pks, messages)
-        #   # |> Enum.reduce_while(aggregate_pairing_val, fn {pk_bytes, msg_bytes}, acc_fq12 ->
-        #   #   unless key_validate(pk_bytes), do: {:halt, {:error, :invalid_pk}}
-        #   #   pubkey_g1_point = G2Primitives.pubkey_to_g1(pk_bytes)
-        #   #   msg_g2_point = ExEcc.BLS.HashToCurve.hash_to_g2(msg_bytes, dst_for_suite)
-        #   #   current_pairing = ExEcc.OptimizedBLS12381.pairing(msg_g2_point, pubkey_g1_point, final_exponentiate: false)
-        #   #   {:cont, ExEcc.Fields.OptimizedFieldElements.FQ12.mul(acc_fq12, current_pairing)}
-        #   # end)
-        #   # |> case do
-        #   #    {:error, :invalid_pk} -> false
-        #   #    acc_fq12 ->
-        #   #      sig_pairing_term = ExEcc.OptimizedBLS12381.pairing(signature_point, ExEcc.OptimizedBLS12381.neg(ExEcc.OptimizedBLS12381.g1()), final_exponentiate: false)
-        #   #      total_product = ExEcc.Fields.OptimizedFieldElements.FQ12.mul(acc_fq12, sig_pairing_term)
-        #   #      ExEcc.Fields.OptimizedFieldElements.FQ12.eq(ExEcc.OptimizedBLS12381.final_exponentiate(total_product), ExEcc.Fields.OptimizedFieldElements.FQ12.one(ExEcc.OptimizedBLS12381.field_modulus()))
-        #   # end
-        #   :not_implemented_core_agg_verify_pairing_check
-        # rescue
-        #   _e -> false # Catch all errors for verify functions to return boolean
-        # end
-        :not_implemented_yet_core_aggregate_verify
-      end
+  def aggregate_verify(cls, pks, messages, signature) do
+    Base._core_aggregate_verify(cls, pks, messages, signature, cls.dst())
+  end
+end
 
-      # Default Sign and Verify use the ciphersuite's specific DST
-      # These will be defined in each ciphersuite module by calling _core_sign / _core_verify with their @dst
-      # Removing these default implementations as they are defined by @callback and implemented by each ciphersuite.
-      # def sign(_sk, _message) do
-      #   # Ensure @dst is defined in the implementing module
-      #   # _core_sign(sk, message, @dst)
-      #   raise "Sign must be implemented by ciphersuite with its specific DST"
-      # end
+defmodule G2MessageAugmentation do
+  alias ExEcc.BLS.Ciphersuites.Base
+  @dst "BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_AUG_"
+  def dst(), do: @dst
 
-      # def verify(_pk, _message, _signature) do
-      #   # Ensure @dst is defined
-      #   # _core_verify(pk, message, signature, @dst)
-      #   raise "Verify must be implemented by ciphersuite with its specific DST"
-      # end
+  def sign(cls, sk, message) do
+    Base._core_sign(cls, sk, message, cls.dst())
+  end
 
-      # def aggregate_verify(_pks, _messages, _signature) do
-      #   raise "AggregateVerify must be implemented by the specific ciphersuite."
-      # end
+  def verify(cls, pk, message, signature) do
+    Base._core_verify(cls, pk, message, signature, cls.dst())
+  end
+
+  def aggregate_verify(cls, pks, messages, signature) do
+    if length(messages) != length(Enum.uniq(messages)) do
+      false
+    else
+      Base._core_aggregate_verify(cls, pks, messages, signature, cls.dst())
     end
   end
 end
 
-# --- Concrete Ciphersuite Implementations ---
+defmodule G2ProofOfPossession do
+  alias ExEcc.BLS.Ciphersuites.Base
+  alias ExEcc.OptimizedBLS12381.OptimizedCurve, as: Curve
+  alias ExEcc.BLS.G2Primitives
+  @dst "BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_"
+  def dst(), do: @dst
+  @pop_tag "BLS_POP_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_"
+  def pop_tag(), do: @pop_tag
 
-defmodule ExEcc.BLS.Ciphersuites.G2Basic do
-  use ExEcc.BLS.Ciphersuites.Base
-
-  # Implements the behaviour
-  @behaviour ExEcc.BLS.Ciphersuites.Base
-
-  @dst <<"BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_">>
-  # @xmd_hash_function :sha256 (inherited)
-
-  @impl true
-  def sign(sk, message) do
-    _core_sign(sk, message, @dst)
-  end
-
-  @impl true
-  def verify(pk, message, signature) do
-    _core_verify(pk, message, signature, @dst)
-  end
-
-  @impl true
-  def aggregate_verify(pks, messages, signature) do
-    # For G2Basic, AggregateVerify is _CoreAggregateVerify with its own DST
-    _core_aggregate_verify(pks, messages, signature, @dst)
-  end
-end
-
-defmodule ExEcc.BLS.Ciphersuites.G2MessageAugmentation do
-  @moduledoc """
-  Implementation of the G2 message augmentation ciphersuite.
+  @doc """
+  Note: PopVerify is a precondition for -Verify APIs
+  However, it's difficult to verify it with the API interface in runtime.
+  To ensure KeyValidate has been checked, we check it in the input validation.
+  See https://github.com/cfrg/draft-irtf-cfrg-bls-signature/issues/27 for
+  the discussion.
   """
-
-  use ExEcc.BLS.Ciphersuites.Base
-  @behaviour ExEcc.BLS.Ciphersuites.Base
-
-  @dst <<"BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_AUG_">>
-
-  def dst, do: @dst
-
-  @impl true
-  # Parameters unused in placeholder
-  def sign(_sk, _message) do
-    # In AUG, message for _CoreSign is PK || message
-    # Need to get PK from SK first.
-    # {:ok, pk_bytes} = sk_to_pk(sk) # Assuming sk_to_pk is implemented and returns {:ok, bytes}
-    # augmented_message = pk_bytes <> message
-    # _core_sign(sk, augmented_message, @dst)
-    :not_implemented_aug_sign
+  def is_valid_pubkey(pubkey) do
+    Base._is_valid_pubkey(pubkey) and Base.key_validate(pubkey)
   end
 
-  @impl true
-  # Parameters unused in placeholder
-  def verify(_pk, _message, _signature) do
-    # augmented_message = pk <> message # pk is already bytes here
-    # _core_verify(pk, augmented_message, signature, @dst)
-    :not_implemented_aug_verify
+  def aggregate_verify(cls, pks, messages, signature) do
+    Base._core_aggregate_verify(cls, pks, messages, signature, cls.dst())
   end
 
-  @impl true
-  # Parameters unused in placeholder
-  def aggregate_verify(_pks, _messages, _signature) do
-    # augmented_messages = Enum.zip_with(pks, messages, fn pk_bytes, msg_bytes -> pk_bytes <> msg_bytes end)
-    :not_implemented_aug_agg_verify
+  def pop_prove(cls, sk) do
+    pubkey = Base.sk_to_pk(cls, sk)
+    Base._core_sign(cls, sk, pubkey, cls.pop_tag())
   end
-end
 
-defmodule ExEcc.BLS.Ciphersuites.G2ProofOfPossession do
-  @moduledoc """
-  Implementation of the G2 proof of possession ciphersuite.
+  def pop_verify(cls, pk, proof) do
+    Base._core_verify(cls, pk, pk, proof, cls.pop_tag())
+  end
+
+  @doc """
+  Aggregate the public keys.
+
+  Raise `ValidationError` when there is input validation error.
   """
+  def aggregate_pk(pks) do
+    if length(pks) < 1 do
+      raise "Insufficient number of PKs. (n < 1)"
+    end
 
-  use ExEcc.BLS.Ciphersuites.Base
-  # Explicitly define behaviour
-  @behaviour ExEcc.BLS.Ciphersuites.Base
-
-  @dst <<"BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_">>
-  # Tag for PoP
-  @pop_tag <<"BLS_POP_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_">>
-
-  def dst, do: @dst
-  def pop_tag, do: @pop_tag
-
-  # Regular Sign/Verify/AggregateVerify still use @dst
-  @impl true
-  # Parameters unused in placeholder
-  def sign(_sk, _message) do
-    # _core_sign(sk, message, @dst)
-    :not_implemented_pop_sign
+    Enum.reduce(pks, Curve.z1(), fn pk, aggregate ->
+      pubkey_point = G2Primitives.pubkey_to_g1(pk)
+      Curve.add(aggregate, pubkey_point)
+    end)
+    |> G2Primitives.g1_to_pubkey()
   end
 
-  @impl true
-  # Parameters unused in placeholder
-  def verify(_pk, _message, _signature) do
-    # _core_verify(pk, message, signature, @dst)
-    :not_implemented_pop_verify
+  def fast_aggregate_verify(pks, message, signature) do
+    try do
+      # Inputs validation
+      for pk <- pks do
+        if not Base._is_valid_pubkey(pk) do
+          raise "Invalid public key"
+        end
+      end
+
+      if not Base._is_valid_message(message) do
+        raise "Invalid message"
+      end
+
+      if not Base._is_valid_signature(signature) do
+        raise "Invalid signature"
+      end
+
+      # Preconditions
+      if length(pks) < 1 do
+        raise "Insufficient number of PKs. (n < 1)"
+      end
+
+      # Procedure
+      aggregate_pubkey = aggregate_pk(pks)
+      Base.verify(__MODULE__, aggregate_pubkey, message, signature)
+    rescue
+      _ -> false
+    end
   end
 
-  @impl true
-  # Parameters unused in placeholder
-  def aggregate_verify(_pks, _messages, _signature) do
-    # _core_aggregate_verify(pks, messages, signature, @dst)
-    :not_implemented_pop_aggregate_verify
-  end
-
-  # PoP specific functions (these would be the @callback PopProve, PopVerify etc. if defined in Base)
-  # For now, implementing directly here.
-  # These use @_pop_tag as their DST.
-
-  # Parameter unused in placeholder
-  def pop_prove(_sk) do
-    # {:ok, pk_bytes} = sk_to_pk(sk) # This should give bytes
-    # # The message to PopProve is the public key itself.
-    # _core_sign(sk, pk_bytes, @_pop_tag) # Using the POP tag as DST
-    :not_implemented_pop_prove
-  end
-
-  # Parameters unused in placeholder
-  def pop_verify(_pk, _proof) do
-    # # The message to PopVerify is the public key itself.
-    # _core_verify(pk, pk, proof, @_pop_tag) # pk is bytes, using POP tag
-    :not_implemented_pop_verify_with_pop_tag
-  end
-
-  # Parameters unused in placeholder
-  def fast_aggregate_verify(_pks, _message, _signature) do
-    # # This one is more complex. It's like _core_aggregate_verify but all messages are the same.
-    # # It also checks that all PKs have a valid PoP.
-    # # For now, placeholder.
-    # # unless Enum.all?(pks, &pop_verify(&1, pop_prove( ??? how to get SK for pk ??? ))), do: false
-    # # A naive way would be to require proofs to be passed in, but that's not the API.
-    # # The original py_ecc passes `pop_verify_ σύν_pk_and_proof` to the aggregate verify primitive,
-    # # which implies proofs are somehow available or derived.
-    # # This needs careful review of the spec for FastAggregateVerify.
-    # # For now, just use the main @_dst for the message part.
-    # # This is likely INCORRECT as it doesn't verify PoPs.
-    # _core_aggregate_verify(pks, List.duplicate(message, Enum.count(pks)), signature, @_dst)
-    :not_implemented_fast_aggregate_verify
-  end
+  defdelegate _is_valid_pubkey(pubkey), to: Base
+  defdelegate _is_valid_message(message), to: Base
+  defdelegate _is_valid_signature(signature), to: Base
 end

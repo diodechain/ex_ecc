@@ -208,4 +208,21 @@ defmodule ExEcc.IntegerMath do
   def sgn0(a), do: if(a < 0, do: -1, else: 1)
   def mod_int(a, b), do: rem(a, b)
   def type(_), do: :int
+
+  def pow(integer, exponent, modulus) when is_integer(exponent) and is_integer(modulus) do
+    cond do
+      exponent == 0 ->
+        1
+
+      exponent == 1 ->
+        integer
+
+      rem(exponent, 2) == 0 ->
+        pow(integer * integer, Kernel.div(exponent, 2))
+
+      true ->
+        pow(integer * integer, Kernel.div(exponent, 2)) * integer
+    end
+    |> rem(modulus)
+  end
 end

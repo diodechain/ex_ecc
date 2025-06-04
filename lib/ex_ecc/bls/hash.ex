@@ -85,6 +85,10 @@ defmodule ExEcc.BLS.Hash do
     defstruct [:digest_size, :block_size, :fun]
   end
 
+  def sha256_function() do
+    %Hash{digest_size: 32, block_size: 64, fun: &sha256/1}
+  end
+
   def expand_message_xmd(msg, dst, len_in_bytes, %Hash{} = hash_function) do
     b_in_bytes = hash_function.digest_size
     r_in_bytes = hash_function.block_size
