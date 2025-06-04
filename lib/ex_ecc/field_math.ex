@@ -30,14 +30,7 @@ defmodule ExEcc.FieldMath do
 
   def new(fq, val) do
     parent = resolve(parent(fq), :new, 2)
-
-    try do
-      parent.new(fq, val)
-    rescue
-      error ->
-        IO.inspect(error, label: "error")
-        reraise error, __STACKTRACE__
-    end
+    parent.new(fq, val)
   end
 
   def add(a, b) when is_integer(a) and not is_integer(b), do: call(:add, b, a)
@@ -228,10 +221,10 @@ defmodule ExEcc.IntegerMath do
         integer
 
       rem(exponent, 2) == 0 ->
-        pow(integer * integer, Kernel.div(exponent, 2))
+        pow(rem(integer * integer, modulus), Kernel.div(exponent, 2), modulus)
 
       true ->
-        pow(integer * integer, Kernel.div(exponent, 2)) * integer
+        pow(rem(integer * integer, modulus), Kernel.div(exponent, 2), modulus) * integer
     end
     |> rem(modulus)
   end

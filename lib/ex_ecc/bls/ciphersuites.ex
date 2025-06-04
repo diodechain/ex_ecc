@@ -5,6 +5,7 @@ defmodule ExEcc.BLS.Ciphersuites do
   alias ExEcc.BLS.HashToCurve
   alias ExEcc.BLS.G2Primitives
   alias ExEcc.BLS.Hash
+  require Logger
   import While
 
   defmodule Base do
@@ -70,7 +71,9 @@ defmodule ExEcc.BLS.Ciphersuites do
         try do
           G2Primitives.pubkey_to_g1(pk)
         rescue
-          _ -> false
+          error ->
+            Logger.error("Error in key_validate: #{inspect(error)}")
+            false
         end
 
       cond do
@@ -137,7 +140,9 @@ defmodule ExEcc.BLS.Ciphersuites do
           final_exponentiation == FQ12.one()
         end
       rescue
-        _ -> false
+        error ->
+          Logger.error("Error in _core_verify: #{inspect(error)}")
+          false
       end
     end
 
@@ -226,7 +231,9 @@ defmodule ExEcc.BLS.Ciphersuites do
           Pairing.final_exponentiate(aggregate) == FQ12.one()
         end
       rescue
-        _ -> false
+        error ->
+          Logger.error("Error in _core_aggregate_verify: #{inspect(error)}")
+          false
       end
     end
 
@@ -363,7 +370,9 @@ defmodule ExEcc.BLS.Ciphersuites do
         aggregate_pubkey = aggregate_pk(pks)
         Base.verify(__MODULE__, aggregate_pubkey, message, signature)
       rescue
-        _ -> false
+        error ->
+          Logger.error("Error in fast_aggregate_verify: #{inspect(error)}")
+          false
       end
     end
 
