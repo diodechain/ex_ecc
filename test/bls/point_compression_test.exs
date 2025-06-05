@@ -30,7 +30,6 @@ defmodule ExEcc.BLS.PointCompressionTest do
 
       for {pt, on_curve, is_infinity} <- test_cases do
         pt = pt.()
-        IO.puts("PT: #{inspect(pt)}")
         assert Curve.is_on_curve(pt, Curve.b()) == on_curve
         z = PC.compress_g1(pt)
 
