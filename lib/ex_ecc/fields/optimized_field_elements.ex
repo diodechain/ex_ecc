@@ -307,7 +307,6 @@ defmodule ExEcc.Fields.OptimizedFQP do
 
     reduce_while({o, other, fqp}, fn {o, other, t} ->
       if other > 0 do
-        IO.inspect({o, t, other, (other &&& 1) == 1}, label: "POW-LOOP")
         o = if (other &&& 1) == 1, do: FieldMath.mul(o, t), else: o
         {:cont, {o, other >>> 1, FieldMath.mul(t, t)}}
       else
