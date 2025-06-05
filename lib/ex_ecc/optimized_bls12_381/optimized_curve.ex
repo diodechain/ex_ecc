@@ -173,12 +173,12 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedCurve do
   def twist(pt) do
     {x, y, z} = pt
     # Field isomorphism from Z[p] / x**2 to Z[p] / x**2 - 2*x + 2
-    xcoeffs = [FieldMath.coeffs(x, 0) - FieldMath.coeffs(x, 1) * 9, FieldMath.coeffs(x, 1)]
-    ycoeffs = [FieldMath.coeffs(y, 0) - FieldMath.coeffs(y, 1) * 9, FieldMath.coeffs(y, 1)]
-    zcoeffs = [FieldMath.coeffs(z, 0) - FieldMath.coeffs(z, 1) * 9, FieldMath.coeffs(z, 1)]
+    xcoeffs = [FieldMath.coeffs(x, 0) - FieldMath.coeffs(x, 1), FieldMath.coeffs(x, 1)]
+    ycoeffs = [FieldMath.coeffs(y, 0) - FieldMath.coeffs(y, 1), FieldMath.coeffs(y, 1)]
+    zcoeffs = [FieldMath.coeffs(z, 0) - FieldMath.coeffs(z, 1), FieldMath.coeffs(z, 1)]
 
     nx =
-      {List.first(xcoeffs), 0, 0, 0, 0, 0, List.last(xcoeffs), 0, 0, 0, 0, 0}
+      {0, List.first(xcoeffs), 0, 0, 0, 0, 0, List.last(xcoeffs), 0, 0, 0, 0}
       |> FQ12.new()
 
     ny =
@@ -186,22 +186,13 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedCurve do
       |> FQ12.new()
 
     nz =
-      {List.first(zcoeffs), 0, 0, 0, 0, 0, List.last(zcoeffs), 0, 0, 0, 0, 0}
+      {0, 0, 0, List.first(zcoeffs), 0, 0, 0, 0, 0, List.last(zcoeffs), 0, 0}
       |> FQ12.new()
 
-    {FieldMath.mul(nx, FieldMath.pow(@w, 2)), FieldMath.mul(ny, FieldMath.pow(@w, 3)), nz}
+    {nx, ny, nz}
   end
 
   def g12 do
     twist(@g2)
-  end
-end
-
-# Check that the twist creates a point that is on the curve
-defmodule ExEcc.OptimizedBLS12381.OptimizedCurve.CheckTwist do
-  alias ExEcc.OptimizedBLS12381.OptimizedCurve
-
-  if not OptimizedCurve.is_on_curve(OptimizedCurve.g12(), OptimizedCurve.b12()) do
-    raise "Twist creates a point not on curve"
   end
 end

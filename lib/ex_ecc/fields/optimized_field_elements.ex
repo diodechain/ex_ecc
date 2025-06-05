@@ -172,6 +172,7 @@ defmodule ExEcc.Fields.OptimizedFQP do
   alias ExEcc.FieldMath
   alias __MODULE__, as: FQP
   import While
+  import Bitwise
 
   defstruct coeffs: {}, modulus_coeffs: {}, degree: 0, field_modulus: nil, mc_tuples: []
 
@@ -200,7 +201,10 @@ defmodule ExEcc.Fields.OptimizedFQP do
     degree = length(modulus_coeffs)
 
     # Precompute tuples of (i, c) for non-zero coefficients
-    mc_tuples = Enum.with_index(modulus_coeffs) |> Enum.filter(fn {c, _} -> c != 0 end)
+    mc_tuples =
+      Enum.with_index(modulus_coeffs)
+      |> Enum.filter(fn {c, _} -> c != 0 end)
+      |> Enum.map(fn {c, i} -> {i, c} end)
 
     %{
       fqp
@@ -256,7 +260,6 @@ defmodule ExEcc.Fields.OptimizedFQP do
           |> Enum.reduce(b, fn {eli, elj, i, j}, b ->
             List.update_at(b, i + j, fn val -> val + eli * elj end)
           end)
-          |> IO.inspect(label: "MUL-MID-RESULT")
 
         # MID = len(self.coeffs) // 2
         Enum.reduce((FieldMath.degree(fqp) - 2)..0//-1, b, fn exp, b ->
@@ -296,21 +299,48 @@ defmodule ExEcc.Fields.OptimizedFQP do
     end
   end
 
-  def pow(fqp, other) do
-    cond do
-      other == 0 ->
-        List.to_tuple([1] ++ List.duplicate(0, FieldMath.degree(fqp) - 1))
-        |> FieldMath.type(fqp).new()
+  def pow(fqp, other) when is_integer(other) do
+    o =
+      [1 | List.duplicate(0, FieldMath.degree(fqp) - 1)]
+      |> List.to_tuple()
+      |> FieldMath.type(fqp).new()
 
-      other == 1 ->
-        FieldMath.type(fqp).new(FieldMath.coeffs(fqp))
+    reduce_while({o, other, fqp}, fn {o, other, t} ->
+      if other > 0 do
+        IO.inspect({o, t, other, (other &&& 1) == 1}, label: "POW-LOOP")
+        o = if (other &&& 1) == 1, do: FieldMath.mul(o, t), else: o
+        {:cont, {o, other >>> 1, FieldMath.mul(t, t)}}
+      else
+        {:halt, o}
+      end
+    end)
+  end
 
-      Integer.mod(other, 2) == 0 ->
-        FieldMath.pow(FieldMath.mul(fqp, fqp), Kernel.div(other, 2))
+  def optimized_poly_rounded_div(fqp, a, b) do
+    dega = Utils.deg(a)
+    degb = Utils.deg(b)
+    temp = Enum.to_list(a)
+    o = List.duplicate(0, tuple_size(dega))
 
-      true ->
-        FieldMath.pow(FieldMath.mul(fqp, fqp), Kernel.div(other, 2)) |> FieldMath.mul(fqp)
-    end
+    {o, _temp} =
+      Enum.reduce((dega - degb)..0//-1, {o, temp}, fn i, {o, temp} ->
+        o =
+          List.update_at(o, i, fn val ->
+            val +
+              Enum.at(temp, degb + i) *
+                Utils.prime_field_inv(Enum.at(b, degb), FieldMath.field_modulus(fqp))
+          end)
+
+        temp =
+          Enum.reduce(0..degb, temp, fn c, temp ->
+            List.update_at(temp, c + i, fn val -> val - Enum.at(o, c) end)
+          end)
+
+        {o, temp}
+      end)
+
+    Enum.map(o, &Integer.mod(&1, FieldMath.field_modulus(fqp)))
+    |> Enum.take(Utils.deg(o) + 1)
   end
 
   def inv(fqp) do
@@ -327,7 +357,7 @@ defmodule ExEcc.Fields.OptimizedFQP do
     {lm, low, _hm, _high} =
       reduce_while({lm, low, hm, high}, fn {lm, low, hm, high} ->
         if Utils.deg(low) > 0 do
-          r = Utils.poly_rounded_div(high, low)
+          r = optimized_poly_rounded_div(fqp, high, low)
           r = r ++ List.duplicate(0, FieldMath.degree(fqp) + 1 - length(r))
           nm = hm
           new = high
@@ -387,25 +417,25 @@ defmodule ExEcc.Fields.OptimizedFQP do
     |> FieldMath.type(fqp).new()
   end
 
+  # Optimized sgn0 implementation
+  def sgn0(fqp) do
+    {sign, _zero} =
+      FieldMath.coeffs_list(fqp)
+      |> Enum.reduce({false, true}, fn x_i, {sign, zero} ->
+        sign_i = FieldMath.mod_int(x_i, 2) == 1
+        zero_i = x_i == 0
+        {sign || (zero && sign_i), zero && zero_i}
+      end)
+
+    if sign, do: 1, else: 0
+  end
+
   def one(cls) do
     cls.new(List.to_tuple([1] ++ List.duplicate(0, FieldMath.degree(cls) - 1)))
   end
 
   def zero(cls) do
     cls.new(List.to_tuple(List.duplicate(0, FieldMath.degree(cls))))
-  end
-
-  # Optimized sgn0 implementation
-  def sgn0(fqp) do
-    {sign, _zero} =
-      FieldMath.coeffs_list(fqp)
-      |> Enum.reduce({0, 1}, fn x_i, {sign, zero} ->
-        sign_i = Integer.mod(x_i, 2)
-        zero_i = x_i == 0
-        {sign || (zero && sign_i), zero && zero_i}
-      end)
-
-    sign
   end
 end
 
