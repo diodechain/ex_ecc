@@ -44,7 +44,7 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedSWU do
 
     y =
       if not is_root do
-        FieldMath.mul(FieldMath.mul(y, FieldMath.pow(t, 3)), Constants.sqrt_minus_11_cubed())
+        FieldMath.mul(y, FieldMath.pow(t, 3), Constants.sqrt_minus_11_cubed())
       else
         y
       end
@@ -131,7 +131,7 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedSWU do
 
         temp1 =
           FieldMath.sub(
-            FieldMath.mul(FieldMath.mul(eta_sqrt_candidate, eta_sqrt_candidate), v),
+            FieldMath.mul(eta_sqrt_candidate, eta_sqrt_candidate, v),
             u_transformed
           )
 
@@ -176,7 +176,7 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedSWU do
       FieldMath.mul(temp, FieldMath.pow(FieldMath.mul(temp, FieldMath.pow(v, 2)), exponent))
 
     is_valid_root =
-      FieldMath.sub(FieldMath.mul(FieldMath.mul(result, result), v), u) ==
+      FieldMath.sub(FieldMath.mul(result, result, v), u) ==
         FieldMath.type(u).zero()
 
     {is_valid_root, result}
@@ -204,7 +204,7 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedSWU do
         sqrt_candidate = FieldMath.mul(root, gamma)
 
         check_val =
-          FieldMath.sub(FieldMath.mul(FieldMath.mul(sqrt_candidate, sqrt_candidate), v), u)
+          FieldMath.sub(FieldMath.mul(sqrt_candidate, sqrt_candidate, v), u)
 
         if check_val == FieldMath.type(check_val).zero() and not acc_is_valid do
           {:halt, {true, sqrt_candidate}}

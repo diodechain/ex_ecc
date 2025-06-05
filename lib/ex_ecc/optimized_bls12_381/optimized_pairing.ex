@@ -123,13 +123,13 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedPairing do
               FieldMath.sub(FieldMath.mul(yt, z1), FieldMath.mul(y1, zt))
             )
           ),
-          FieldMath.mul(FieldMath.mul(m_denominator, zt), z1)
+          FieldMath.mul(m_denominator, zt, z1)
         }
 
       FieldMath.eq(m_numerator, zero) ->
         # m = 3(x/z)^2 / 2(y/z), multiply num and den by z**2
-        m_numerator = FieldMath.mul(FieldMath.mul(FQ.new(3), x1), x1)
-        m_denominator = FieldMath.mul(FieldMath.mul(FQ.new(2), y1), z1)
+        m_numerator = FieldMath.mul(FQ.new(3), x1, x1)
+        m_denominator = FieldMath.mul(FQ.new(2), y1, z1)
 
         {
           FieldMath.sub(
@@ -142,7 +142,7 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedPairing do
               FieldMath.sub(FieldMath.mul(yt, z1), FieldMath.mul(y1, zt))
             )
           ),
-          FieldMath.mul(FieldMath.mul(m_denominator, zt), z1)
+          FieldMath.mul(m_denominator, zt, z1)
         }
 
       true ->
@@ -180,8 +180,8 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedPairing do
         {f_num, f_den, r, twist_r},
         fn v, {f_num, f_den, r, twist_r} ->
           {n, d} = linefunc(twist_r, twist_r, cast_p)
-          f_num = FieldMath.mul(FieldMath.mul(f_num, f_num), n)
-          f_den = FieldMath.mul(FieldMath.mul(f_den, f_den), d)
+          f_num = FieldMath.mul(f_num, f_num, n)
+          f_den = FieldMath.mul(f_den, f_den, d)
           r = Curve.double(r)
           twist_r = Curve.twist(r)
 

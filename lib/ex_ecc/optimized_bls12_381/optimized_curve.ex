@@ -81,32 +81,24 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedCurve do
   end
 
   # Elliptic curve doubling
-  def double(pt) do
-    {x, y, z} = pt
-    w = FieldMath.mul(3, FieldMath.mul(x, x))
+  def double({x, y, z}) do
+    w = FieldMath.mul(3, x, x)
     s = FieldMath.mul(y, z)
-    b = FieldMath.mul(x, y) |> FieldMath.mul(s)
+    b = FieldMath.mul(x, y, s)
     h = FieldMath.sub(FieldMath.mul(w, w), FieldMath.mul(8, b))
     s_squared = FieldMath.mul(s, s)
-    newx = FieldMath.mul(2, FieldMath.mul(h, s))
+    newx = FieldMath.mul(2, h, s)
 
     newy =
-      FieldMath.sub(
-        FieldMath.sub(
-          FieldMath.mul(w, FieldMath.sub(FieldMath.mul(4, b), h)),
-          FieldMath.mul(8, FieldMath.mul(y, y)) |> FieldMath.mul(s_squared)
-        ),
-        s_squared
-      )
+      FieldMath.mul(w, FieldMath.mul(4, b) |> FieldMath.sub(h))
+      |> FieldMath.sub(FieldMath.mul(8, y, y, s_squared))
 
-    newz = FieldMath.mul(8, s) |> FieldMath.mul(s_squared)
+    newz = FieldMath.mul(8, s, s_squared)
     {newx, newy, newz}
   end
 
   # Elliptic curve addition
-  def add(p1, p2) do
-    {x1, y1, z1} = p1
-    {x2, y2, z2} = p2
+  def add({x1, y1, z1} = p1, {x2, y2, z2} = p2) do
     {one, zero} = {FieldMath.type(x1).one(), FieldMath.type(x1).zero()}
 
     if FieldMath.eq(z1, zero) or FieldMath.eq(z2, zero) do
@@ -137,21 +129,15 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedCurve do
           w = FieldMath.mul(z1, z2)
 
           a =
-            FieldMath.sub(
-              FieldMath.sub(FieldMath.mul(u, u), v_cubed),
-              FieldMath.mul(2, v_squared_times_v2)
-            )
+            FieldMath.mul(u, u, w)
+            |> FieldMath.sub(v_cubed)
+            |> FieldMath.sub(FieldMath.mul(2, v_squared_times_v2))
 
           newx = FieldMath.mul(v, a)
 
           newy =
-            FieldMath.sub(
-              FieldMath.sub(
-                FieldMath.mul(u, FieldMath.sub(v_squared_times_v2, a)),
-                FieldMath.mul(v_cubed, u2)
-              ),
-              u2
-            )
+            FieldMath.mul(u, FieldMath.sub(v_squared_times_v2, a))
+            |> FieldMath.sub(FieldMath.mul(v_cubed, u2))
 
           newz = FieldMath.mul(v_cubed, w)
           {newx, newy, newz}
@@ -160,9 +146,7 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedCurve do
   end
 
   # Elliptic curve point multiplication
-  def multiply(pt, n) when is_integer(n) do
-    {x, _y, _z} = pt
-
+  def multiply({x, _y, _z} = pt, n) when is_integer(n) do
     cond do
       n == 0 -> {FieldMath.type(x).one(), FieldMath.type(x).one(), FieldMath.type(x).zero()}
       n == 1 -> pt

@@ -5,7 +5,6 @@ defmodule ExEcc.BLS.PointCompressionTest do
   alias ExEcc.Fields.OptimizedBLS12381FQ, as: FQ
   alias ExEcc.Fields.OptimizedBLS12381FQ2, as: FQ2
   alias ExEcc.OptimizedBLS12381.OptimizedCurve, as: Curve
-  alias ExEcc.IntegerMath, as: IntegerMath
   import Bitwise
 
   @pow_2_381 Constants.pow_2_381()
@@ -18,15 +17,20 @@ defmodule ExEcc.BLS.PointCompressionTest do
     test "compresses and decompresses points correctly" do
       test_cases = [
         # On curve points
-        {Curve.g1(), true, false},
-        {Curve.multiply(Curve.g1(), 5), true, false},
+        {fn -> Curve.g1() end, true, false},
+        {fn -> Curve.multiply(Curve.g1(), 1) end, true, false},
+        {fn -> Curve.multiply(Curve.g1(), 2) end, true, false},
+        {fn -> Curve.multiply(Curve.g1(), 3) end, true, false},
+        {fn -> Curve.multiply(Curve.g1(), 5) end, true, false},
         # Infinity point but still on curve
-        {Curve.z1(), true, true},
+        {fn -> Curve.z1() end, true, true},
         # Not on curve
-        {{FQ.new(5566), FQ.new(5566), FQ.new(1)}, false, nil}
+        {fn -> {FQ.new(5566), FQ.new(5566), FQ.new(1)} end, false, nil}
       ]
 
       for {pt, on_curve, is_infinity} <- test_cases do
+        pt = pt.()
+        IO.puts("PT: #{inspect(pt)}")
         assert Curve.is_on_curve(pt, Curve.b()) == on_curve
         z = PC.compress_g1(pt)
 

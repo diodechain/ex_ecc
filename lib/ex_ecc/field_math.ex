@@ -25,6 +25,12 @@ defmodule ExEcc.FieldMath do
       def new(fq \\ %__MODULE__{}, val) when is_integer(val) or is_tuple(val) do
         FieldMath.new(fq, val)
       end
+
+      defimpl Inspect, for: __MODULE__ do
+        def inspect(fq, _opts) do
+          "#{fq.n}"
+        end
+      end
     end
   end
 
@@ -37,6 +43,8 @@ defmodule ExEcc.FieldMath do
   def add(a, b), do: call(:add, a, b)
   def mul(a, b) when is_integer(a) and not is_integer(b), do: call(:mul, b, a)
   def mul(a, b), do: call(:mul, a, b)
+  def mul(a, b, c), do: mul(mul(a, b), c)
+  def mul(a, b, c, d), do: mul(mul(mul(a, b), c), d)
   def sub(a, b), do: call(:sub, a, b)
 
   def div(n, fqp) when is_integer(n) and not is_integer(fqp) do
