@@ -65,18 +65,11 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedCurve do
       true
     else
       {x, y, z} = pt
-      a = FieldMath.sub(FieldMath.mul(FieldMath.pow(y, 2), z), FieldMath.pow(x, 3))
-      b = FieldMath.mul(b, FieldMath.pow(z, 3))
 
       FieldMath.eq(
-        a,
-        b
+        FieldMath.mul(FieldMath.pow(y, 2), z) |> FieldMath.sub(FieldMath.pow(x, 3)),
+        FieldMath.mul(b, FieldMath.pow(z, 3))
       )
-
-      # FieldMath.eq(
-      #   FieldMath.sub(FieldMath.mul(FieldMath.pow(y, 2), z), FieldMath.pow(x, 3)),
-      #   FieldMath.mul(b, FieldMath.pow(z, 3))
-      # )
     end
   end
 

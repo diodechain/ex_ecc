@@ -249,16 +249,18 @@ defmodule ExEcc.Fields.OptimizedFQP do
         inner_enumerate = Enum.with_index(FieldMath.coeffs_list(other))
         self_enumerate = Enum.with_index(FieldMath.coeffs_list(fqp))
 
-        for {eli, i} <- self_enumerate, {elj, j} <- inner_enumerate do
-          {eli, elj, i, j}
-        end
-        |> Enum.reduce(b, fn {eli, elj, i, j}, b ->
-          List.update_at(b, i + j, fn val -> val + eli * elj end)
-        end)
+        b =
+          for {eli, i} <- self_enumerate, {elj, j} <- inner_enumerate do
+            {eli, elj, i, j}
+          end
+          |> Enum.reduce(b, fn {eli, elj, i, j}, b ->
+            List.update_at(b, i + j, fn val -> val + eli * elj end)
+          end)
+          |> IO.inspect(label: "MUL-MID-RESULT")
 
         # MID = len(self.coeffs) // 2
         Enum.reduce((FieldMath.degree(fqp) - 2)..0//-1, b, fn exp, b ->
-          [top | b] = b
+          {top, b} = List.pop_at(b, -1)
 
           FieldMath.mc_tuples(fqp)
           |> Enum.reduce(b, fn {i, c}, b ->

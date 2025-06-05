@@ -257,7 +257,7 @@ defmodule ExEcc.Fields.FQP do
         |> reduce_while(fn b ->
           if length(b) > FieldMath.degree(fqp) do
             exp = length(b) - FieldMath.degree(fqp) - 1
-            [top | b] = b
+            {top, b} = List.pop_at(b, -1)
 
             b =
               Enum.reduce(0..(FieldMath.degree(fqp) - 1), b, fn i, b ->

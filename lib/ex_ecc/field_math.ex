@@ -28,7 +28,11 @@ defmodule ExEcc.FieldMath do
 
       defimpl Inspect, for: __MODULE__ do
         def inspect(fq, _opts) do
-          "#{fq.n}"
+          if fq.n != nil do
+            "#{fq.n}"
+          else
+            "#{inspect(FieldMath.coeffs(fq))}"
+          end
         end
       end
     end
