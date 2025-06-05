@@ -131,7 +131,7 @@ defmodule ExEcc.BLS.Ciphersuites do
                 final_exponentiate: false
               ) *
                 Pairing.pairing(
-                  HashToCurve.hash_to_g2(message, dst, cls.xmd_hash_function),
+                  HashToCurve.hash_to_g2(message, dst, cls.xmd_hash_function()),
                   Curve.neg(G2Primitives.pubkey_to_g1(pk)),
                   final_exponentiate: false
                 )
@@ -214,7 +214,7 @@ defmodule ExEcc.BLS.Ciphersuites do
               end
 
               pubkey_point = G2Primitives.pubkey_to_g1(pk)
-              message_point = HashToCurve.hash_to_g2(message, dst, cls.xmd_hash_function)
+              message_point = HashToCurve.hash_to_g2(message, dst, cls.xmd_hash_function())
 
               aggregate *
                 Pairing.pairing(

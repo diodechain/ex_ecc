@@ -32,7 +32,7 @@ defmodule ExEcc.BLS.Ciphersuites.G2BasicTest do
 
   describe "sk_to_pk/1" do
     test "converts valid private key to public key" do
-      assert {:ok, _} = G2Basic.sk_to_pk(1)
+      assert is_binary(G2Basic.sk_to_pk(1))
     end
 
     test "fails with invalid private key" do
@@ -48,7 +48,7 @@ defmodule ExEcc.BLS.Ciphersuites.G2BasicTest do
 
   describe "sign/2" do
     test "signs message with valid private key" do
-      assert {:ok, _} = G2Basic.sign(1, @sample_message)
+      assert is_binary(G2Basic.sign(1, @sample_message))
     end
 
     test "fails with invalid inputs" do
@@ -70,9 +70,9 @@ defmodule ExEcc.BLS.Ciphersuites.G2BasicTest do
     test "aggregates valid signatures" do
       sig1 = G2Basic.sign(1, @sample_message)
       sig2 = G2Basic.sign(2, @sample_message)
-      assert {:ok, _} = G2Basic.aggregate([sig1])
-      assert {:ok, _} = G2Basic.aggregate([sig1, sig2])
-      assert {:ok, _} = G2Basic.aggregate([@z2_signature])
+      assert is_binary(G2Basic.aggregate([sig1]))
+      assert is_binary(G2Basic.aggregate([sig1, sig2]))
+      assert is_binary(G2Basic.aggregate([@z2_signature]))
     end
 
     test "fails with invalid inputs" do
