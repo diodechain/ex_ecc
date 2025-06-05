@@ -69,7 +69,7 @@ defmodule ExEcc.BLS.PointCompression do
 
     is_inf_pt = is_point_at_infinity(z)
 
-    if b_flag != (if is_inf_pt, do: 1, else: 0) do
+    if b_flag != if(is_inf_pt, do: 1, else: 0) do
       raise "b_flag should be #{if is_inf_pt, do: 1, else: 0}"
     end
 
@@ -202,7 +202,7 @@ defmodule ExEcc.BLS.PointCompression do
 
     is_inf_pt = is_point_at_infinity(z1, z2)
 
-    if b_flag1 != (if is_inf_pt, do: 1, else: 0) do
+    if b_flag1 != if(is_inf_pt, do: 1, else: 0) do
       raise "b_flag should be #{if is_inf_pt, do: 1, else: 0}"
     end
 

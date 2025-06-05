@@ -101,7 +101,8 @@ defmodule ExEcc.Secp256k1 do
           ny = Integer.mod(r_val * (u1h2 - nx) - s1 * h3, @p)
           nz = Integer.mod(h_val * z1 * z2, @p)
           # Ensure results are positive
-          {(nx + @p) |> Integer.mod(@p), (ny + @p) |> Integer.mod(@p), (nz + @p) |> Integer.mod(@p)}
+          {(nx + @p) |> Integer.mod(@p), (ny + @p) |> Integer.mod(@p),
+           (nz + @p) |> Integer.mod(@p)}
         end
     end
   end
