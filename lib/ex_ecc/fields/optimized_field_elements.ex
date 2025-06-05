@@ -319,7 +319,7 @@ defmodule ExEcc.Fields.OptimizedFQP do
     dega = Utils.deg(a)
     degb = Utils.deg(b)
     temp = Enum.to_list(a)
-    o = List.duplicate(0, tuple_size(dega))
+    o = List.duplicate(0, length(a))
 
     {o, _temp} =
       Enum.reduce((dega - degb)..0//-1, {o, temp}, fn i, {o, temp} ->

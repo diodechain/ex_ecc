@@ -124,14 +124,15 @@ defmodule ExEcc.BLS.PointCompression do
   def modular_squareroot_in_FQ2(value) do
     candidate_squareroot = FieldMath.pow(value, div(Constants.fq2_order() + 8, 16))
     check = FieldMath.div(FieldMath.pow(candidate_squareroot, 2), value)
+    eighth_roots = Tuple.to_list(Constants.eighth_roots_of_unity())
 
-    if check in Enum.take_every(Constants.eighth_roots_of_unity(), 2) do
+    if check in Enum.take_every(eighth_roots, 2) do
       x1 =
         FieldMath.div(
           candidate_squareroot,
-          Enum.at(
+          elem(
             Constants.eighth_roots_of_unity(),
-            FieldMath.div(Enum.find_index(Constants.eighth_roots_of_unity(), &(&1 == check)), 2)
+            FieldMath.div(Enum.find_index(eighth_roots, &(&1 == check)), 2)
           )
         )
 
