@@ -1,6 +1,6 @@
 defmodule ExEcc.BLS.G2CoreTest do
   use ExUnit.Case
-  alias ExEcc.BLS.G2Basic
+  alias ExEcc.BLS.Ciphersuites.G2Basic
   alias ExEcc.BLS.G2Primitives
   alias ExEcc.OptimizedBLS12381.OptimizedCurve, as: Curve
 
@@ -31,8 +31,8 @@ defmodule ExEcc.BLS.G2CoreTest do
       for privkey <- test_cases do
         msg = to_string(privkey)
         pub = G2Basic.sk_to_pk(privkey)
-        sig = G2Basic.core_sign(privkey, msg, G2Basic.dst())
-        assert G2Basic.core_verify(pub, msg, sig, G2Basic.dst())
+        sig = G2Basic._core_sign(privkey, msg, G2Basic.dst())
+        assert G2Basic._core_verify(pub, msg, sig, G2Basic.dst())
       end
     end
   end
@@ -70,10 +70,10 @@ defmodule ExEcc.BLS.G2CoreTest do
 
         signatures =
           Enum.zip(sks, messages)
-          |> Enum.map(fn {sk, msg} -> G2Basic.core_sign(sk, msg, G2Basic.dst()) end)
+          |> Enum.map(fn {sk, msg} -> G2Basic._core_sign(sk, msg, G2Basic.dst()) end)
 
         aggregate_signature = G2Basic.aggregate(signatures)
-        assert G2Basic.core_aggregate_verify(pks, messages, aggregate_signature, G2Basic.dst())
+        assert G2Basic._core_aggregate_verify(pks, messages, aggregate_signature, G2Basic.dst())
       end
     end
   end

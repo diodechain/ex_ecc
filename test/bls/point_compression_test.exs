@@ -6,6 +6,7 @@ defmodule ExEcc.BLS.PointCompressionTest do
   alias ExEcc.Fields.OptimizedBLS12381FQ2, as: FQ2
   alias ExEcc.OptimizedBLS12381.OptimizedCurve, as: Curve
   alias ExEcc.IntegerMath, as: IntegerMath
+  import Bitwise
 
   @pow_2_381 Constants.pow_2_381()
   @pow_2_382 Constants.pow_2_382()
@@ -176,7 +177,7 @@ defmodule ExEcc.BLS.PointCompressionTest do
         {{compressed_g2 |> elem(0), compressed_z2 |> elem(1) ||| 1 <<< 381},
          "z2 point value should be less than field modulus"},
         # z2 value >= field modulus
-        {{compressed_g2 |> elem(0), compressed_g2 |> (elem(1) + @q)},
+        {{compressed_g2 |> elem(0), (compressed_g2 |> elem(1)) + @q},
          "z2 point value should be less than field modulus"}
       ]
 
