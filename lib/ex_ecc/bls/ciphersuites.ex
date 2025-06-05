@@ -271,8 +271,12 @@ defmodule ExEcc.BLS.Ciphersuites do
     defdelegate xmd_hash_function(), to: Base
     def _core_sign(sk, message, dst), do: Base._core_sign(__MODULE__, sk, message, dst)
     defdelegate key_validate(pk), to: Base
-    def _core_verify(pk, message, signature, dst), do: Base._core_verify(__MODULE__, pk, message, signature, dst)
-    def _core_aggregate_verify(pks, messages, signature, dst), do: Base._core_aggregate_verify(__MODULE__, pks, messages, signature, dst)
+
+    def _core_verify(pk, message, signature, dst),
+      do: Base._core_verify(__MODULE__, pk, message, signature, dst)
+
+    def _core_aggregate_verify(pks, messages, signature, dst),
+      do: Base._core_aggregate_verify(__MODULE__, pks, messages, signature, dst)
   end
 
   defmodule G2MessageAugmentation do
