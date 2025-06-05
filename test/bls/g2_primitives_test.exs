@@ -5,6 +5,7 @@ defmodule ExEcc.BLS.G2PrimitivesTest do
 
   test "decompress G2 with no modular square root found" do
     invalid_signature = <<0xA0>> <> :binary.copy(<<0x11>>, 95)
+
     assert_raise RuntimeError, ~r/Failed to find a modular squareroot/, fn ->
       G2Primitives.signature_to_g2(invalid_signature)
     end
