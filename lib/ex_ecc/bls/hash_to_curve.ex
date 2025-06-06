@@ -19,7 +19,7 @@ defmodule ExEcc.BLS.HashToCurve do
     {u0, u1} = hash_to_field_fq2(message, 2, dst, hash_function)
     q0 = map_to_curve_g2(u0)
     q1 = map_to_curve_g2(u1)
-    r = ExEcc.OptimizedBLS12381.OptimizedCurve.add(q0, q1)
+    r = Curve.add(q0, q1)
     clear_cofactor_g2(r)
   end
 
@@ -43,7 +43,7 @@ defmodule ExEcc.BLS.HashToCurve do
           tv = binary_part(pseudo_random_bytes, elem_offset, Constants.hash_to_field_l())
 
           e ++
-            [Integer.mod(Hash.os2ip(tv), ExEcc.OptimizedBLS12381.OptimizedCurve.field_modulus())]
+            [Integer.mod(Hash.os2ip(tv), Curve.field_modulus())]
         end)
 
       u ++ [FQ2.new(List.to_tuple(e))]
@@ -91,7 +91,7 @@ defmodule ExEcc.BLS.HashToCurve do
     {u0, u1} = hash_to_field_fq(message, 2, dst, hash_function)
     q0 = map_to_curve_g1(u0)
     q1 = map_to_curve_g1(u1)
-    r = ExEcc.OptimizedBLS12381.OptimizedCurve.add(q0, q1)
+    r = Curve.add(q0, q1)
     clear_cofactor_g1(r)
   end
 
