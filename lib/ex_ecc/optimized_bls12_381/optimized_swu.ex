@@ -76,13 +76,13 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedSWU do
     temp = FieldMath.add(iso_3_z_t2, FieldMath.pow(iso_3_z_t2, 2))
     # -a(Z * t^2 + Z^2 * t^4)
     denominator = FieldMath.neg(FieldMath.mul(Constants.iso_3_a(), temp))
-    temp = FieldMath.add(temp, FieldMath.type(temp).one())
+    temp = FieldMath.add(temp, FQ2.one())
     # b(Z * t^2 + Z^2 * t^4 + 1)
     numerator = FieldMath.mul(Constants.iso_3_b(), temp)
 
     # Exceptional case
     denominator =
-      if denominator == FieldMath.type(denominator).zero() do
+      if FieldMath.eq(denominator, FQ2.zero()) do
         FieldMath.mul(Constants.iso_3_z(), Constants.iso_3_a())
       else
         denominator
@@ -120,10 +120,10 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedSWU do
           FieldMath.mul(FieldMath.pow(eta_sqrt_candidate, 2), v)
           |> FieldMath.sub(u)
 
-        if temp1 == FieldMath.type(temp1).zero() and not success and not success_2 do
-          {:halt, {eta_sqrt_candidate, true}}
+        if FieldMath.eq(temp1, FQ2.zero()) and not success and not success_2 do
+          {eta_sqrt_candidate, true}
         else
-          {:cont, {y, success_2}}
+          {y, success_2}
         end
       end)
 

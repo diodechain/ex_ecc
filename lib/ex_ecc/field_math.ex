@@ -64,7 +64,7 @@ defmodule ExEcc.FieldMath do
   def neg(a), do: call(:neg, a)
   def lt(a, b), do: call(:lt, a, b)
 
-  def sgn0(a), do: get(:sgn0, a)
+  def sgn0(a), do: call(:sgn0, a)
   def fq2_modulus_coeffs(a), do: get(:fq2_modulus_coeffs, a)
   def fq12_modulus_coeffs(a), do: get(:fq12_modulus_coeffs, a)
   def field_modulus(a), do: get(:field_modulus, a)
@@ -146,9 +146,8 @@ defmodule ExEcc.FieldMath do
       Enum.any?(List.wrap(parent(a)), fn p -> isinstance(p, other_type) end)
   end
 
-  defp get(atom, nil) do
-    raise "No value found for #{atom}"
-  end
+  defp get(:parent, nil), do: nil
+  defp get(atom, nil), do: raise("No value found for #{atom}")
 
   defp get(atom, a) do
     type = type(a)

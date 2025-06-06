@@ -3,6 +3,7 @@ defmodule ExEcc.BLS.HashToCurve do
   alias ExEcc.BLS.Hash
   alias ExEcc.Fields.OptimizedBLS12381FQ, as: FQ
   alias ExEcc.Fields.OptimizedBLS12381FQ2, as: FQ2
+  alias ExEcc.OptimizedBLS12381.OptimizedCurve, as: Curve
 
   @doc """
   Convert a message to a point on G2 as defined here:
@@ -107,16 +108,9 @@ defmodule ExEcc.BLS.HashToCurve do
     pseudo_random_bytes = Hash.expand_message_xmd(message, dst, len_in_bytes, hash_function)
 
     Enum.reduce(0..(count - 1), [], fn i, u ->
-      e =
-        Enum.reduce(0..(m - 1), [], fn j, e ->
-          elem_offset = Constants.hash_to_field_l() * (j + i * m)
-          tv = binary_part(pseudo_random_bytes, elem_offset, Constants.hash_to_field_l())
-
-          e ++
-            [Integer.mod(Hash.os2ip(tv), ExEcc.OptimizedBLS12381.OptimizedCurve.field_modulus())]
-        end)
-
-      u ++ [FQ.new(List.to_tuple(e))]
+      elem_offset = Constants.hash_to_field_l() * i * m
+      tv = binary_part(pseudo_random_bytes, elem_offset, Constants.hash_to_field_l())
+      u ++ [FQ.new(Integer.mod(Hash.os2ip(tv), Curve.field_modulus()))]
     end)
     |> List.to_tuple()
   end

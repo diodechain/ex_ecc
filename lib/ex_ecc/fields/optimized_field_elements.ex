@@ -176,7 +176,9 @@ defmodule ExEcc.Fields.OptimizedFQP do
 
   defstruct coeffs: {}, modulus_coeffs: {}, degree: 0, field_modulus: nil, mc_tuples: []
 
-  def new(fqp, coeffs, modulus_coeffs \\ {}) do
+  def new(fqp, coeffs, modulus_coeffs \\ nil) do
+    modulus_coeffs = modulus_coeffs || FieldMath.modulus_coeffs(fqp)
+
     if FieldMath.field_modulus(fqp) == nil do
       raise "Field Modulus hasn't been specified"
     end
