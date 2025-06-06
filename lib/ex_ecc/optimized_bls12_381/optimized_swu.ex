@@ -72,7 +72,7 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedSWU do
   # Optimized SWU Map - FQ2 to G2': y^2 = x^3 + 240i * x + 1012 + 1012i
   # Found in Section 4 of https://eprint.iacr.org/2019/403
   def optimized_swu_g2(t) do
-    t2 = FieldMath.mul(t, t)
+    t2 = FieldMath.pow(t, 2)
     iso_3_z_t2 = FieldMath.mul(Constants.iso_3_z(), t2)
     temp = FieldMath.add(iso_3_z_t2, FieldMath.pow(iso_3_z_t2, 2))
     # -a(Z * t^2 + Z^2 * t^4)
