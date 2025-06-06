@@ -145,8 +145,8 @@ defmodule ExEcc.BLS.Ciphersuites do
       rescue
         error ->
           Logger.error("Error in _core_verify: #{inspect(error)}")
-          reraise error, __STACKTRACE__
-          # false
+          # reraise error, __STACKTRACE__
+          false
       end
     end
 
