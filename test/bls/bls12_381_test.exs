@@ -1,4 +1,7 @@
 defmodule ExEcc.BLS.BLS12381Test do
+  @doc """
+  Ported from tests/core/test_bn128_and_bls12_381.py
+  """
   use ExUnit.Case
   alias ExEcc.OptimizedBLS12381.OptimizedPairing, as: Pairing
   alias ExEcc.Fields.OptimizedBLS12381FQ, as: FQ
@@ -36,7 +39,7 @@ defmodule ExEcc.BLS.BLS12381Test do
            )
 
     assert FieldMath.eq(FieldMath.pow(FQ.new(9), @field_modulus), FQ.new(9))
-    assert FieldMath.lt(FQ.new(-1), FQ.new(0))
+    assert FQ.new(-1).n > 0
   end
 
   test "FQ2 object" do
