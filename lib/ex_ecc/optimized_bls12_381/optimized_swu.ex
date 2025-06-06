@@ -1,4 +1,5 @@
 defmodule ExEcc.OptimizedBLS12381.OptimizedSWU do
+  alias ExEcc.Fields.OptimizedBLS12381FQ, as: FQ
   alias ExEcc.Fields.OptimizedBLS12381FQ2, as: FQ2
   alias ExEcc.OptimizedBLS12381.Constants
   alias ExEcc.FieldMath
@@ -246,10 +247,8 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedSWU do
 
   # Optimal Map from 11-Isogenous Curve to G1
   def iso_map_g1(x, y, z) do
-    # Initialize with FQ zero values
-    mapped_values = List.duplicate(FieldMath.type(z).zero(), 4)
-
-    # Max power needed is 15 for z, assuming ISO_11_MAP_COEFFICIENTS structure
+    # x-numerator, x-denominator, y-numerator, y-denominator
+    mapped_values = List.duplicate(FQ.zero(), 4)
     z_powers = Enum.map(1..15, &FieldMath.pow(z, &1))
 
     # Horner Polynomial Evaluation
@@ -260,19 +259,18 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedSWU do
       |> Enum.reduce(
         mapped_values,
         fn {k_i, i}, mapped_values ->
-          [last | rest] = Enum.reverse(Tuple.to_list(k_i))
-          mapped_values = List.replace_at(mapped_values, i, last)
+          [mapped_values_i | rest] = Enum.reverse(Tuple.to_list(k_i))
 
-          Enum.with_index(rest)
-          |> Enum.reduce(mapped_values, fn {k_i_j, j}, mapped_values ->
-            new_i =
+          mapped_values_i =
+            Enum.with_index(rest)
+            |> Enum.reduce(mapped_values_i, fn {k_i_j, j}, mapped_values_i ->
               FieldMath.add(
-                FieldMath.mul(Enum.at(mapped_values, i), x),
+                FieldMath.mul(mapped_values_i, x),
                 FieldMath.mul(Enum.at(z_powers, j), k_i_j)
               )
+            end)
 
-            List.replace_at(mapped_values, i, new_i)
-          end)
+          List.replace_at(mapped_values, i, mapped_values_i)
         end
       )
 
