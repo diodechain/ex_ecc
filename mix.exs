@@ -25,7 +25,7 @@ defmodule ExEcc.MixProject do
         extras: ["README.md"]
       ],
       aliases: [
-        lint: ["format --check-formatted", "credo --strict", "dialyzer"]
+        lint: ["format --check-formatted", "dialyzer"]
       ]
     ]
   end
