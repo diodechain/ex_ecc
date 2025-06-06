@@ -139,9 +139,9 @@ defmodule ExEcc.BLS.HashToCurveTest do
 
         # Affine
         # X / Z
-        result_x = elem(point, 0) / elem(point, 2)
+        result_x = FieldMath.div(elem(point, 0), elem(point, 2))
         # Y / Z
-        result_y = elem(point, 1) / elem(point, 2)
+        result_y = FieldMath.div(elem(point, 1), elem(point, 2))
 
         assert x == result_x
         assert y == result_y

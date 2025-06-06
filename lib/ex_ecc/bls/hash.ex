@@ -115,7 +115,8 @@ defmodule ExEcc.BLS.Hash do
     b = [hash_function.fun.(b_0 <> <<1::size(8)>> <> dst_prime)]
 
     b =
-      Enum.reduce(2..ell, b, fn i, b ->
+      Range.new(2, ell, if(ell > 2, do: 1, else: -1))
+      |> Enum.reduce(b, fn i, b ->
         b ++ [hash_function.fun.(xor(b_0, Enum.at(b, i - 2)) <> i2osp(i, 1) <> dst_prime)]
       end)
 
