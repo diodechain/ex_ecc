@@ -111,7 +111,6 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedSWU do
     # u(x1) = Z^3 * t^6 * u(x0)
     u = FieldMath.mul(FieldMath.pow(iso_3_z_t2, 3), u)
 
-    # Reduce to find the correct y
     {y, success_2} =
       Enum.reduce(Constants.etas(), {y, false}, fn eta, {y, success_2} ->
         # Valid solution if (eta * sqrt_candidate(x1)) ** 2 * v - u == 0
@@ -162,27 +161,25 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedSWU do
     temp1 = FieldMath.mul(u, FieldMath.pow(v, 7))
     temp2 = FieldMath.mul(temp1, FieldMath.pow(v, 8))
 
-    # P_MINUS_9_DIV_16 needs to be available via Constants.
-    exponent = Constants.p_minus_9_div_16()
-    gamma = FieldMath.mul(FieldMath.pow(temp2, exponent), temp1)
+    # gamma =  uv^7 * (uv^15)^((p^2 - 9) / 16)
+    gamma = FieldMath.pow(temp2, Constants.p_minus_9_div_16())
+    gamma = FieldMath.mul(gamma, temp1)
 
     # Verify there is a valid root
-    # POSITIVE_EIGHTH_ROOTS_OF_UNITY needs to be available via Constants.
-    initial_accumulator = {false, gamma}
-
     {is_valid_root, result} =
       Constants.positive_eighth_roots_of_unity()
       |> Tuple.to_list()
-      |> Enum.reduce_while(initial_accumulator, fn root, {acc_is_valid, acc_result} ->
+      |> Enum.reduce({false, gamma}, fn root, {is_valid_root, result} ->
         sqrt_candidate = FieldMath.mul(root, gamma)
 
-        check_val =
-          FieldMath.sub(FieldMath.mul(sqrt_candidate, sqrt_candidate, v), u)
+        temp2 =
+          FieldMath.mul(FieldMath.pow(sqrt_candidate, 2), v)
+          |> FieldMath.sub(u)
 
-        if check_val == FieldMath.type(check_val).zero() and not acc_is_valid do
-          {:halt, {true, sqrt_candidate}}
+        if FieldMath.eq(temp2, FQ2.zero()) and not is_valid_root do
+          {true, sqrt_candidate}
         else
-          {:cont, {acc_is_valid, acc_result}}
+          {is_valid_root, result}
         end
       end)
 

@@ -4,6 +4,7 @@ defmodule ExEcc.BLS.HashToCurve do
   alias ExEcc.Fields.OptimizedBLS12381FQ, as: FQ
   alias ExEcc.Fields.OptimizedBLS12381FQ2, as: FQ2
   alias ExEcc.OptimizedBLS12381.OptimizedCurve, as: Curve
+  alias ExEcc.OptimizedBLS12381.OptimizedSWU, as: SWU
 
   @doc """
   Convert a message to a point on G2 as defined here:
@@ -62,8 +63,8 @@ defmodule ExEcc.BLS.HashToCurve do
   https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-09#appendix-C.3
   """
   def map_to_curve_g2(u) do
-    {x, y, z} = ExEcc.OptimizedBLS12381.OptimizedSWU.optimized_swu_g2(u)
-    ExEcc.OptimizedBLS12381.OptimizedSWU.iso_map_g2(x, y, z)
+    {x, y, z} = SWU.optimized_swu_g2(u)
+    SWU.iso_map_g2(x, y, z)
   end
 
   @doc """
@@ -126,8 +127,8 @@ defmodule ExEcc.BLS.HashToCurve do
   https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-09#name-11-isogeny-map-for-bls12-38
   """
   def map_to_curve_g1(u) do
-    {x, y, z} = ExEcc.OptimizedBLS12381.OptimizedSWU.optimized_swu_g1(u)
-    ExEcc.OptimizedBLS12381.OptimizedSWU.iso_map_g1(x, y, z)
+    {x, y, z} = SWU.optimized_swu_g1(u)
+    SWU.iso_map_g1(x, y, z)
   end
 
   @doc """

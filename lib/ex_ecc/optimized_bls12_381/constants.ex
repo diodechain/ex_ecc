@@ -34,7 +34,7 @@ defmodule ExEcc.OptimizedBLS12381.Constants do
     FQ2.new({-@ev4, @ev3})
   ]
   def etas, do: @etas
-  @rv1 10_287_321_462_351_063_499_753_244_792_157_952_773_848_399
+  @rv1 1028732146235106349975324479215795277384839936929757896155643118032610843298655225875571310552543014690878354869257
   def rv1, do: @rv1
 
   @positive_eighth_roots_of_unity {FQ2.new({1, 0}), FQ2.new({0, 1}), FQ2.new({@rv1, @rv1}),
