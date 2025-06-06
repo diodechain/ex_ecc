@@ -73,97 +73,69 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedSWU do
   def optimized_swu_g2(t) do
     t2 = FieldMath.mul(t, t)
     iso_3_z_t2 = FieldMath.mul(Constants.iso_3_z(), t2)
-
-    temp =
-      FieldMath.mul(iso_3_z_t2, iso_3_z_t2)
-      |> FieldMath.add(iso_3_z_t2)
-
-    # The initial calculation for denominator_val for optimized_swu_g2
-    calculated_denominator =
-      Constants.iso_3_a()
-      |> FieldMath.mul(temp)
-      |> FieldMath.neg()
-
-    temp_plus_one = FieldMath.add(temp, FieldMath.type(temp).one())
+    temp = FieldMath.add(iso_3_z_t2, FieldMath.pow(iso_3_z_t2, 2))
+    # -a(Z * t^2 + Z^2 * t^4)
+    denominator = FieldMath.neg(FieldMath.mul(Constants.iso_3_a(), temp))
+    temp = FieldMath.add(temp, FieldMath.type(temp).one())
     # b(Z * t^2 + Z^2 * t^4 + 1)
-    numerator_val = FieldMath.mul(Constants.iso_3_b(), temp_plus_one)
+    numerator = FieldMath.mul(Constants.iso_3_b(), temp)
 
-    # Exceptional case for denominator_val
-    denominator_val =
-      if calculated_denominator == FQ2.zero() do
+    # Exceptional case
+    denominator =
+      if denominator == FieldMath.type(denominator).zero() do
         FieldMath.mul(Constants.iso_3_z(), Constants.iso_3_a())
       else
-        calculated_denominator
+        denominator
       end
 
     # v = D^3
-    v = FieldMath.pow(denominator_val, 3)
+    v = FieldMath.pow(denominator, 3)
+
     # u = N^3 + a * N * D^2 + b* D^3
-    u_val =
-      FieldMath.add(
-        FieldMath.pow(numerator_val, 3),
-        FieldMath.add(
-          FieldMath.mul(
-            Constants.iso_3_a(),
-            FieldMath.mul(numerator_val, FieldMath.pow(denominator_val, 2))
-          ),
-          FieldMath.mul(Constants.iso_3_b(), v)
-        )
+    u =
+      FieldMath.pow(numerator, 3)
+      |> FieldMath.add(
+        FieldMath.mul(Constants.iso_3_a(), numerator, FieldMath.pow(denominator, 2))
       )
+      |> FieldMath.add(FieldMath.mul(Constants.iso_3_b(), v))
 
     # Attempt y = sqrt(u / v)
-    {success, sqrt_candidate_initial} = sqrt_division_fq2(u_val, v)
-    y = sqrt_candidate_initial
+    {success, sqrt_candidate} = sqrt_division_fq2(u, v)
+    y = sqrt_candidate
 
     # Handle case where (u / v) is not square
     # sqrt_candidate(x1) = sqrt_candidate(x0) * t^3
-    sqrt_candidate_transformed = FieldMath.mul(sqrt_candidate_initial, FieldMath.pow(t, 3))
+    sqrt_candidate = FieldMath.mul(sqrt_candidate, FieldMath.pow(t, 3))
 
     # u(x1) = Z^3 * t^6 * u(x0)
-    u_transformed = FieldMath.mul(FieldMath.pow(iso_3_z_t2, 3), u_val)
+    u = FieldMath.mul(FieldMath.pow(iso_3_z_t2, 3), u)
 
     # Reduce to find the correct y
-    {final_y, success_2_final, final_numerator} =
-      Enum.reduce_while(Constants.etas(), {y, false, numerator_val}, fn eta,
-                                                                        {current_y, success_2_acc,
-                                                                         current_numerator} ->
-        eta_sqrt_candidate = FieldMath.mul(eta, sqrt_candidate_transformed)
+    {y, success_2} =
+      Enum.reduce(Constants.etas(), {y, false}, fn eta, {y, success_2} ->
+        # Valid solution if (eta * sqrt_candidate(x1)) ** 2 * v - u == 0
+        eta_sqrt_candidate = FieldMath.mul(eta, sqrt_candidate)
 
         temp1 =
-          FieldMath.sub(
-            FieldMath.mul(eta_sqrt_candidate, eta_sqrt_candidate, v),
-            u_transformed
-          )
+          FieldMath.mul(FieldMath.pow(eta_sqrt_candidate, 2), v)
+          |> FieldMath.sub(u)
 
-        if temp1 == FieldMath.type(temp1).zero() and not success and not success_2_acc do
-          {:halt, {eta_sqrt_candidate, true, current_numerator}}
+        if temp1 == FieldMath.type(temp1).zero() and not success and not success_2 do
+          {:halt, {eta_sqrt_candidate, true}}
         else
-          {:cont, {current_y, success_2_acc, current_numerator}}
+          {:cont, {y, success_2}}
         end
       end)
 
     # This case should ideally be unreachable if the algorithm is correct.
-    if not success and not success_2_final do
+    if not success and not success_2 do
       raise "Hash to Curve - Optimized SWU failure"
     end
 
-    numerator_final =
-      if not success do
-        FieldMath.mul(final_numerator, iso_3_z_t2)
-      else
-        final_numerator
-      end
-
-    y_corrected_sign =
-      if FieldMath.sgn0(t) != FieldMath.sgn0(final_y) do
-        FieldMath.neg(final_y)
-      else
-        final_y
-      end
-
-    y_overall_final = FieldMath.mul(y_corrected_sign, denominator_val)
-
-    {numerator_final, y_overall_final, denominator_val}
+    numerator = if not success, do: FieldMath.mul(numerator, iso_3_z_t2), else: numerator
+    y = if FieldMath.sgn0(t) != FieldMath.sgn0(y), do: FieldMath.neg(y), else: y
+    y = FieldMath.mul(y, denominator)
+    {numerator, y, denominator}
   end
 
   def sqrt_division_fq(u, v) do
