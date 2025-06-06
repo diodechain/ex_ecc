@@ -1,5 +1,4 @@
 defmodule ExEcc.OptimizedBLS12381.OptimizedPairing do
-  alias ExEcc.Fields.OptimizedBLS12381FQ, as: FQ
   alias ExEcc.Fields.OptimizedBLS12381FQ12, as: FQ12
   alias ExEcc.Fields.FieldProperties
   alias ExEcc.OptimizedBLS12381.OptimizedCurve, as: Curve
@@ -97,11 +96,8 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedPairing do
   # Create a function representing the line between P1 and P2,
   # and evaluate it at T. Returns a numerator and a denominator
   # to avoid unneeded divisions
-  def linefunc(p1, p2, t) do
-    {x1, y1, z1} = p1
+  def linefunc({x1, y1, z1}, {x2, y2, z2}, {xt, yt, zt}) do
     zero = FieldMath.type(x1).zero()
-    {x2, y2, z2} = p2
-    {xt, yt, zt} = t
 
     # points in projective coords: (x / z, y / z)
     # hence, m = (y2/z2 - y1/z1) / (x2/z2 - x1/z1)
@@ -128,8 +124,8 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedPairing do
 
       FieldMath.eq(m_numerator, zero) ->
         # m = 3(x/z)^2 / 2(y/z), multiply num and den by z**2
-        m_numerator = FieldMath.mul(FQ.new(3), x1, x1)
-        m_denominator = FieldMath.mul(FQ.new(2), y1, z1)
+        m_numerator = FieldMath.mul(3, x1, x1)
+        m_denominator = FieldMath.mul(2, y1, z1)
 
         {
           FieldMath.sub(

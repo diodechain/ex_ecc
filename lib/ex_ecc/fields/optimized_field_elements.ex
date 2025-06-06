@@ -39,7 +39,7 @@ defmodule ExEcc.Fields.OptimizedFQ do
   def mul(fq, other) do
     on =
       case other do
-        %{n: n} -> n
+        %{n: n} when is_integer(n) -> n
         n when is_integer(n) -> n
         _ -> raise "Expected an int or FQ object, but got #{inspect(other)}"
       end
