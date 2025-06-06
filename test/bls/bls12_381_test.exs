@@ -14,6 +14,7 @@ defmodule ExEcc.BLS.BLS12381Test do
   @z1 Curve.z1()
   @z2 Curve.z2()
   @b2 Curve.b2()
+  @b12 Curve.b12()
 
   test "FQ object" do
     assert FieldMath.eq(FieldMath.mul(FQ.new(2), FQ.new(2)), FQ.new(4))
@@ -119,7 +120,7 @@ defmodule ExEcc.BLS.BLS12381Test do
 
     assert Curve.is_inf(Curve.multiply(@g2, Curve.curve_order()))
     assert not Curve.is_inf(Curve.multiply(@g2, 2 * @field_modulus - Curve.curve_order()))
-    assert Curve.is_on_curve(Curve.multiply(@g2, 9), Curve.b2())
+    assert Curve.is_on_curve(Curve.multiply(@g2, 9), @b2)
   end
 
   test "G12 object" do
@@ -135,7 +136,7 @@ defmodule ExEcc.BLS.BLS12381Test do
              Curve.add(Curve.multiply(@g12, 12), Curve.multiply(@g12, 2))
            )
 
-    assert Curve.is_on_curve(Curve.multiply(@g12, 9), Curve.b12())
+    assert Curve.is_on_curve(Curve.multiply(@g12, 9), @b12)
     assert Curve.is_inf(Curve.multiply(@g12, Curve.curve_order()))
   end
 
