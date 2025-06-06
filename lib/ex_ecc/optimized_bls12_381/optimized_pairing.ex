@@ -161,7 +161,9 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedPairing do
   end
 
   # Main miller loop
-  def miller_loop(q, p, final_exponentiate \\ true) do
+  def miller_loop(q, p, opts \\ []) do
+    final_exponentiate = Keyword.get(opts, :final_exponentiate, true)
+
     if is_nil(q) or is_nil(p) do
       FQ12.one()
     else
@@ -206,7 +208,7 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedPairing do
   end
 
   # Pairing computation
-  def pairing(q, p, final_exponentiate \\ true) do
+  def pairing(q, p, opts \\ []) do
     if not Curve.is_on_curve(q, Curve.b2()) do
       raise "Invalid input - point Q is not on the correct curve"
     end
@@ -218,7 +220,7 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedPairing do
     if Curve.is_inf(p) or Curve.is_inf(q) do
       FQ12.one()
     else
-      miller_loop(q, p, final_exponentiate)
+      miller_loop(q, p, opts)
     end
   end
 
@@ -230,7 +232,7 @@ defmodule ExEcc.OptimizedBLS12381.OptimizedPairing do
             end)
 
   def exp_by_p(x) do
-    Enum.zip(@exptable, FieldMath.coeffs(x))
+    Enum.zip(@exptable, FieldMath.coeffs_list(x))
     |> Enum.reduce(FQ12.zero(), fn {table_entry, coeff}, acc ->
       FieldMath.add(acc, FieldMath.mul(table_entry, coeff))
     end)

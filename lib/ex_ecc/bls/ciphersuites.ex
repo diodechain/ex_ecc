@@ -5,6 +5,7 @@ defmodule ExEcc.BLS.Ciphersuites do
   alias ExEcc.BLS.HashToCurve
   alias ExEcc.BLS.G2Primitives
   alias ExEcc.BLS.Hash
+  alias ExEcc.FieldMath
   require Logger
   import While
 
@@ -125,16 +126,18 @@ defmodule ExEcc.BLS.Ciphersuites do
         else
           final_exponentiation =
             Pairing.final_exponentiate(
-              Pairing.pairing(
-                signature_point,
-                Curve.g1(),
-                final_exponentiate: false
-              ) *
+              FieldMath.mul(
+                Pairing.pairing(
+                  signature_point,
+                  Curve.g1(),
+                  final_exponentiate: false
+                ),
                 Pairing.pairing(
                   HashToCurve.hash_to_g2(message, dst, cls.xmd_hash_function()),
                   Curve.neg(G2Primitives.pubkey_to_g1(pk)),
                   final_exponentiate: false
                 )
+              )
             )
 
           final_exponentiation == FQ12.one()
@@ -142,7 +145,8 @@ defmodule ExEcc.BLS.Ciphersuites do
       rescue
         error ->
           Logger.error("Error in _core_verify: #{inspect(error)}")
-          false
+          reraise error, __STACKTRACE__
+          # false
       end
     end
 
@@ -216,17 +220,21 @@ defmodule ExEcc.BLS.Ciphersuites do
               pubkey_point = G2Primitives.pubkey_to_g1(pk)
               message_point = HashToCurve.hash_to_g2(message, dst, cls.xmd_hash_function())
 
-              aggregate *
+              FieldMath.mul(
+                aggregate,
                 Pairing.pairing(
                   message_point,
                   pubkey_point,
                   final_exponentiate: false
                 )
+              )
             end)
 
           aggregate =
-            aggregate *
+            FieldMath.mul(
+              aggregate,
               Pairing.pairing(signature_point, Curve.neg(Curve.g1()), final_exponentiate: false)
+            )
 
           Pairing.final_exponentiate(aggregate) == FQ12.one()
         end
